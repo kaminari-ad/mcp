@@ -3,14 +3,14 @@
 # @kaminari-ad/mcp — multi-stage production image.
 #
 # Stages:
-#   1. base      pinned node:20-alpine with build deps
+#   1. base      pinned node:22-alpine with build deps
 #   2. deps      installs production dependencies only
 #   3. build     installs all deps, compiles dist/
 #   4. runtime   minimal final image; non-root user; read-only filesystem-friendly
 #
 
 # ── 1. base ──────────────────────────────────────────────────────────
-FROM node:20.18.1-alpine3.20 AS base
+FROM node:22-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache tini=~0.19
 ENV NODE_ENV=production \
@@ -36,7 +36,7 @@ COPY src ./src
 RUN npx tsup --config tsup.config.ts
 
 # ── 4. runtime ───────────────────────────────────────────────────────
-FROM node:20.18.1-alpine3.20 AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 
 # Run as non-root. The node:alpine image ships a `node` user (uid 1000).

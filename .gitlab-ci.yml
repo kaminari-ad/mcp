@@ -13,8 +13,10 @@
 # `setup` produces a `node_modules` artifact that downstream jobs reuse.
 
 default:
-  # Use latest 20.x LTS (`@eslint/core@1.2.x` requires node 20.19+).
-  image: node:20-alpine
+  # Node 22 LTS — required by undici 8.x (which lots of tooling now
+  # pulls in transitively). Node 20 LTS support is extended until 2026
+  # but the npm dep tree drifts toward 22 quickly.
+  image: node:22-alpine
   before_script:
     # Pulled image is alpine (no git); shell-executor runners are
     # debian/ubuntu (git already installed). Try `apk` then fall back
