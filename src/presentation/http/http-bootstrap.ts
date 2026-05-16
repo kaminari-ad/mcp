@@ -15,15 +15,14 @@
  *   - Rule #15: no telemetry SDK wired by default.
  */
 
-import * as process from "node:process";
 import { createServer } from "node:http";
+import * as process from "node:process";
 
 import { createSystemClock } from "../../infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../infrastructure/logging/pino-logger.js";
 import { createLeakyBucketRateLimiter } from "../../infrastructure/rate-limit/leaky-bucket-rate-limiter.js";
 import { createInMemorySessionStore } from "../../infrastructure/session/in-memory-session-store.js";
 import type { Config } from "../../shared/config.js";
-
 import { createHttpRequestHandler } from "./http-request-handler.js";
 
 /**

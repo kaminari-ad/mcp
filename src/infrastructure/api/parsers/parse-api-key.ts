@@ -5,7 +5,6 @@
 
 import type { ApiError, ApiKeyResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
 function asString(v: unknown, fallback: string): string {
@@ -16,6 +15,9 @@ function asStringOrNull(v: unknown): string | null {
   return typeof v === "string" ? v : null;
 }
 
+/**
+ *
+ */
 export function parseApiKeyList(raw: unknown): Result<readonly ApiKeyResponse[], ApiError> {
   if (!Array.isArray(raw)) {
     return err({ kind: "upstream", detail: "expected array of api-keys" });

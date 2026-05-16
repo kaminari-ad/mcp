@@ -9,9 +9,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createInMemorySessionStore } from "../../src/infrastructure/session/in-memory-session-store.js";
 import { decideSessionAction } from "../../src/domain/services/session-binding-policy.js";
 import { newSessionId } from "../../src/domain/value-objects/session-id.js";
+import { createInMemorySessionStore } from "../../src/infrastructure/session/in-memory-session-store.js";
 import { createFakeClock } from "../fakes/fake-clock.js";
 
 describe("isolation: bearer-swap session rejection", () => {

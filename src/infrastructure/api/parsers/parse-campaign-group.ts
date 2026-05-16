@@ -8,7 +8,6 @@ import type {
   PaginatedResponse,
 } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
 function asString(v: unknown, fallback: string): string {
@@ -24,6 +23,9 @@ function asNumberOrNull(v: unknown): number | null {
   return typeof v === "number" ? v : null;
 }
 
+/**
+ *
+ */
 export function parseCampaignGroup(raw: unknown): Result<CampaignGroupResponse, ApiError> {
   if (!isStringRecord(raw)) {
     return err({ kind: "upstream", detail: "malformed campaign-group response" });
@@ -43,6 +45,9 @@ export function parseCampaignGroup(raw: unknown): Result<CampaignGroupResponse, 
   });
 }
 
+/**
+ *
+ */
 export function parseCampaignGroupPage(
   raw: unknown
 ): Result<PaginatedResponse<CampaignGroupResponse>, ApiError> {

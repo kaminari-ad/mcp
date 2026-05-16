@@ -10,12 +10,12 @@
  * receive an untouched Ok result regardless of timing.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockAgent } from "undici";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createHttpApiGateway } from "../../src/infrastructure/api/http-api-gateway.js";
 import { BearerToken } from "../../src/domain/value-objects/bearer-token.js";
 import { newRequestId } from "../../src/domain/value-objects/request-id.js";
+import { createHttpApiGateway } from "../../src/infrastructure/api/http-api-gateway.js";
 import { createFakeLogger } from "../fakes/fake-logger.js";
 
 const ORIGIN = "https://kaminari.test";
@@ -39,15 +39,14 @@ describe("isolation: error in one request does not leak into another", () => {
       .intercept({
         path: "/api/v1/account",
         method: "GET",
-        headers: (h) =>
-          (h as Record<string, string>)["authorization"]?.includes("happy") ?? false,
+        headers: (h) => h["authorization"]?.includes("happy") ?? false,
       })
       .reply(200, {
-        user_id: "u",
-        organization_id: "o",
-        email: "happy@y",
-        display_name: "happy",
-        permissions: ["scans.read"],
+        id: "00000000-0000-0000-0000-000000000010",
+        name: "happy",
+        owner_id: "00000000-0000-0000-0000-000000000001",
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
       })
       .persist();
     agent
@@ -71,12 +70,12 @@ describe("isolation: error in one request does not leak into another", () => {
       dispatcher: agent,
     });
 
-    const [failResult, okResult] = await Promise.all([failing.getMe(), happy.getMe()]);
+    const [failResult, okResult] = await Promise.all([failing.getAccount(), happy.getAccount()]);
 
     expect(failResult.isErr()).toBe(true);
     expect(okResult.isOk()).toBe(true);
     if (okResult.isOk()) {
-      expect(okResult.value.display_name).toBe("happy");
+      expect(okResult.value.name).toBe("happy");
     }
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getWebhookTool } from "../../../../src/application/tools/webhooks/get-webhook.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -18,6 +19,8 @@ describe("getWebhookTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getWebhook = err(makeApiError("not-found", "x"));
-    expect((await getWebhookTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await getWebhookTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

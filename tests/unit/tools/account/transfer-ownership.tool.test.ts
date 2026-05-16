@@ -12,14 +12,17 @@ describe("transferOwnershipTool", () => {
     expect(transferOwnershipTool.annotations.destructiveHint).toBe(true);
     expect(transferOwnershipTool.annotations.idempotentHint).toBe(false);
   });
-  it("returns transferred=true", async () => {
+  it("returns transferred=true and forwards the user id", async () => {
     const api = createFakeApiGateway();
     const r = await transferOwnershipTool.handler({ user_id: UID }, makeToolContext({ api }));
     expect(r._unsafeUnwrap()).toEqual({ transferred: true });
+    expect(api.state.calls[0]).toEqual({ method: "transferOwnership", userId: UID });
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.transferOwnership = err(makeApiError("forbidden", "x"));
-    expect((await transferOwnershipTool.handler({ user_id: UID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await transferOwnershipTool.handler({ user_id: UID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { listScanTagsTool } from "../../../../src/application/tools/tags/list-scan-tags.tool.js";
 import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -13,7 +14,17 @@ describe("listScanTagsTool", () => {
   it("returns items + total", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listScanTags = ok([
-      { slug: "malware", display_name: "Malware", category: "security", severity: "high", source: "system" },
+      {
+        id: "00000000-0000-0000-0000-000000000888",
+        scan_id: SID,
+        tag_slug: "malware",
+        detail: "matched on .exe",
+        url: "https://x.com/payload",
+        display_name: "Malware",
+        category: "security",
+        severity: "high",
+        created_at: "2026-01-01T00:00:00Z",
+      },
     ]);
     const r = await listScanTagsTool.handler({ scan_id: SID }, makeToolContext({ api }));
     expect(r._unsafeUnwrap().total).toBe(1);
@@ -21,6 +32,8 @@ describe("listScanTagsTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listScanTags = err(makeApiError("not-found", "x"));
-    expect((await listScanTagsTool.handler({ scan_id: SID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await listScanTagsTool.handler({ scan_id: SID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

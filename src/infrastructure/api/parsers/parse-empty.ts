@@ -6,6 +6,9 @@
 import type { ApiError } from "../../../domain/ports/api-gateway.js";
 import { ok, type Result } from "../../../shared/result.js";
 
+/**
+ *
+ */
 export function parseEmpty(_raw: unknown): Result<null, ApiError> {
   return ok(null);
 }

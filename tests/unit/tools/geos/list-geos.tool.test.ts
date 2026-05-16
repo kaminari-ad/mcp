@@ -13,16 +13,16 @@ describe("listGeosTool", () => {
   it("returns items + total on success", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listGeos = ok([
-      { code: "US", name: "United States", continent: "NA", emoji: "🇺🇸" },
-      { code: "DE", name: "Germany", continent: "EU", emoji: "🇩🇪" },
+      { country_code: "US", name: "United States", region: "Americas", tier: "tier-1" },
+      { country_code: "DE", name: "Germany", region: "Europe", tier: "tier-1" },
     ]);
     const ctx = makeToolContext({ api });
     const result = await listGeosTool.handler({}, ctx);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toEqual({
       items: [
-        { code: "US", name: "United States", continent: "NA", emoji: "🇺🇸" },
-        { code: "DE", name: "Germany", continent: "EU", emoji: "🇩🇪" },
+        { country_code: "US", name: "United States", region: "Americas", tier: "tier-1" },
+        { country_code: "DE", name: "Germany", region: "Europe", tier: "tier-1" },
       ],
       total: 2,
     });

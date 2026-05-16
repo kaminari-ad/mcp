@@ -11,16 +11,16 @@
  */
 
 import { createServer, type Server } from "node:http";
-import { Writable } from "node:stream";
 import type { AddressInfo } from "node:net";
+import { Writable } from "node:stream";
 
 import { MockAgent, request as undiciRequest, setGlobalDispatcher } from "undici";
 
-import { createHttpRequestHandler } from "../../../src/presentation/http/http-request-handler.js";
+import { createSystemClock } from "../../../src/infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../../src/infrastructure/logging/pino-logger.js";
 import { createLeakyBucketRateLimiter } from "../../../src/infrastructure/rate-limit/leaky-bucket-rate-limiter.js";
 import { createInMemorySessionStore } from "../../../src/infrastructure/session/in-memory-session-store.js";
-import { createSystemClock } from "../../../src/infrastructure/clock/system-clock.js";
+import { createHttpRequestHandler } from "../../../src/presentation/http/http-request-handler.js";
 import { loadConfig } from "../../../src/shared/config.js";
 
 export interface IsolationHarness {
@@ -104,7 +104,11 @@ export async function spinUpServer(
     logs: () => sink.toString(),
     close: async () => {
       await mockApi.close();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await new Promise<void>((resolve) =>
+        server.close(() => {
+          resolve();
+        })
+      );
     },
   };
 }

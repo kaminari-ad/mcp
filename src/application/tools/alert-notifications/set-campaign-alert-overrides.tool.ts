@@ -5,24 +5,30 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { CampaignAlertOverrides } from "../../../domain/ports/api-gateway.js";
+import type { CampaignOverridesResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const SetCampaignAlertOverridesInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID."),
+  mode: z
+    .enum(["inherit", "include", "exclude"])
+    .describe(
+      "Routing mode: `inherit` (use org defaults), `include` (route ONLY to listed destinations), `exclude` (route everywhere EXCEPT listed)."
+    ),
   destination_ids: z
     .array(z.string().uuid())
     .max(50)
-    .describe("Replacement list of destination UUIDs. Empty array = use org defaults."),
-  muted: z.boolean().describe("If true, no alerts for this campaign are dispatched anywhere."),
+    .default([])
+    .describe(
+      "Destination UUIDs the mode acts on. Required for `include`/`exclude`; ignored for `inherit`."
+    ),
 } as const;
 type SetCampaignAlertOverridesInputShape = typeof SetCampaignAlertOverridesInputShape;
 
-export type SetCampaignAlertOverridesOutput = CampaignAlertOverrides;
+export type SetCampaignAlertOverridesOutput = CampaignOverridesResponse;
 
 export const setCampaignAlertOverridesTool: Tool<
   SetCampaignAlertOverridesInputShape,
@@ -30,7 +36,7 @@ export const setCampaignAlertOverridesTool: Tool<
 > = {
   name: "set_campaign_alert_overrides",
   description:
-    "REPLACE the per-campaign alert-routing override: which destinations receive alerts from this campaign and a mute toggle. Pass empty `destination_ids` to fall back to org-level defaults.",
+    "REPLACE the per-campaign alert-routing override. `mode=inherit` falls back to org defaults; `mode=include` routes ONLY to the listed destinations; `mode=exclude` routes everywhere EXCEPT the listed destinations.",
   annotations: {
     title: "Set Campaign Alert Overrides",
     readOnlyHint: false,
@@ -39,13 +45,10 @@ export const setCampaignAlertOverridesTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(SetCampaignAlertOverridesInputShape),
-  handler: async (
-    input,
-    ctx
-  ): Promise<Result<SetCampaignAlertOverridesOutput, ToolError>> => {
+  handler: async (input, ctx): Promise<Result<SetCampaignAlertOverridesOutput, ToolError>> => {
     const result = await ctx.api.setCampaignAlertOverrides(input.campaign_id, {
+      mode: input.mode,
       destination_ids: input.destination_ids,
-      muted: input.muted,
     });
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);

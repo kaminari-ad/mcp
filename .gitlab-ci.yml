@@ -157,7 +157,9 @@ build:
     - test:unit
     - test:integration
     - test:isolation
-  script: npm run build
+  script:
+    - npm run build
+    - npm run check:bundle-size
   artifacts:
     expire_in: 7 days
     paths:

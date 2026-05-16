@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { listUsageTool } from "../../../../src/application/tools/billing/list-usage.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -32,6 +33,8 @@ describe("listUsageTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listUsage = err(makeApiError("forbidden", "x"));
-    expect((await listUsageTool.handler({ page: 1, limit: 50 }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await listUsageTool.handler({ page: 1, limit: 50 }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

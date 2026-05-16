@@ -6,10 +6,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -26,7 +25,13 @@ export const createCampaignGroupTool: Tool<
 > = {
   name: "create_campaign_group",
   description: "Create a new campaign group (folder). Free operation, no scans queued.",
-      annotations: { title: "Create Campaign Group", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  annotations: {
+    title: "Create Campaign Group",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   inputSchema: z.object(CreateCampaignGroupInputShape),
   handler: async (input, ctx): Promise<Result<CreateCampaignGroupOutput, ToolError>> => {
     const result = await ctx.api.createCampaignGroup({ name: input.name });

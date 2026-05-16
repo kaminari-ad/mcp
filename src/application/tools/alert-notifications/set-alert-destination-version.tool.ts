@@ -5,20 +5,23 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { AlertNotificationDestination } from "../../../domain/ports/api-gateway.js";
+import type { AlertNotificationDestinationResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const SetAlertDestinationVersionInputShape = {
   destination_id: z.string().uuid().describe("Destination UUID."),
-  version: z.number().int().min(1).describe("Target config version number."),
+  version: z
+    .enum(["public", "internal"])
+    .describe(
+      "Which version of the scan-report link to embed in alert messages: `public` (anonymous, no auth) or `internal` (requires UI login)."
+    ),
 } as const;
 type SetAlertDestinationVersionInputShape = typeof SetAlertDestinationVersionInputShape;
 
-export type SetAlertDestinationVersionOutput = AlertNotificationDestination;
+export type SetAlertDestinationVersionOutput = AlertNotificationDestinationResponse;
 
 export const setAlertDestinationVersionTool: Tool<
   SetAlertDestinationVersionInputShape,
@@ -35,10 +38,7 @@ export const setAlertDestinationVersionTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(SetAlertDestinationVersionInputShape),
-  handler: async (
-    input,
-    ctx
-  ): Promise<Result<SetAlertDestinationVersionOutput, ToolError>> => {
+  handler: async (input, ctx): Promise<Result<SetAlertDestinationVersionOutput, ToolError>> => {
     const result = await ctx.api.setAlertDestinationVersion(input.destination_id, {
       version: input.version,
     });

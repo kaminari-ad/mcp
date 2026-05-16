@@ -8,9 +8,10 @@
  * `ToolError`.
  *
  * The `ctxProvider` indirection lets the HTTP bootstrap supply a
- * fresh per-request {@link ToolContext} via AsyncLocalStorage, while
- * the stdio bootstrap supplies a process-wide constant. The tool
- * registry stays oblivious to the difference.
+ * fresh per-request {@link ToolContext} via a lexical closure captured
+ * inside `createHttpRequestHandler.handle`, while the stdio bootstrap
+ * supplies a process-wide constant. The tool registry stays oblivious
+ * to the difference.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -23,7 +24,9 @@ import type { ToolError } from "../../application/tools/_shared/tool-result.js";
 /**
  * Provider returning the {@link ToolContext} active for the current
  * tool call. In stdio mode, always the same instance. In HTTP mode,
- * scoped per-request via AsyncLocalStorage.
+ * a per-request closure created inside the request handler so the SDK
+ * callback (invoked synchronously during `Server.connect`) sees the
+ * correct caller's API gateway / logger / request-id.
  */
 export type ToolContextProvider = () => ToolContext;
 
@@ -33,10 +36,7 @@ export type ToolContextProvider = () => ToolContext;
  * @param server      - SDK `McpServer` to receive the registrations.
  * @param ctxProvider - Function returning the active `ToolContext`.
  */
-export function wireToolsIntoMcpServer(
-  server: McpServer,
-  ctxProvider: ToolContextProvider
-): void {
+export function wireToolsIntoMcpServer(server: McpServer, ctxProvider: ToolContextProvider): void {
   registerAllTools((tool) => {
     // The SDK accepts either a ZodRawShape or a full ZodObject for
     // `inputSchema`. We pass the ZodObject — it's the same source of
@@ -76,8 +76,7 @@ export function wireToolsIntoMcpServer(
 }
 
 function toolOkToMcpResult(value: unknown): CallToolResult {
-  const isPlainObject =
-    value !== null && typeof value === "object" && !Array.isArray(value);
+  const isPlainObject = value !== null && typeof value === "object" && !Array.isArray(value);
   return {
     content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
     ...(isPlainObject ? { structuredContent: value as Record<string, unknown> } : {}),

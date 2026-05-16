@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { inspect } from "node:util";
+
+import { describe, expect, it } from "vitest";
 
 import { BearerToken } from "../../../../src/domain/value-objects/bearer-token.js";
 

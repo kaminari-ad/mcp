@@ -50,9 +50,7 @@ describe("createScanTool", () => {
     );
     const call = api.state.calls[0];
     if (call?.method !== "createScan") throw new Error("wrong method");
-    expect(Object.keys(call.body).sort()).toEqual(
-      ["ad_tag", "country_code", "emulator_id"].sort()
-    );
+    expect(Object.keys(call.body).sort()).toEqual(["ad_tag", "country_code", "emulator_id"].sort());
   });
 
   it("forwards run_id when supplied", async () => {

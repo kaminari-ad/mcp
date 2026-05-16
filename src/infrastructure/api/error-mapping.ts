@@ -23,6 +23,11 @@ function errCode(parsed: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Convert an HTTP `(status, parsedBody, retry-after)` tuple to a
+ * typed `ApiError`. Pure — used by `HttpApiGateway.call()` after every
+ * non-2xx response.
+ */
 export function toApiError(
   status: number,
   parsed: unknown,

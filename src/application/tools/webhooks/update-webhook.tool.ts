@@ -4,17 +4,20 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { WebhookResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateWebhookInputShape = {
   webhook_id: z.string().uuid().describe("Webhook UUID."),
   url: z.string().url().optional().describe("New endpoint URL."),
-  event_types: z.array(z.string()).max(50).optional().describe("Replace the subscribed-event-types list."),
+  event_types: z
+    .array(z.string())
+    .max(50)
+    .optional()
+    .describe("Replace the subscribed-event-types list."),
   is_active: z.boolean().optional().describe("Enable / disable delivery."),
 } as const;
 type UpdateWebhookInputShape = typeof UpdateWebhookInputShape;
@@ -23,7 +26,8 @@ export type UpdateWebhookOutput = WebhookResponse;
 
 export const updateWebhookTool: Tool<UpdateWebhookInputShape, UpdateWebhookOutput> = {
   name: "update_webhook",
-  description: "Update a webhook endpoint's URL, event-type subscriptions, and/or active flag. Signing secret is NOT rotated by this call — use `rotate_webhook_secret` for that.",
+  description:
+    "Update a webhook endpoint's URL, event-type subscriptions, and/or active flag. Signing secret is NOT rotated by this call — use `rotate_webhook_secret` for that.",
   annotations: {
     title: "Update Webhook",
     readOnlyHint: false,

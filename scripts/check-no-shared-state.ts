@@ -47,7 +47,7 @@ async function main(): Promise<number> {
   const sourceFiles = project.addSourceFilesAtPaths([
     `${SRC_DIR}/**/*.ts`,
     `!${SRC_DIR}/**/*.d.ts`,
-    `!${SRC_DIR}/infrastructure/api/openapi.ts`,
+    `!${SRC_DIR}/shared/api/openapi.ts`,
   ]);
 
   if (sourceFiles.length === 0) {

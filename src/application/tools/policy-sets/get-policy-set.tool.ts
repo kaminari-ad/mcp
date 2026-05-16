@@ -4,10 +4,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { PolicySetResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -21,8 +20,14 @@ export type GetPolicySetOutput = PolicySetResponse;
 export const getPolicySetTool: Tool<GetPolicySetInputShape, GetPolicySetOutput> = {
   name: "get_policy_set",
   description:
-        "Get one policy set by UUID with its complete list of entries (tag-slug + applicable country codes).",
-      annotations: { title: "Get Policy Set", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "Get one policy set by UUID with its complete list of entries (tag-slug + applicable country codes).",
+  annotations: {
+    title: "Get Policy Set",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(GetPolicySetInputShape),
   handler: async (input, ctx): Promise<Result<GetPolicySetOutput, ToolError>> => {
     const result = await ctx.api.getPolicySet(input.policy_set_id);

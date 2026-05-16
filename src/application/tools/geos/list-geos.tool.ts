@@ -8,10 +8,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { GeoResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -26,8 +25,14 @@ export interface ListGeosOutput {
 export const listGeosTool: Tool<ListGeosInputShape, ListGeosOutput> = {
   name: "list_geos",
   description:
-        "List every country the Kaminari Ad platform can scan ads from, with ISO 3166-1 alpha-2 code, name, continent, and emoji.",
-      annotations: { title: "List Geos", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "List every country the Kaminari Ad platform can scan ads from, with ISO 3166-1 alpha-2 code, name, continent, and emoji.",
+  annotations: {
+    title: "List Geos",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ListGeosInputShape),
   handler: async (_input, ctx): Promise<Result<ListGeosOutput, ToolError>> => {
     const result = await ctx.api.listGeos();

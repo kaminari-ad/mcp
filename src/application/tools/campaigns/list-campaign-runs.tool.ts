@@ -6,10 +6,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { PaginatedResponse, RunResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -24,7 +23,8 @@ export type ListCampaignRunsOutput = PaginatedResponse<RunResponse>;
 
 export const listCampaignRunsTool: Tool<ListCampaignRunsInputShape, ListCampaignRunsOutput> = {
   name: "list_campaign_runs",
-  description: "List every run (scheduled execution) of one campaign, paginated, with per-run counters.",
+  description:
+    "List every run (scheduled execution) of one campaign, paginated, with per-run counters.",
   annotations: {
     title: "List Campaign Runs",
     readOnlyHint: true,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { archiveCampaignGroupTool } from "../../../../src/application/tools/campaign-groups/archive-campaign-group.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -17,6 +18,8 @@ describe("archiveCampaignGroupTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.archiveCampaignGroup = err(makeApiError("forbidden", "default"));
-    expect((await archiveCampaignGroupTool.handler({ group_id: GID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await archiveCampaignGroupTool.handler({ group_id: GID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

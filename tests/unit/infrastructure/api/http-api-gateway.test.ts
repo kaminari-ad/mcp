@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockAgent } from "undici";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createHttpApiGateway } from "../../../../src/infrastructure/api/http-api-gateway.js";
 import { BearerToken } from "../../../../src/domain/value-objects/bearer-token.js";
 import { newRequestId } from "../../../../src/domain/value-objects/request-id.js";
+import { createHttpApiGateway } from "../../../../src/infrastructure/api/http-api-gateway.js";
 import { createFakeLogger } from "../../../fakes/fake-logger.js";
 
 const ORIGIN = "https://kaminari.test";
@@ -30,29 +30,22 @@ describe("HttpApiGateway", () => {
     await agent.close();
   });
 
-  describe("getMe", () => {
+  describe("getAccount", () => {
+    const ORG = {
+      id: "o1",
+      name: "Test Org",
+      owner_id: "u1",
+      is_active: true,
+      created_at: "2026-01-01T00:00:00Z",
+    };
+
     it("returns Ok on 200", async () => {
-      agent
-        .get(ORIGIN)
-        .intercept({ path: "/api/v1/account", method: "GET" })
-        .reply(200, {
-          user_id: "u1",
-          organization_id: "o1",
-          email: "a@b.com",
-          display_name: "Alice",
-          permissions: ["scans.read"],
-        });
+      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(200, ORG);
 
       const gw = buildGateway(agent);
-      const result = await gw.getMe();
+      const result = await gw.getAccount();
       expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap()).toEqual({
-        user_id: "u1",
-        organization_id: "o1",
-        email: "a@b.com",
-        display_name: "Alice",
-        permissions: ["scans.read"],
-      });
+      expect(result._unsafeUnwrap()).toEqual(ORG);
     });
 
     it("forwards the Authorization header verbatim", async () => {
@@ -65,10 +58,10 @@ describe("HttpApiGateway", () => {
         })
         .reply(200, (opts) => {
           received = (opts.headers as Record<string, string> | undefined)?.["authorization"];
-          return { user_id: "u", organization_id: "o", email: "x@y", display_name: "X", permissions: [] };
+          return ORG;
         });
 
-      await buildGateway(agent).getMe();
+      await buildGateway(agent).getAccount();
       expect(received).toBe("Bearer kad_test_token_value");
     });
 
@@ -78,7 +71,7 @@ describe("HttpApiGateway", () => {
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(401, { detail: "Not authenticated" });
 
-      const result = await buildGateway(agent).getMe();
+      const result = await buildGateway(agent).getAccount();
       expect(result.isErr()).toBe(true);
       expect(result._unsafeUnwrapErr()).toEqual({
         kind: "unauthorized",
@@ -92,7 +85,7 @@ describe("HttpApiGateway", () => {
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(403, { detail: "Suspended", code: "billing.suspended" });
 
-      const err = (await buildGateway(agent).getMe())._unsafeUnwrapErr();
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
       expect(err).toEqual({
         kind: "forbidden",
         detail: "Suspended",
@@ -101,16 +94,22 @@ describe("HttpApiGateway", () => {
     });
 
     it("maps 404", async () => {
-      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(404, { detail: "x" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toEqual({
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(404, { detail: "x" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
         kind: "not-found",
         detail: "x",
       });
     });
 
     it("maps 422 to invalid-input", async () => {
-      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(422, { detail: "bad" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toMatchObject({
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(422, { detail: "bad" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toMatchObject({
         kind: "invalid-input",
         detail: "bad",
       });
@@ -121,7 +120,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(429, { detail: "Slow down" }, { headers: { "retry-after": "30" } });
-      const err = (await buildGateway(agent).getMe())._unsafeUnwrapErr();
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
       expect(err).toEqual({
         kind: "rate-limited",
         detail: "Slow down",
@@ -130,8 +129,11 @@ describe("HttpApiGateway", () => {
     });
 
     it("maps 5xx to upstream with status", async () => {
-      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(503, { detail: "down" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toEqual({
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(503, { detail: "down" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
         kind: "upstream",
         detail: "down",
         status: 503,
@@ -143,7 +145,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(200, { unexpected: "shape" });
-      const result = await buildGateway(agent).getMe();
+      const result = await buildGateway(agent).getAccount();
       expect(result.isErr()).toBe(true);
       expect(result._unsafeUnwrapErr()).toMatchObject({ kind: "upstream" });
     });
@@ -153,13 +155,13 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(200, "just a string");
-      const result = await buildGateway(agent).getMe();
+      const result = await buildGateway(agent).getAccount();
       expect(result.isErr()).toBe(true);
     });
 
     it("falls back to a generic detail when the error body is missing", async () => {
       agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(401, {});
-      const err = (await buildGateway(agent).getMe())._unsafeUnwrapErr();
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
       expect(err).toEqual({ kind: "unauthorized", detail: "Upstream error" });
     });
 
@@ -168,7 +170,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(403, { detail: "no" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toEqual({
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
         kind: "forbidden",
         detail: "no",
       });
@@ -179,7 +181,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(429, { detail: "slow" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toEqual({
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
         kind: "rate-limited",
         detail: "slow",
       });
@@ -190,7 +192,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .reply(400, { detail: "bad request" });
-      expect((await buildGateway(agent).getMe())._unsafeUnwrapErr()).toMatchObject({
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toMatchObject({
         kind: "invalid-input",
         detail: "bad request",
       });
@@ -201,7 +203,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/account", method: "GET" })
         .replyWithError(new Error("ECONNRESET"));
-      const result = await buildGateway(agent).getMe();
+      const result = await buildGateway(agent).getAccount();
       expect(result.isErr()).toBe(true);
       expect(result._unsafeUnwrapErr()).toEqual({
         kind: "upstream",
@@ -251,6 +253,13 @@ describe("HttpApiGateway", () => {
             url: "https://ad.example/a",
             country_code: "US",
             status: "done",
+            offer_url: "",
+            screenshot_url: "",
+            labels: {},
+            elapsed_ms: 0,
+            campaign_id: null,
+            campaign_name: null,
+            is_ad_tag: false,
             created_at: "2026-05-16T12:00:00Z",
           },
         ],
@@ -439,9 +448,7 @@ describe("HttpApiGateway", () => {
           method: "POST",
         })
         .reply(200, { cancelled_count: 1 });
-      const result = await buildGateway(agent).cancelScan(
-        "00000000-0000-0000-0000-000000000aaa"
-      );
+      const result = await buildGateway(agent).cancelScan("00000000-0000-0000-0000-000000000aaa");
       expect(result.isOk()).toBe(true);
       expect(result._unsafeUnwrap()).toEqual({ cancelled_count: 1 });
     });
@@ -453,7 +460,7 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: "/api/v1/geos", method: "GET" })
         .reply(200, [
-          { code: "US", name: "United States", continent: "NA", emoji: "🇺🇸" },
+          { country_code: "US", name: "United States", region: "Americas", tier: "tier-1" },
         ]);
       const result = await buildGateway(agent).listGeos();
       expect(result.isOk()).toBe(true);
@@ -531,9 +538,7 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "GET" })
         .reply(200, CAMPAIGN);
-      a.get(ORIGIN)
-        .intercept({ path: "/api/v1/campaigns", method: "POST" })
-        .reply(201, CAMPAIGN);
+      a.get(ORIGIN).intercept({ path: "/api/v1/campaigns", method: "POST" }).reply(201, CAMPAIGN);
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "PATCH" })
         .reply(200, CAMPAIGN);
@@ -560,17 +565,13 @@ describe("HttpApiGateway", () => {
       expect(arch._unsafeUnwrap().is_archived).toBe(true);
     });
 
-    it("listRuns / getRun", async () => {
-      const a = agent;
-      a.get(ORIGIN)
-        .intercept({ path: (p) => p.startsWith("/api/v1/runs?"), method: "GET" })
-        .reply(200, { items: [RUN], total: 1, page: 1, limit: 50 });
-      a.get(ORIGIN)
+    it("getRun", async () => {
+      agent
+        .get(ORIGIN)
         .intercept({ path: `/api/v1/runs/${RUN.id}`, method: "GET" })
         .reply(200, RUN);
 
       const gw = buildGateway(agent);
-      expect((await gw.listRuns({ page: 1, limit: 50 })).isOk()).toBe(true);
       expect((await gw.getRun(RUN.id)).isOk()).toBe(true);
     });
 
@@ -582,12 +583,15 @@ describe("HttpApiGateway", () => {
         display_name: "X",
         description: "",
         is_system: true,
+        organization_id: null,
+        show_in_public_report: false,
         severity: "high",
         scans_count: 0,
         rules_count: 0,
       };
       const RULE = {
         id: "00000000-0000-0000-0000-000000000bbb",
+        organization_id: "00000000-0000-0000-0000-000000000010",
         name: "R",
         tag_slug: "ml.spam",
         rule_type: "regex",
@@ -596,12 +600,14 @@ describe("HttpApiGateway", () => {
         is_active: true,
         created_at: "2026-01-01T00:00:00Z",
       };
-      const PS_SUMMARY = {
+      const POLICY = {
         id: "00000000-0000-0000-0000-000000000eee",
+        organization_id: "00000000-0000-0000-0000-000000000010",
         name: "ps",
         description: "",
         visibility: "private",
         is_approved: true,
+        entries: [],
         created_at: "2026-01-01T00:00:00Z",
       };
       const ALERT = {
@@ -609,20 +615,34 @@ describe("HttpApiGateway", () => {
         scan_id: "00000000-0000-0000-0000-000000000bbb",
         campaign_id: "00000000-0000-0000-0000-000000000ccc",
         policy_set_id: null,
+        violation_rule_id: null,
         tag_slug: "x",
         tag_display_name: "X",
         country_code: "US",
         status: "open",
+        closed_by: null,
         scan_url: "https://x",
         offer_url: "https://o",
         created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
       };
       const WH = {
         id: "00000000-0000-0000-0000-000000000eee",
         url: "https://x/wh",
+        description: "",
         event_types: ["scan.done"],
+        campaign_ids: [],
         is_active: true,
+        disabled_reason: null,
+        disabled_at: null,
+        health: {
+          consecutive_failures: 0,
+          last_delivery_at: null,
+          last_delivery_status: null,
+          success_rate_7d: 1,
+        },
         created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
       };
       const API_KEY = {
         id: "00000000-0000-0000-0000-000000000fff",
@@ -636,34 +656,26 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/emulators", method: "GET" })
         .reply(200, [{ id: "default", display_name: "D", category: "desktop", browser: "chrome" }]);
-      a.get(ORIGIN)
-        .intercept({ path: (p) => p.startsWith("/api/v1/tags?"), method: "GET" })
-        .reply(200, { items: [TAG], total: 1, page: 1, limit: 50 });
+      a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions", method: "GET" }).reply(200, [TAG]);
       a.get(ORIGIN)
         .intercept({ path: (p) => p.startsWith("/api/v1/custom-rules?"), method: "GET" })
-        .reply(200, { items: [RULE], total: 1, page: 1, limit: 50 });
-      a.get(ORIGIN)
-        .intercept({ path: "/api/v1/custom-rules", method: "POST" })
-        .reply(201, RULE);
+        .reply(200, [RULE]);
+      a.get(ORIGIN).intercept({ path: "/api/v1/custom-rules", method: "POST" }).reply(201, RULE);
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/custom-rules/${RULE.id}`, method: "DELETE" })
         .reply(204, "");
+      a.get(ORIGIN).intercept({ path: "/api/v1/policy-sets", method: "GET" }).reply(200, [POLICY]);
       a.get(ORIGIN)
-        .intercept({ path: "/api/v1/policy-sets", method: "GET" })
-        .reply(200, [PS_SUMMARY]);
-      a.get(ORIGIN)
-        .intercept({ path: `/api/v1/policy-sets/${PS_SUMMARY.id}`, method: "GET" })
-        .reply(200, { ...PS_SUMMARY, entries: [] });
-      a.get(ORIGIN)
-        .intercept({ path: "/api/v1/policy-sets", method: "POST" })
-        .reply(201, { ...PS_SUMMARY, entries: [] });
+        .intercept({ path: `/api/v1/policy-sets/${POLICY.id}`, method: "GET" })
+        .reply(200, POLICY);
+      a.get(ORIGIN).intercept({ path: "/api/v1/policy-sets", method: "POST" }).reply(201, POLICY);
       a.get(ORIGIN)
         .intercept({ path: (p) => p.startsWith("/api/v1/alerts?"), method: "GET" })
         .reply(200, { items: [ALERT], total: 1, page: 1, limit: 50 });
       a.get(ORIGIN).intercept({ path: "/api/v1/webhooks", method: "GET" }).reply(200, [WH]);
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/webhooks", method: "POST" })
-        .reply(201, { ...WH, signing_secret: "whsec_x" });
+        .reply(201, { webhook: WH, secret: "whsec_x" });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/webhooks/${WH.id}`, method: "DELETE" })
         .reply(204, "");
@@ -676,7 +688,7 @@ describe("HttpApiGateway", () => {
 
       const gw = buildGateway(agent);
       expect((await gw.listEmulators()).isOk()).toBe(true);
-      expect((await gw.listTags({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listTags()).isOk()).toBe(true);
       expect((await gw.listCustomRules({ page: 1, limit: 50 })).isOk()).toBe(true);
       expect(
         (
@@ -689,11 +701,12 @@ describe("HttpApiGateway", () => {
       ).toBe(true);
       expect((await gw.deleteCustomRule(RULE.id)).isOk()).toBe(true);
       expect((await gw.listPolicySets()).isOk()).toBe(true);
-      expect((await gw.getPolicySet(PS_SUMMARY.id)).isOk()).toBe(true);
+      expect((await gw.getPolicySet(POLICY.id)).isOk()).toBe(true);
       expect(
         (
           await gw.createPolicySet({
             name: "x",
+            description: "d",
             entries: [{ tag_slug: "y", country_codes: [] }],
           })
         ).isOk()
@@ -701,7 +714,14 @@ describe("HttpApiGateway", () => {
       expect((await gw.listAlerts({ page: 1, limit: 50 })).isOk()).toBe(true);
       expect((await gw.listWebhooks()).isOk()).toBe(true);
       expect(
-        (await gw.createWebhook({ url: "https://x/wh", event_types: ["scan.done"] })).isOk()
+        (
+          await gw.createWebhook({
+            url: "https://x/wh",
+            description: "",
+            event_types: ["scan.done"],
+            campaign_ids: [],
+          })
+        ).isOk()
       ).toBe(true);
       expect((await gw.deleteWebhook(WH.id)).isOk()).toBe(true);
       expect((await gw.getBillingSummary()).isOk()).toBe(true);
@@ -721,73 +741,283 @@ describe("HttpApiGateway", () => {
       const DID = "00000000-0000-0000-0000-000000000789";
       const a = agent;
       // ── account ────────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: "/api/v1/account", method: "PATCH" }).reply(200, { id: "o1", name: "X", created_at: "t", settings: {} });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "PATCH" })
+        .reply(200, { id: "o1", name: "X", owner_id: UID, is_active: true, created_at: "t" });
       a.get(ORIGIN).intercept({ path: "/api/v1/account/users", method: "GET" }).reply(200, []);
-      a.get(ORIGIN).intercept({ path: "/api/v1/account/users/invite", method: "POST" }).reply(201, { id: UID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/account/users/${UID}/role`, method: "PATCH" }).reply(200, { id: UID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/account/users/${UID}`, method: "DELETE" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: `/api/v1/account/users/${UID}/transfer-ownership`, method: "POST" }).reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account/users/invite", method: "POST" })
+        .reply(201, { id: UID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}/role`, method: "PATCH" })
+        .reply(200, { id: UID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}/transfer-ownership`, method: "POST" })
+        .reply(204, "");
       a.get(ORIGIN).intercept({ path: "/api/v1/account/roles", method: "GET" }).reply(200, []);
-      a.get(ORIGIN).intercept({ path: "/api/v1/account/api-keys", method: "POST" }).reply(201, { id: KID, full_key: "secret", key_prefix: "p", name: "n" });
-      a.get(ORIGIN).intercept({ path: `/api/v1/account/api-keys/${KID}`, method: "DELETE" }).reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account/api-keys", method: "POST" })
+        .reply(201, { id: KID, full_key: "secret", key_prefix: "p", name: "n" });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/api-keys/${KID}`, method: "DELETE" })
+        .reply(204, "");
       // ── scans / runs / tags ────────────────────────────────
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith(`/api/v1/runs/${RID}/scans?`), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
-      a.get(ORIGIN).intercept({ path: `/api/v1/scans/${AID}/tags`, method: "GET" }).reply(200, []);
-      a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions/malware", method: "GET" }).reply(200, { slug: "malware" });
-      a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions/malware", method: "PATCH" }).reply(200, { slug: "malware" });
-      a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions/malware", method: "DELETE" }).reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith(`/api/v1/runs/${RID}/scans?`), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${AID}/tags`, method: "GET" })
+        .reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "GET" })
+        .reply(200, { slug: "malware" });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "PATCH" })
+        .reply(200, { slug: "malware" });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "DELETE" })
+        .reply(204, "");
       // ── custom rules ───────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/custom-rules/${TR}`, method: "GET" }).reply(200, { id: TR });
-      a.get(ORIGIN).intercept({ path: `/api/v1/custom-rules/${TR}`, method: "PUT" }).reply(200, { id: TR });
-      a.get(ORIGIN).intercept({ path: "/api/v1/custom-rules/test", method: "POST" }).reply(200, { matched: true, details: {} });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-rules/${TR}`, method: "GET" })
+        .reply(200, {
+          id: TR,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "r",
+          tag_slug: "x",
+          rule_type: "regex",
+          config: {},
+          target: "page",
+          is_active: true,
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-rules/${TR}`, method: "PUT" })
+        .reply(200, {
+          id: TR,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "r",
+          tag_slug: "x",
+          rule_type: "regex",
+          config: {},
+          target: "page",
+          is_active: true,
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-rules/test", method: "POST" })
+        .reply(200, { matched: true, elapsed_ms: 1, tags: [] });
       // ── policy sets ────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/policy-sets/${PID}`, method: "PUT" }).reply(200, { id: PID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/policy-sets/${PID}`, method: "DELETE" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: `/api/v1/policy-sets/${PID}/request-approval`, method: "POST" }).reply(200, { id: PID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}`, method: "PUT" })
+        .reply(200, {
+          id: PID,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "x",
+          description: "",
+          visibility: "private",
+          is_approved: false,
+          entries: [],
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/request-approval`, method: "POST" })
+        .reply(200, {
+          id: PID,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "x",
+          description: "",
+          visibility: "private",
+          is_approved: false,
+          entries: [],
+          created_at: "t",
+        });
       // ── alerts ─────────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/alerts/${AID}/status`, method: "PATCH" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: "/api/v1/alerts/stats", method: "GET" }).reply(200, { open: 0, ack: 0, resolved: 0, ignored: 0, total: 0 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/alerts/${AID}/status`, method: "PATCH" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/alerts/stats", method: "GET" })
+        .reply(200, { open: 0, acknowledged: 0, resolved: 0, dismissed: 0 });
       // ── campaign lifecycle ─────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaigns/${CID}/run`, method: "POST" }).reply(202, { run_id: RID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaigns/${CID}/cancel`, method: "POST" }).reply(200, { id: CID, affected_count: 1 });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaigns/${CID}/unarchive`, method: "POST" }).reply(200, { id: CID, group_id: GID });
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith(`/api/v1/campaigns/${CID}/runs?`), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/run`, method: "POST" })
+        .reply(202, {
+          id: RID,
+          campaign_id: CID,
+          label: "L",
+          total: 1,
+          completed: 0,
+          failed: 0,
+          partial: 0,
+          cancelled: 0,
+          source: "api",
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/cancel`, method: "POST" })
+        .reply(200, { cancelled_count: 1 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/unarchive`, method: "POST" })
+        .reply(200, { id: CID, group_id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith(`/api/v1/campaigns/${CID}/runs?`), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
       // ── group lifecycle ────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/run`, method: "POST" }).reply(202, { run_id: RID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/cancel`, method: "POST" }).reply(200, { id: GID, affected_count: 1 });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/archive`, method: "POST" }).reply(200, { id: GID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/unarchive`, method: "POST" }).reply(200, { id: GID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/pause-schedule`, method: "POST" }).reply(200, { id: GID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/campaign-groups/${GID}/resume-schedule`, method: "POST" }).reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/run`, method: "POST" })
+        .reply(202, {
+          group_id: GID,
+          affected_campaigns: 1,
+          cancelled_count: 0,
+          run_ids: [RID],
+          failures: [],
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/cancel`, method: "POST" })
+        .reply(200, {
+          group_id: GID,
+          affected_campaigns: 1,
+          cancelled_count: 1,
+          run_ids: [],
+          failures: [],
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/archive`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/unarchive`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/pause-schedule`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/resume-schedule`, method: "POST" })
+        .reply(200, { id: GID });
       // ── runs ───────────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/runs/${RID}/cancel`, method: "POST" }).reply(200, { id: RID, affected_count: 0 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/runs/${RID}/cancel`, method: "POST" })
+        .reply(200, { cancelled_count: 0 });
       // ── billing ────────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith("/api/v1/billing/usage?"), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
-      a.get(ORIGIN).intercept({ path: "/api/v1/billing/usage/summary", method: "GET" }).reply(200, {});
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith("/api/v1/billing/history?"), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/billing/usage?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/billing/usage/summary", method: "GET" })
+        .reply(200, {});
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/billing/history?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
       // ── invoicing ──────────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith("/api/v1/invoices?"), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/invoices?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
       // ── webhooks extras ────────────────────────────────────
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/${WID}`, method: "GET" }).reply(200, { id: WID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/${WID}`, method: "PATCH" }).reply(200, { id: WID });
-      a.get(ORIGIN).intercept({ path: "/api/v1/webhooks/event-types", method: "GET" }).reply(200, { types: [] });
-      a.get(ORIGIN).intercept({ path: (p) => p.startsWith(`/api/v1/webhooks/${WID}/deliveries?`), method: "GET" }).reply(200, { items: [], total: 0, page: 1, limit: 50 });
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/${WID}/test`, method: "POST" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/${WID}/rotate-secret`, method: "POST" }).reply(200, { id: WID, signing_secret: "new" });
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/deliveries/${AID}/replay`, method: "POST" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: `/api/v1/webhooks/${WID}/replay`, method: "POST" }).reply(200, { replayed_count: 0 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}`, method: "GET" })
+        .reply(200, { id: WID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}`, method: "PATCH" })
+        .reply(200, { id: WID });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/webhooks/event-types", method: "GET" })
+        .reply(200, { entries: [] });
+      a.get(ORIGIN)
+        .intercept({
+          path: (p) => p.startsWith(`/api/v1/webhooks/${WID}/deliveries?`),
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/test`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/rotate-secret`, method: "POST" })
+        .reply(200, {
+          webhook: {
+            id: WID,
+            url: "https://x/wh",
+            description: "",
+            event_types: [],
+            campaign_ids: [],
+            is_active: true,
+            disabled_reason: null,
+            disabled_at: null,
+            health: {
+              consecutive_failures: 0,
+              last_delivery_at: null,
+              last_delivery_status: null,
+              success_rate_7d: 1,
+            },
+            created_at: "t",
+            updated_at: "t",
+          },
+          secret: "new",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/deliveries/${AID}/replay`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/replay`, method: "POST" })
+        .reply(200, { replayed: 0, skipped: 0 });
       // ── alert notifications ────────────────────────────────
-      a.get(ORIGIN).intercept({ path: "/api/v1/alert-notifications/destinations", method: "GET" }).reply(200, []);
-      a.get(ORIGIN).intercept({ path: `/api/v1/alert-notifications/destinations/${DID}`, method: "DELETE" }).reply(204, "");
-      a.get(ORIGIN).intercept({ path: `/api/v1/alert-notifications/destinations/${DID}/version`, method: "PATCH" }).reply(200, { id: DID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`, method: "GET" }).reply(200, { campaign_id: CID });
-      a.get(ORIGIN).intercept({ path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`, method: "PUT" }).reply(200, { campaign_id: CID });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/alert-notifications/destinations", method: "GET" })
+        .reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/alert-notifications/destinations/${DID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/destinations/${DID}/version`,
+          method: "PATCH",
+        })
+        .reply(200, {
+          id: DID,
+          channel: "slack",
+          name: "x",
+          is_active: true,
+          is_default_target: false,
+          version: "public",
+          consecutive_failures: 0,
+          last_delivery_at: null,
+          last_delivery_status: null,
+          slack_workspace_id: null,
+          slack_channel_id: null,
+          slack_channel_name: null,
+          telegram_chat_id: null,
+          telegram_chat_title: null,
+          telegram_chat_type: null,
+          email_address: null,
+          included_label_keys: [],
+          created_at: "t",
+          updated_at: "t",
+          organization_id: "o",
+        });
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
+          method: "GET",
+        })
+        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
+          method: "PUT",
+        })
+        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
 
       const gw = buildGateway(agent);
       expect((await gw.updateOrg({})).isOk()).toBe(true);
       expect((await gw.listOrgUsers()).isOk()).toBe(true);
-      expect((await gw.inviteUser({ email: "x@y.com", role: "admin" })).isOk()).toBe(true);
-      expect((await gw.updateUserRole(UID, { role: "viewer" })).isOk()).toBe(true);
+      expect((await gw.inviteUser({ email: "x@y.com", role_id: UID })).isOk()).toBe(true);
+      expect((await gw.updateUserRole(UID, { role_id: UID })).isOk()).toBe(true);
       expect((await gw.removeUser(UID)).isOk()).toBe(true);
       expect((await gw.transferOwnership(UID)).isOk()).toBe(true);
       expect((await gw.listOrgRoles()).isOk()).toBe(true);
@@ -800,11 +1030,17 @@ describe("HttpApiGateway", () => {
       expect((await gw.deleteTagDefinition("malware")).isOk()).toBe(true);
       expect((await gw.getCustomRule(TR)).isOk()).toBe(true);
       expect((await gw.updateCustomRule(TR, {})).isOk()).toBe(true);
-      expect((await gw.testCustomRule({ rule_type: "regex", config: {}, target: "page", scan_id: AID })).isOk()).toBe(true);
-      expect((await gw.updatePolicySet(PID, {})).isOk()).toBe(true);
+      expect(
+        (
+          await gw.testCustomRule({ rule_type: "regex", config: {}, target: "page", scan_id: AID })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (await gw.updatePolicySet(PID, { name: "x", description: "", entries: [] })).isOk()
+      ).toBe(true);
       expect((await gw.deletePolicySet(PID)).isOk()).toBe(true);
       expect((await gw.requestPolicySetApproval(PID)).isOk()).toBe(true);
-      expect((await gw.updateAlertStatus(AID, { status: "ack" })).isOk()).toBe(true);
+      expect((await gw.updateAlertStatus(AID, { status: "acknowledged" })).isOk()).toBe(true);
       expect((await gw.getAlertStats()).isOk()).toBe(true);
       expect((await gw.runCampaign(CID)).isOk()).toBe(true);
       expect((await gw.cancelCampaign(CID)).isOk()).toBe(true);
@@ -828,12 +1064,26 @@ describe("HttpApiGateway", () => {
       expect((await gw.testWebhook(WID)).isOk()).toBe(true);
       expect((await gw.rotateWebhookSecret(WID)).isOk()).toBe(true);
       expect((await gw.replayWebhookDelivery(AID)).isOk()).toBe(true);
-      expect((await gw.bulkReplayWebhook(WID, {})).isOk()).toBe(true);
+      expect(
+        (
+          await gw.bulkReplayWebhook(WID, {
+            from_ts: "2026-01-01T00:00:00Z",
+            to_ts: "2026-01-02T00:00:00Z",
+          })
+        ).isOk()
+      ).toBe(true);
       expect((await gw.listAlertDestinations()).isOk()).toBe(true);
       expect((await gw.deleteAlertDestination(DID)).isOk()).toBe(true);
-      expect((await gw.setAlertDestinationVersion(DID, { version: 2 })).isOk()).toBe(true);
+      expect((await gw.setAlertDestinationVersion(DID, { version: "public" })).isOk()).toBe(true);
       expect((await gw.getCampaignAlertOverrides(CID)).isOk()).toBe(true);
-      expect((await gw.setCampaignAlertOverrides(CID, { destination_ids: [], muted: false })).isOk()).toBe(true);
+      expect(
+        (
+          await gw.setCampaignAlertOverrides(CID, {
+            mode: "inherit",
+            destination_ids: [],
+          })
+        ).isOk()
+      ).toBe(true);
     });
 
     it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {

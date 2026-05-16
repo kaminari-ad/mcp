@@ -92,8 +92,8 @@ describe("parseCampaignPage", () => {
   });
 
   it("rejects bad item", () => {
-    expect(
-      parseCampaignPage({ items: [{ no: "id" }], total: 1, page: 1, limit: 50 }).isErr()
-    ).toBe(true);
+    expect(parseCampaignPage({ items: [{ no: "id" }], total: 1, page: 1, limit: 50 }).isErr()).toBe(
+      true
+    );
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { rotateWebhookSecretTool } from "../../../../src/application/tools/webhooks/rotate-webhook-secret.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -10,14 +11,17 @@ describe("rotateWebhookSecretTool", () => {
     expect(rotateWebhookSecretTool.name).toBe("rotate_webhook_secret");
     expect(rotateWebhookSecretTool.annotations.destructiveHint).toBe(true);
   });
-  it("returns new signing_secret", async () => {
+  it("returns new secret in the wrapped envelope", async () => {
     const api = createFakeApiGateway();
     const r = await rotateWebhookSecretTool.handler({ webhook_id: WID }, makeToolContext({ api }));
-    expect(r._unsafeUnwrap().signing_secret).toBe("whsec_rotated");
+    expect(r._unsafeUnwrap().secret).toBe("whsec_rotated");
+    expect(r._unsafeUnwrap().webhook.id).toBe(WID);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.rotateWebhookSecret = err(makeApiError("not-found", "x"));
-    expect((await rotateWebhookSecretTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await rotateWebhookSecretTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

@@ -126,6 +126,11 @@ module.exports = {
   options: {
     doNotFollow: { path: "node_modules" },
     tsConfig: { fileName: "tsconfig.json" },
+    // Trace `import type` references so a domain-layer file pulling a
+    // type from application/infrastructure/presentation triggers the
+    // matching forbidden-rule even when the import is erased at compile
+    // time. Without this, type-only edges hide DDD violations.
+    tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ["exports"],
       conditionNames: ["import", "require", "node", "node-addons"],

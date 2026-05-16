@@ -7,10 +7,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -24,8 +23,14 @@ export type ArchiveCampaignOutput = CampaignResponse;
 export const archiveCampaignTool: Tool<ArchiveCampaignInputShape, ArchiveCampaignOutput> = {
   name: "archive_campaign",
   description:
-        "Soft-delete (archive) a campaign. Removes it from default lists and stops the scheduler; previously-collected scans are preserved.",
-      annotations: { title: "Archive Campaign", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "Soft-delete (archive) a campaign. Removes it from default lists and stops the scheduler; previously-collected scans are preserved.",
+  annotations: {
+    title: "Archive Campaign",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ArchiveCampaignInputShape),
   handler: async (input, ctx): Promise<Result<ArchiveCampaignOutput, ToolError>> => {
     const result = await ctx.api.archiveCampaign(input.campaign_id);

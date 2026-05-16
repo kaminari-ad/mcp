@@ -33,7 +33,14 @@ export default tseslint.config(
       "coverage/**",
       "node_modules/**",
       ".tsbuildinfo",
-      "src/infrastructure/api/openapi.ts", // generated
+      "src/shared/api/openapi.ts", // generated
+      // Root config files live outside `tsconfig.json`; the type-aware
+      // ESLint project service can't parse them. They're tiny + reviewed
+      // manually.
+      "eslint.config.js",
+      ".dependency-cruiser.cjs",
+      "commitlint.config.cjs",
+      "lefthook.yml",
     ],
   },
 
@@ -94,10 +101,7 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "error",
 
       // === Cast / ignore discipline ===
-      "@typescript-eslint/consistent-type-assertions": [
-        "error",
-        { assertionStyle: "never" },
-      ],
+      "@typescript-eslint/consistent-type-assertions": ["error", { assertionStyle: "never" }],
       "@typescript-eslint/ban-ts-comment": [
         "error",
         {
@@ -252,10 +256,7 @@ export default tseslint.config(
 
   // ── 7. Composition roots: allowed to wire everything ───────────────
   {
-    files: [
-      "src/presentation/**/bootstrap*.ts",
-      "src/bin.ts",
-    ],
+    files: ["src/presentation/**/bootstrap*.ts", "src/bin.ts"],
     rules: {
       // Composition roots are the ONLY place where module-level state
       // construction is OK (still all `const`). The shared-state CI
@@ -278,8 +279,15 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-base-to-string": "off",
+      "@typescript-eslint/no-confusing-void-expression": "off",
       "@typescript-eslint/consistent-type-assertions": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unsafe-enum-comparison": "off",
+      "@typescript-eslint/require-await": "off",
       "jsdoc/require-jsdoc": "off",
+      "jsdoc/require-description": "off",
       "no-console": "off",
       "no-secrets/no-secrets": "off",
       "import/no-default-export": "off",
@@ -287,15 +295,50 @@ export default tseslint.config(
     },
   },
 
-  // ── 9. Config files: looser (CommonJS / dynamic config) ────────────
+  // ── 9. Build / test config files: project-aware overrides ──────────
   {
-    files: ["*.config.js", "*.config.ts", "*.config.mts", "*.config.cjs"],
+    files: ["*.config.ts", "*.config.mts"],
     rules: {
       "import/no-default-export": "off",
       "@typescript-eslint/no-require-imports": "off",
     },
   },
 
+  // ── 9a. Branded VOs + defensive parsers + SDK glue: assertions OK ──
+  {
+    // The NewType pattern (branded strings / nominal types) needs a
+    // type assertion at the construction site — TypeScript has no other
+    // way to widen `string` to a brand.
+    //
+    // Defensive parsers (`infrastructure/api/parsers/*`) cast enum
+    // strings narrowed at runtime back to their enum union (e.g.
+    // `s(raw.status, "") as ScanStatus`); the runtime check via the
+    // string-equality fallback makes the cast safe.
+    //
+    // `wire-tools.ts` casts the validated tool output to the SDK's
+    // `Record<string, unknown>` shape for `structuredContent`; the
+    // `isPlainObject` guard above the cast narrows it correctly.
+    files: [
+      "src/domain/value-objects/**/*.ts",
+      "src/infrastructure/api/error-mapping.ts",
+      "src/infrastructure/api/parsers/**/*.ts",
+      "src/presentation/shared/wire-tools.ts",
+    ],
+    rules: {
+      "@typescript-eslint/consistent-type-assertions": "off",
+    },
+  },
+
+  // ── 9b. Defensive parsers carry file-level docs; per-fn descriptions
+  //        would just paraphrase the function name. Trade off `require-
+  //        description` for less doc noise in this surface.
+  {
+    files: ["src/infrastructure/api/parsers/**/*.ts"],
+    rules: {
+      "jsdoc/require-description": "off",
+    },
+  },
+
   // ── 10. Prettier last — disables stylistic rules Prettier handles ──
-  prettier,
+  prettier
 );

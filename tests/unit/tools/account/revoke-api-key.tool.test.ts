@@ -11,14 +11,17 @@ describe("revokeApiKeyTool", () => {
     expect(revokeApiKeyTool.name).toBe("revoke_api_key");
     expect(revokeApiKeyTool.annotations.destructiveHint).toBe(true);
   });
-  it("returns revoked=true", async () => {
+  it("returns revoked=true and forwards the key id", async () => {
     const api = createFakeApiGateway();
     const r = await revokeApiKeyTool.handler({ key_id: KID }, makeToolContext({ api }));
     expect(r._unsafeUnwrap()).toEqual({ revoked: true });
+    expect(api.state.calls[0]).toEqual({ method: "revokeApiKey", id: KID });
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.revokeApiKey = err(makeApiError("not-found", "x"));
-    expect((await revokeApiKeyTool.handler({ key_id: KID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await revokeApiKeyTool.handler({ key_id: KID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

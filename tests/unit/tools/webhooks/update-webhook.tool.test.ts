@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { updateWebhookTool } from "../../../../src/application/tools/webhooks/update-webhook.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -11,7 +12,10 @@ describe("updateWebhookTool", () => {
   });
   it("forwards only supplied fields", async () => {
     const api = createFakeApiGateway();
-    await updateWebhookTool.handler({ webhook_id: WID, is_active: false }, makeToolContext({ api }));
+    await updateWebhookTool.handler(
+      { webhook_id: WID, is_active: false },
+      makeToolContext({ api })
+    );
     const call = api.state.calls[0];
     if (call?.method !== "updateWebhook") throw new Error("wrong");
     expect(Object.keys(call.body)).toEqual(["is_active"]);
@@ -29,6 +33,8 @@ describe("updateWebhookTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateWebhook = err(makeApiError("not-found", "x"));
-    expect((await updateWebhookTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await updateWebhookTool.handler({ webhook_id: WID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

@@ -18,17 +18,16 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
-import { BearerToken } from "../../domain/value-objects/bearer-token.js";
-import { newRequestId } from "../../domain/value-objects/request-id.js";
-import { parseSessionId } from "../../domain/value-objects/session-id.js";
 import type { Logger } from "../../domain/ports/logger.js";
 import type { RateLimiter } from "../../domain/ports/rate-limiter.js";
 import type { SessionStore } from "../../domain/ports/session-store.js";
 import { decideSessionAction } from "../../domain/services/session-binding-policy.js";
+import { BearerToken } from "../../domain/value-objects/bearer-token.js";
+import { newRequestId } from "../../domain/value-objects/request-id.js";
+import { parseSessionId } from "../../domain/value-objects/session-id.js";
 import { createHttpApiGateway } from "../../infrastructure/api/http-api-gateway.js";
 import type { Config } from "../../shared/config.js";
 import { NAME, VERSION } from "../../shared/version.js";
-
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
 
 export interface HttpRequestHandlerDeps {
@@ -54,13 +53,16 @@ export function createHttpRequestHandler(
       return;
     }
 
-    if (req.url !== "/mcp" || (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE")) {
+    if (
+      req.url !== "/mcp" ||
+      (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE")
+    ) {
       writeJson(res, 404, { error: "Not found" });
       return;
     }
 
     // Rule #6 — missing Authorization is rejected without touching the API.
-    const authHeader = first(req.headers["authorization"]);
+    const authHeader = first(req.headers.authorization);
     const bearer = BearerToken.fromAuthorizationHeader(authHeader);
     if (bearer === undefined) {
       writeJson(res, 401, { error: "Authorization Bearer token required" });
@@ -78,9 +80,10 @@ export function createHttpRequestHandler(
         { rate_limited: true, retry_after_ms: rate.retryAfterMs ?? 0 },
         "http.rate_limited"
       );
-      const headers = rate.retryAfterMs !== undefined
-        ? { "retry-after": String(Math.ceil(rate.retryAfterMs / 1000)) }
-        : {};
+      const headers =
+        rate.retryAfterMs !== undefined
+          ? { "retry-after": String(Math.ceil(rate.retryAfterMs / 1000)) }
+          : {};
       writeJson(res, 429, { error: "Rate limited" }, headers);
       return;
     }
@@ -95,9 +98,7 @@ export function createHttpRequestHandler(
         writeJson(res, 400, { error: "Invalid Mcp-Session-Id" });
         return;
       }
-      const action = decideSessionAction(
-        sessions.checkAndTouch(sessionId, bearer.fullHash())
-      );
+      const action = decideSessionAction(sessions.checkAndTouch(sessionId, bearer.fullHash()));
       if (action.kind === "reject-bearer-mismatch") {
         sessions.destroy(sessionId);
         reqLogger.warn({}, "http.session_bearer_mismatch");
@@ -123,7 +124,7 @@ export function createHttpRequestHandler(
     wireToolsIntoMcpServer(server, () => ({ api, logger: reqLogger, requestId }));
 
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => requestId, // request-scoped; SDK uses this for response correlation
+      sessionIdGenerator: (): string => requestId, // request-scoped; SDK uses this for response correlation
       enableJsonResponse: true,
     });
 

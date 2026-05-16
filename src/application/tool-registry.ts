@@ -12,8 +12,9 @@
  * complexity (`scripts/check-file-sizes.ts` GRANDFATHERED).
  */
 
+import type { RegisterTool } from "./tools/_shared/tool.js";
 import { createApiKeyTool } from "./tools/account/create-api-key.tool.js";
-import { getMeTool } from "./tools/account/get-me.tool.js";
+import { getAccountTool } from "./tools/account/get-account.tool.js";
 import { inviteUserTool } from "./tools/account/invite-user.tool.js";
 import { listApiKeysTool } from "./tools/account/list-api-keys.tool.js";
 import { listOrgRolesTool } from "./tools/account/list-org-roles.tool.js";
@@ -23,22 +24,18 @@ import { revokeApiKeyTool } from "./tools/account/revoke-api-key.tool.js";
 import { transferOwnershipTool } from "./tools/account/transfer-ownership.tool.js";
 import { updateOrgTool } from "./tools/account/update-org.tool.js";
 import { updateUserRoleTool } from "./tools/account/update-user-role.tool.js";
-
 import { deleteAlertDestinationTool } from "./tools/alert-notifications/delete-alert-destination.tool.js";
 import { getCampaignAlertOverridesTool } from "./tools/alert-notifications/get-campaign-alert-overrides.tool.js";
 import { listAlertDestinationsTool } from "./tools/alert-notifications/list-alert-destinations.tool.js";
 import { setAlertDestinationVersionTool } from "./tools/alert-notifications/set-alert-destination-version.tool.js";
 import { setCampaignAlertOverridesTool } from "./tools/alert-notifications/set-campaign-alert-overrides.tool.js";
-
 import { getAlertStatsTool } from "./tools/alerts/get-alert-stats.tool.js";
 import { listAlertsTool } from "./tools/alerts/list-alerts.tool.js";
 import { updateAlertStatusTool } from "./tools/alerts/update-alert-status.tool.js";
-
 import { getBillingSummaryTool } from "./tools/billing/get-billing-summary.tool.js";
 import { getUsageSummaryTool } from "./tools/billing/get-usage-summary.tool.js";
 import { listBalanceHistoryTool } from "./tools/billing/list-balance-history.tool.js";
 import { listUsageTool } from "./tools/billing/list-usage.tool.js";
-
 import { archiveCampaignGroupTool } from "./tools/campaign-groups/archive-campaign-group.tool.js";
 import { cancelCampaignGroupTool } from "./tools/campaign-groups/cancel-campaign-group.tool.js";
 import { createCampaignGroupTool } from "./tools/campaign-groups/create-campaign-group.tool.js";
@@ -49,7 +46,6 @@ import { resumeCampaignGroupScheduleTool } from "./tools/campaign-groups/resume-
 import { runCampaignGroupTool } from "./tools/campaign-groups/run-campaign-group.tool.js";
 import { unarchiveCampaignGroupTool } from "./tools/campaign-groups/unarchive-campaign-group.tool.js";
 import { updateCampaignGroupTool } from "./tools/campaign-groups/update-campaign-group.tool.js";
-
 import { archiveCampaignTool } from "./tools/campaigns/archive-campaign.tool.js";
 import { cancelCampaignTool } from "./tools/campaigns/cancel-campaign.tool.js";
 import { createCampaignTool } from "./tools/campaigns/create-campaign.tool.js";
@@ -59,43 +55,35 @@ import { listCampaignsTool } from "./tools/campaigns/list-campaigns.tool.js";
 import { runCampaignTool } from "./tools/campaigns/run-campaign.tool.js";
 import { unarchiveCampaignTool } from "./tools/campaigns/unarchive-campaign.tool.js";
 import { updateCampaignTool } from "./tools/campaigns/update-campaign.tool.js";
-
 import { createCustomRuleTool } from "./tools/custom-rules/create-custom-rule.tool.js";
 import { deleteCustomRuleTool } from "./tools/custom-rules/delete-custom-rule.tool.js";
 import { getCustomRuleTool } from "./tools/custom-rules/get-custom-rule.tool.js";
 import { listCustomRulesTool } from "./tools/custom-rules/list-custom-rules.tool.js";
 import { testCustomRuleTool } from "./tools/custom-rules/test-custom-rule.tool.js";
 import { updateCustomRuleTool } from "./tools/custom-rules/update-custom-rule.tool.js";
-
 import { listEmulatorsTool } from "./tools/emulators/list-emulators.tool.js";
 import { listGeosTool } from "./tools/geos/list-geos.tool.js";
 import { listInvoicesTool } from "./tools/invoicing/list-invoices.tool.js";
-
 import { createPolicySetTool } from "./tools/policy-sets/create-policy-set.tool.js";
 import { deletePolicySetTool } from "./tools/policy-sets/delete-policy-set.tool.js";
 import { getPolicySetTool } from "./tools/policy-sets/get-policy-set.tool.js";
 import { listPolicySetsTool } from "./tools/policy-sets/list-policy-sets.tool.js";
 import { requestPolicySetApprovalTool } from "./tools/policy-sets/request-policy-set-approval.tool.js";
 import { updatePolicySetTool } from "./tools/policy-sets/update-policy-set.tool.js";
-
 import { cancelRunTool } from "./tools/runs/cancel-run.tool.js";
 import { getRunTool } from "./tools/runs/get-run.tool.js";
 import { listRunScansTool } from "./tools/runs/list-run-scans.tool.js";
-import { listRunsTool } from "./tools/runs/list-runs.tool.js";
-
 import { cancelScanTool } from "./tools/scans/cancel-scan.tool.js";
 import { createBulkScansTool } from "./tools/scans/create-bulk-scans.tool.js";
 import { createScanTool } from "./tools/scans/create-scan.tool.js";
 import { getScanTool } from "./tools/scans/get-scan.tool.js";
 import { listScansTool } from "./tools/scans/list-scans.tool.js";
 import { recheckScansTool } from "./tools/scans/recheck-scans.tool.js";
-
 import { deleteTagDefinitionTool } from "./tools/tags/delete-tag-definition.tool.js";
 import { getTagDefinitionTool } from "./tools/tags/get-tag-definition.tool.js";
 import { listScanTagsTool } from "./tools/tags/list-scan-tags.tool.js";
 import { listTagsTool } from "./tools/tags/list-tags.tool.js";
 import { updateTagDefinitionTool } from "./tools/tags/update-tag-definition.tool.js";
-
 import { bulkReplayWebhookTool } from "./tools/webhooks/bulk-replay-webhook.tool.js";
 import { createWebhookTool } from "./tools/webhooks/create-webhook.tool.js";
 import { deleteWebhookTool } from "./tools/webhooks/delete-webhook.tool.js";
@@ -108,15 +96,13 @@ import { rotateWebhookSecretTool } from "./tools/webhooks/rotate-webhook-secret.
 import { testWebhookTool } from "./tools/webhooks/test-webhook.tool.js";
 import { updateWebhookTool } from "./tools/webhooks/update-webhook.tool.js";
 
-import type { RegisterTool } from "./tools/_shared/tool.js";
-
 /**
  * Register every tool with the supplied callback. Grouped by domain
  * for readability — no order significance.
  */
 export function registerAllTools(register: RegisterTool): void {
   // account
-  register(getMeTool);
+  register(getAccountTool);
   register(updateOrgTool);
   register(listOrgUsersTool);
   register(inviteUserTool);
@@ -149,7 +135,6 @@ export function registerAllTools(register: RegisterTool): void {
   register(listCampaignRunsTool);
   // runs
   register(getRunTool);
-  register(listRunsTool);
   register(listRunScansTool);
   register(cancelRunTool);
   // campaign groups

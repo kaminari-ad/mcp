@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { testCustomRuleTool } from "../../../../src/application/tools/custom-rules/test-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";

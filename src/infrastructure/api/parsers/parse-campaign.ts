@@ -1,10 +1,5 @@
 /**
  * Parsers for the `/api/v1/campaigns` family.
- *
- * Same defensive-subset approach as `parse-scan.ts`: only the fields
- * an agent reads survive into the typed result; unknown / missing /
- * mistyped fields fall through to sensible defaults so a single API
- * rename doesn't break the parser.
  */
 
 import type {
@@ -13,26 +8,22 @@ import type {
   PaginatedResponse,
 } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
-function asString(v: unknown, fallback: string): string {
+function s(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
-
-function asBool(v: unknown, fallback: boolean): boolean {
+function b(v: unknown, fallback = false): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
-
-function asStringOrNull(v: unknown): string | null {
-  return v === null || typeof v !== "string" ? (v === null ? null : null) : v;
+function sOrNull(v: unknown): string | null {
+  if (v === null) return null;
+  return typeof v === "string" ? v : null;
 }
-
-function asStringArray(v: unknown): readonly string[] {
+function strArr(v: unknown): readonly string[] {
   if (!Array.isArray(v)) return [];
   return v.filter((x): x is string => typeof x === "string");
 }
-
 function asLabels(v: unknown): Readonly<Record<string, string>> {
   if (!isStringRecord(v)) return {};
   const out: Record<string, string> = {};
@@ -42,6 +33,9 @@ function asLabels(v: unknown): Readonly<Record<string, string>> {
   return out;
 }
 
+/**
+ *
+ */
 export function parseCampaign(raw: unknown): Result<CampaignResponse, ApiError> {
   if (!isStringRecord(raw)) {
     return err({ kind: "upstream", detail: "malformed campaign response" });
@@ -56,21 +50,25 @@ export function parseCampaign(raw: unknown): Result<CampaignResponse, ApiError> 
   }
   return ok({
     id,
-    name: asString(raw["name"], ""),
-    campaign_type: asString(raw["campaign_type"], "url"),
-    url: asString(raw["url"], ""),
-    ad_tag: asStringOrNull(raw["ad_tag"]),
-    country_codes: asStringArray(raw["country_codes"]),
+    name: s(raw["name"]),
+    campaign_type: s(raw["campaign_type"], "url"),
+    url: s(raw["url"]),
+    ad_tag: sOrNull(raw["ad_tag"]),
+    country_codes: [...strArr(raw["country_codes"])],
     group_id: groupId,
     labels: asLabels(raw["labels"]),
-    policy_set_id: asStringOrNull(raw["policy_set_id"]),
-    schedule_enabled: asBool(raw["schedule_enabled"], false),
-    is_archived: asBool(raw["is_archived"], false),
-    created_at: asString(raw["created_at"], ""),
-    last_run_at: asStringOrNull(raw["last_run_at"]),
+    policy_set_id: sOrNull(raw["policy_set_id"]),
+    schedule_enabled: b(raw["schedule_enabled"], false),
+    schedule_type: s(raw["schedule_type"], "manual"),
+    is_archived: b(raw["is_archived"], false),
+    created_at: s(raw["created_at"]),
+    last_run_at: sOrNull(raw["last_run_at"]),
   });
 }
 
+/**
+ *
+ */
 export function parseCampaignPage(
   raw: unknown
 ): Result<PaginatedResponse<CampaignResponse>, ApiError> {

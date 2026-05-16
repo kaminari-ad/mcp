@@ -48,12 +48,6 @@
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuildinfo"
   },
-  "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts",
-    "scripts/**/*.ts",
-    "*.config.ts",
-    "*.config.mts"
-  ],
+  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts", "*.config.ts", "*.config.mts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

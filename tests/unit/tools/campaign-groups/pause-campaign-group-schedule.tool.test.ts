@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { pauseCampaignGroupScheduleTool } from "../../../../src/application/tools/campaign-groups/pause-campaign-group-schedule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -11,14 +12,19 @@ describe("pauseCampaignGroupScheduleTool", () => {
   });
   it("returns schedule_paused=true", async () => {
     const api = createFakeApiGateway();
-    const r = await pauseCampaignGroupScheduleTool.handler({ group_id: GID }, makeToolContext({ api }));
+    const r = await pauseCampaignGroupScheduleTool.handler(
+      { group_id: GID },
+      makeToolContext({ api })
+    );
     expect(r._unsafeUnwrap().schedule_paused).toBe(true);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.pauseCampaignGroupSchedule = err(makeApiError("forbidden", "x"));
     expect(
-      (await pauseCampaignGroupScheduleTool.handler({ group_id: GID }, makeToolContext({ api }))).isErr()
+      (
+        await pauseCampaignGroupScheduleTool.handler({ group_id: GID }, makeToolContext({ api }))
+      ).isErr()
     ).toBe(true);
   });
 });

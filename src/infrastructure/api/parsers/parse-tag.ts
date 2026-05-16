@@ -1,26 +1,29 @@
 /**
- * Parser for `GET /api/v1/tags` — paginated tag definitions with usage.
+ * Parser for `GET /api/v1/tag-definitions` — top-level array of
+ * `TagDefinitionWithStatsResponse`.
  */
 
-import type {
-  ApiError,
-  PaginatedResponse,
-  TagDefinitionResponse,
-} from "../../../domain/ports/api-gateway.js";
+import type { ApiError, TagDefinitionResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
-function asString(v: unknown, fallback: string): string {
+function s(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
-function asBool(v: unknown, fallback: boolean): boolean {
+function b(v: unknown, fallback = false): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
-function asNumber(v: unknown, fallback: number): number {
+function n(v: unknown, fallback = 0): number {
   return typeof v === "number" ? v : fallback;
 }
+function sOrNull(v: unknown): string | null {
+  if (v === null) return null;
+  return typeof v === "string" ? v : null;
+}
 
+/**
+ *
+ */
 export function parseTag(raw: unknown): Result<TagDefinitionResponse, ApiError> {
   if (!isStringRecord(raw)) {
     return err({ kind: "upstream", detail: "malformed tag definition" });
@@ -31,40 +34,33 @@ export function parseTag(raw: unknown): Result<TagDefinitionResponse, ApiError> 
   }
   return ok({
     slug,
-    category: asString(raw["category"], ""),
-    source: asString(raw["source"], ""),
-    display_name: asString(raw["display_name"], ""),
-    description: asString(raw["description"], ""),
-    is_system: asBool(raw["is_system"], false),
-    severity: asString(raw["severity"], ""),
-    scans_count: asNumber(raw["scans_count"], 0),
-    rules_count: asNumber(raw["rules_count"], 0),
+    category: s(raw["category"]),
+    source: s(raw["source"]),
+    display_name: s(raw["display_name"]),
+    description: s(raw["description"]),
+    severity: s(raw["severity"]),
+    is_system: b(raw["is_system"]),
+    organization_id: sOrNull(raw["organization_id"]),
+    show_in_public_report: b(raw["show_in_public_report"]),
+    scans_count: n(raw["scans_count"]),
+    rules_count: n(raw["rules_count"]),
   });
 }
 
-export function parseTagPage(
+/**
+ *
+ */
+export function parseTagDefinitionArray(
   raw: unknown
-): Result<PaginatedResponse<TagDefinitionResponse>, ApiError> {
-  if (!isStringRecord(raw)) {
-    return err({ kind: "upstream", detail: "malformed tag page" });
-  }
-  const items = raw["items"];
-  const total = raw["total"];
-  const page = raw["page"];
-  const limit = raw["limit"];
-  if (
-    !Array.isArray(items) ||
-    typeof total !== "number" ||
-    typeof page !== "number" ||
-    typeof limit !== "number"
-  ) {
-    return err({ kind: "upstream", detail: "malformed tag envelope" });
+): Result<readonly TagDefinitionResponse[], ApiError> {
+  if (!Array.isArray(raw)) {
+    return err({ kind: "upstream", detail: "expected array of tag-definitions" });
   }
   const out: TagDefinitionResponse[] = [];
-  for (const item of items) {
+  for (const item of raw) {
     const r = parseTag(item);
     if (r.isErr()) return err(r.error);
     out.push(r.value);
   }
-  return ok({ items: out, total, page, limit });
+  return ok(out);
 }

@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { RunCommandResponse } from "../../../domain/ports/api-gateway.js";
+import type { RunResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -17,12 +16,12 @@ const RunCampaignInputShape = {
 } as const;
 type RunCampaignInputShape = typeof RunCampaignInputShape;
 
-export type RunCampaignOutput = RunCommandResponse;
+export type RunCampaignOutput = RunResponse;
 
 export const runCampaignTool: Tool<RunCampaignInputShape, RunCampaignOutput> = {
   name: "run_campaign",
   description:
-    "Trigger an immediate, ad-hoc run of a campaign. Costs N credits where N = number of countries × number of emulators in the campaign config. Returns the new run UUID; track progress via `get_run`.",
+    "Trigger an immediate, ad-hoc run of a campaign. Costs N credits where N = number of countries × number of emulators in the campaign config. Returns the new run with progress counters (total / completed / failed / partial / cancelled); track further progress via `get_run`.",
   annotations: {
     title: "Run Campaign Now",
     readOnlyHint: false,

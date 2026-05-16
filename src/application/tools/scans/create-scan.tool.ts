@@ -7,10 +7,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -42,11 +41,7 @@ const CreateScanInputShape = {
     .uuid()
     .optional()
     .describe("Optional campaign UUID to attribute the scan to."),
-  run_id: z
-    .string()
-    .uuid()
-    .optional()
-    .describe("Optional run UUID inside the campaign."),
+  run_id: z.string().uuid().optional().describe("Optional run UUID inside the campaign."),
 } as const;
 type CreateScanInputShape = typeof CreateScanInputShape;
 
@@ -55,8 +50,14 @@ export type CreateScanOutput = ScanResponse;
 export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
   name: "create_scan",
   description:
-        "Queue a single new scan for a URL or ad-tag against one country. COSTS CREDITS and bills the caller's organization. Returns the newly-created scan record.",
-      annotations: { title: "Create Scan", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    "Queue a single new scan for a URL or ad-tag against one country. COSTS CREDITS and bills the caller's organization. Returns the newly-created scan record.",
+  annotations: {
+    title: "Create Scan",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   inputSchema: z.object(CreateScanInputShape),
   handler: async (input, ctx): Promise<Result<CreateScanOutput, ToolError>> => {
     const body = {

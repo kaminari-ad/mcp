@@ -4,12 +4,12 @@
 
 import type { ApiError, EmulatorResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
-export function parseEmulatorList(
-  raw: unknown
-): Result<readonly EmulatorResponse[], ApiError> {
+/**
+ *
+ */
+export function parseEmulatorList(raw: unknown): Result<readonly EmulatorResponse[], ApiError> {
   if (!Array.isArray(raw)) {
     return err({ kind: "upstream", detail: "expected array of emulators" });
   }

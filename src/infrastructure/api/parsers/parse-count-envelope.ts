@@ -8,13 +8,15 @@
 
 import type { ApiError } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
+/**
+ *
+ */
 export function parseIntField<TKey extends string>(
   raw: unknown,
   fieldName: TKey
-): Result<{ [K in TKey]: number }, ApiError> {
+): Result<Record<TKey, number>, ApiError> {
   if (!isStringRecord(raw)) {
     return err({ kind: "upstream", detail: `expected object with ${fieldName}` });
   }
@@ -22,5 +24,5 @@ export function parseIntField<TKey extends string>(
   if (typeof value !== "number" || !Number.isInteger(value)) {
     return err({ kind: "upstream", detail: `${fieldName} must be an integer` });
   }
-  return ok({ [fieldName]: value } as { [K in TKey]: number });
+  return ok({ [fieldName]: value } as Record<TKey, number>);
 }

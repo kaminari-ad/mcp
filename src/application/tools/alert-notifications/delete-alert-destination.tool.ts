@@ -5,9 +5,8 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -35,10 +34,7 @@ export const deleteAlertDestinationTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(DeleteAlertDestinationInputShape),
-  handler: async (
-    input,
-    ctx
-  ): Promise<Result<DeleteAlertDestinationOutput, ToolError>> => {
+  handler: async (input, ctx): Promise<Result<DeleteAlertDestinationOutput, ToolError>> => {
     const result = await ctx.api.deleteAlertDestination(input.destination_id);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok({ deleted: true });

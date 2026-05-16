@@ -11,16 +11,16 @@
  */
 
 export {
+  type Err,
   err,
   errAsync,
   fromAsyncThrowable,
   fromPromise,
   fromSafePromise,
   fromThrowable,
+  type Ok,
   ok,
   okAsync,
   Result,
   ResultAsync,
-  type Err,
-  type Ok,
 } from "neverthrow";

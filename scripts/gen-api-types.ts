@@ -3,7 +3,7 @@
  * Generate TypeScript types for the Kaminari Ad `/api/v1` surface
  * from its OpenAPI document.
  *
- * Output: `src/infrastructure/api/openapi.ts`.
+ * Output: `src/shared/api/openapi.ts`.
  *
  * Usage:
  *   npm run gen:api-types                                  # uses default URL

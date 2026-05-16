@@ -5,36 +5,37 @@ import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("createWebhookTool", () => {
-  it("name + validates url and event_types", () => {
+  it("name + validates url", () => {
     expect(createWebhookTool.name).toBe("create_webhook");
-    expect(() =>
-      createWebhookTool.inputSchema.parse({ url: "not-a-url", event_types: ["x"] })
-    ).toThrow();
-    expect(() =>
-      createWebhookTool.inputSchema.parse({ url: "https://x.com", event_types: [] })
-    ).toThrow();
+    expect(() => createWebhookTool.inputSchema.parse({ url: "not-a-url" })).toThrow();
   });
 
-  it("returns the response with signing_secret", async () => {
+  it("returns the wrapped { webhook, secret } envelope", async () => {
     const api = createFakeApiGateway();
     const r = await createWebhookTool.handler(
-      { url: "https://x.com/wh", event_types: ["scan.done"] },
+      { url: "https://x.com/wh", description: "ci", event_types: ["scan.done"], campaign_ids: [] },
       makeToolContext({ api })
     );
     expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().signing_secret).toBe("whsec_abc");
+    expect(r._unsafeUnwrap().secret).toBe("whsec_abc");
+    expect(r._unsafeUnwrap().webhook.url).toBe("https://x.com/wh");
   });
 
-  it("forwards is_active when supplied", async () => {
+  it("forwards description + campaign_ids", async () => {
     const api = createFakeApiGateway();
-    const ctx = makeToolContext({ api });
     await createWebhookTool.handler(
-      { url: "https://x.com/wh", event_types: ["scan.done"], is_active: false },
-      ctx
+      {
+        url: "https://x.com/wh",
+        description: "prod",
+        event_types: ["scan.done"],
+        campaign_ids: ["00000000-0000-0000-0000-000000000ccc"],
+      },
+      makeToolContext({ api })
     );
     const call = api.state.calls[0];
     if (call?.method !== "createWebhook") throw new Error("wrong");
-    expect(call.body.is_active).toBe(false);
+    expect(call.body.description).toBe("prod");
+    expect(call.body.campaign_ids).toEqual(["00000000-0000-0000-0000-000000000ccc"]);
   });
 
   it("maps error", async () => {
@@ -43,7 +44,7 @@ describe("createWebhookTool", () => {
     expect(
       (
         await createWebhookTool.handler(
-          { url: "https://x.com/wh", event_types: ["scan.done"] },
+          { url: "https://x.com/wh", description: "", event_types: [], campaign_ids: [] },
           makeToolContext({ api })
         )
       ).isErr()

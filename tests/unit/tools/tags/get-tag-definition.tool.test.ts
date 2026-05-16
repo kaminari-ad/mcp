@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getTagDefinitionTool } from "../../../../src/application/tools/tags/get-tag-definition.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -16,6 +17,8 @@ describe("getTagDefinitionTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getTagDefinition = err(makeApiError("not-found", "x"));
-    expect((await getTagDefinitionTool.handler({ slug: "x" }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await getTagDefinitionTool.handler({ slug: "x" }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

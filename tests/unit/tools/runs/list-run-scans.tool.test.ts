@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { listRunScansTool } from "../../../../src/application/tools/runs/list-run-scans.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -21,6 +22,13 @@ describe("listRunScansTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listRunScans = err(makeApiError("not-found", "x"));
-    expect((await listRunScansTool.handler({ run_id: RID, page: 1, limit: 50 }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (
+        await listRunScansTool.handler(
+          { run_id: RID, page: 1, limit: 50 },
+          makeToolContext({ api })
+        )
+      ).isErr()
+    ).toBe(true);
   });
 });

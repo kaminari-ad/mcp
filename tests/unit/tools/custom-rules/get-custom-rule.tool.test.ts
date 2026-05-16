@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getCustomRuleTool } from "../../../../src/application/tools/custom-rules/get-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -18,6 +19,8 @@ describe("getCustomRuleTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getCustomRule = err(makeApiError("not-found", "x"));
-    expect((await getCustomRuleTool.handler({ rule_id: RID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (await getCustomRuleTool.handler({ rule_id: RID }, makeToolContext({ api }))).isErr()
+    ).toBe(true);
   });
 });

@@ -10,7 +10,7 @@
  *     stdout is reserved for crash dumps.
  */
 
-import { pino, type Logger as PinoLoggerImpl, type LoggerOptions, stdTimeFunctions } from "pino";
+import { type Logger as PinoLoggerImpl, type LoggerOptions, pino, stdTimeFunctions } from "pino";
 
 import type { LogFields, Logger } from "../../domain/ports/logger.js";
 import type { LogLevel } from "../../shared/config.js";
@@ -20,12 +20,12 @@ const REDACTION_PATHS: readonly string[] = [
   "Authorization",
   "bearer",
   "Bearer",
-  '*.authorization',
-  '*.Authorization',
-  'headers.authorization',
-  'headers.Authorization',
-  'req.headers.authorization',
-  'req.headers.Authorization',
+  "*.authorization",
+  "*.Authorization",
+  "headers.authorization",
+  "headers.Authorization",
+  "req.headers.authorization",
+  "req.headers.Authorization",
 ];
 
 /**

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getCampaignAlertOverridesTool } from "../../../../src/application/tools/alert-notifications/get-campaign-alert-overrides.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -12,12 +13,19 @@ describe("getCampaignAlertOverridesTool", () => {
   });
   it("returns overrides", async () => {
     const api = createFakeApiGateway();
-    const r = await getCampaignAlertOverridesTool.handler({ campaign_id: CID }, makeToolContext({ api }));
+    const r = await getCampaignAlertOverridesTool.handler(
+      { campaign_id: CID },
+      makeToolContext({ api })
+    );
     expect(r._unsafeUnwrap().campaign_id).toBe(CID);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getCampaignAlertOverrides = err(makeApiError("not-found", "x"));
-    expect((await getCampaignAlertOverridesTool.handler({ campaign_id: CID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (
+        await getCampaignAlertOverridesTool.handler({ campaign_id: CID }, makeToolContext({ api }))
+      ).isErr()
+    ).toBe(true);
   });
 });

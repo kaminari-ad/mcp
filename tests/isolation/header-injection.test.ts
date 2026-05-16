@@ -8,12 +8,12 @@
  * headers MUST NOT appear in the request to the Kaminari Ad API.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockAgent } from "undici";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createHttpApiGateway } from "../../src/infrastructure/api/http-api-gateway.js";
 import { BearerToken } from "../../src/domain/value-objects/bearer-token.js";
 import { newRequestId } from "../../src/domain/value-objects/request-id.js";
+import { createHttpApiGateway } from "../../src/infrastructure/api/http-api-gateway.js";
 import { createFakeLogger } from "../fakes/fake-logger.js";
 
 const ORIGIN = "https://kaminari.test";
@@ -52,7 +52,7 @@ describe("isolation: header allowlist on outbound API calls", () => {
       logger: createFakeLogger(),
       dispatcher: agent,
     });
-    await gw.getMe();
+    await gw.getAccount();
 
     expect(receivedHeaders).toBeDefined();
     if (receivedHeaders === undefined) throw new Error("no headers captured");

@@ -8,20 +8,25 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { ApiKeyCreatedResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const CreateApiKeyInputShape = {
-  name: z.string().min(1).max(100).describe("Human-readable label (e.g. `ci-pipeline`, `claude-mcp`)."),
+  name: z
+    .string()
+    .min(1)
+    .max(100)
+    .describe("Human-readable label (e.g. `ci-pipeline`, `claude-mcp`)."),
   expires_at: z
     .string()
     .datetime()
     .optional()
-    .describe("Optional ISO-8601 expiry timestamp. Omit for a non-expiring key (operator can revoke any time)."),
+    .describe(
+      "Optional ISO-8601 expiry timestamp. Omit for a non-expiring key (operator can revoke any time)."
+    ),
 } as const;
 type CreateApiKeyInputShape = typeof CreateApiKeyInputShape;
 

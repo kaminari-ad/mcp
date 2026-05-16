@@ -34,6 +34,8 @@ describe("createApiKeyTool", () => {
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createApiKey = err(makeApiError("forbidden", "x"));
-    expect((await createApiKeyTool.handler({ name: "ci" }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect((await createApiKeyTool.handler({ name: "ci" }, makeToolContext({ api }))).isErr()).toBe(
+      true
+    );
   });
 });

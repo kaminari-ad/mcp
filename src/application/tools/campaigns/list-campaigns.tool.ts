@@ -6,10 +6,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { CampaignResponse, PaginatedResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -25,8 +24,14 @@ export type ListCampaignsOutput = PaginatedResponse<CampaignResponse>;
 export const listCampaignsTool: Tool<ListCampaignsInputShape, ListCampaignsOutput> = {
   name: "list_campaigns",
   description:
-        "List campaigns for the caller's organization, optionally filtered by group, paginated.",
-      annotations: { title: "List Campaigns", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "List campaigns for the caller's organization, optionally filtered by group, paginated.",
+  annotations: {
+    title: "List Campaigns",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ListCampaignsInputShape),
   handler: async (input, ctx): Promise<Result<ListCampaignsOutput, ToolError>> => {
     const filters = {

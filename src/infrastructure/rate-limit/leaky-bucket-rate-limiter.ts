@@ -14,10 +14,7 @@
  */
 
 import type { Clock } from "../../domain/ports/clock.js";
-import type {
-  RateLimitDecision,
-  RateLimiter,
-} from "../../domain/ports/rate-limiter.js";
+import type { RateLimitDecision, RateLimiter } from "../../domain/ports/rate-limiter.js";
 
 interface Bucket {
   /** Available tokens (fractional, refilled over time). */

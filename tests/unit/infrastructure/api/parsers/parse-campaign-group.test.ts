@@ -46,9 +46,9 @@ describe("parseCampaignGroup", () => {
 
 describe("parseCampaignGroupPage", () => {
   it("Ok valid", () => {
-    expect(
-      parseCampaignGroupPage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()
-    ).toBe(true);
+    expect(parseCampaignGroupPage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()).toBe(
+      true
+    );
   });
 
   it("rejects bad envelope", () => {

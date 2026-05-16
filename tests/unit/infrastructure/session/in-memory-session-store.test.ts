@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { createInMemorySessionStore } from "../../../../src/infrastructure/session/in-memory-session-store.js";
 import { newSessionId } from "../../../../src/domain/value-objects/session-id.js";
+import { createInMemorySessionStore } from "../../../../src/infrastructure/session/in-memory-session-store.js";
 import { createFakeClock } from "../../../fakes/fake-clock.js";
 
 const TTL = 1_000;

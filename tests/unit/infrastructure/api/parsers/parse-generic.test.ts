@@ -6,36 +6,40 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { ApiError } from "../../../../../src/domain/ports/api-gateway.js";
 import {
   parseAlertDestination,
   parseAlertStats,
-  parseApiKey,
   parseApiKeyCreated,
-  parseArchiveOrCancel,
   parseArrayOf,
   parseBalanceTx,
+  parseBulkReplay,
   parseCampaignAlertOverrides,
+  parseEventCatalog,
+  parseGroupAction,
   parseInvoice,
   parseOrg,
-  parseOrgRole,
-  parseOrgUser,
   parsePageOf,
-  parseReplayResponse,
-  parseRunCommand,
+  parsePolicyEntry,
+  parseRole,
+  parseRuleTest,
   parseScanTag,
   parseTagDetail,
-  parseTestRule,
   parseUsage,
   parseUsageSummary,
+  parseUser,
   parseWebhookDelivery,
-  parseWebhookEventCatalog,
 } from "../../../../../src/infrastructure/api/parsers/parse-generic.js";
 import { err, ok, type Result } from "../../../../../src/shared/result.js";
-import type { ApiError } from "../../../../../src/domain/ports/api-gateway.js";
 
 describe("parsePageOf", () => {
   const inner = (raw: unknown): Result<{ id: string }, ApiError> => {
-    if (typeof raw === "object" && raw !== null && "id" in raw && typeof (raw as { id: unknown }).id === "string") {
+    if (
+      typeof raw === "object" &&
+      raw !== null &&
+      "id" in raw &&
+      typeof (raw as { id: unknown }).id === "string"
+    ) {
       return ok({ id: (raw as { id: string }).id });
     }
     return err({ kind: "upstream", detail: "bad" });
@@ -72,31 +76,31 @@ describe("parseArrayOf", () => {
 
 describe("withId-based parsers", () => {
   it("parseOrg Ok / Err", () => {
-    expect(parseOrg({ id: "o1", name: "X", created_at: "t", settings: {} }).isOk()).toBe(true);
+    expect(
+      parseOrg({
+        id: "o1",
+        name: "X",
+        owner_id: "u1",
+        is_active: true,
+        created_at: "t",
+      }).isOk()
+    ).toBe(true);
     expect(parseOrg("x").isErr()).toBe(true);
     expect(parseOrg({ name: "no id" }).isErr()).toBe(true);
   });
-  it("parseOrgUser defensive defaults", () => {
-    const r = parseOrgUser({ id: "u1", email: 42 });
+  it("parseUser defensive defaults", () => {
+    const r = parseUser({ id: "u1", email: 42 });
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().email).toBe("");
   });
-  it("parseOrgRole filters non-string permissions", () => {
-    const r = parseOrgRole({ id: "r1", permissions: ["a", 1, "b"] });
+  it("parseRole filters non-string permissions", () => {
+    const r = parseRole({ id: "r1", permissions: ["a", 1, "b"] });
     expect(r._unsafeUnwrap().permissions).toEqual(["a", "b"]);
-  });
-  it("parseApiKey Ok / Err", () => {
-    expect(parseApiKey({ id: "k1", key_prefix: "p", name: "n" }).isOk()).toBe(true);
-    expect(parseApiKey({}).isErr()).toBe(true);
   });
   it("parseApiKeyCreated Ok / requires full_key", () => {
     expect(parseApiKeyCreated({ id: "k1", full_key: "secret" }).isOk()).toBe(true);
     expect(parseApiKeyCreated({ id: "k1" }).isErr()).toBe(true);
     expect(parseApiKeyCreated("x").isErr()).toBe(true);
-  });
-  it("parseArchiveOrCancel Ok / Err", () => {
-    expect(parseArchiveOrCancel({ id: "x", affected_count: 5 }).isOk()).toBe(true);
-    expect(parseArchiveOrCancel({}).isErr()).toBe(true);
   });
   it("parseTagDetail Ok / Err / null org id", () => {
     expect(parseTagDetail({ slug: "x", organization_id: null }).isOk()).toBe(true);
@@ -104,7 +108,7 @@ describe("withId-based parsers", () => {
     expect(parseTagDetail("x").isErr()).toBe(true);
   });
   it("parseScanTag Ok / Err", () => {
-    expect(parseScanTag({ slug: "x" }).isOk()).toBe(true);
+    expect(parseScanTag({ id: "s1", scan_id: "scan-1", tag_slug: "x" }).isOk()).toBe(true);
     expect(parseScanTag({}).isErr()).toBe(true);
     expect(parseScanTag("x").isErr()).toBe(true);
   });
@@ -125,19 +129,33 @@ describe("withId-based parsers", () => {
   it("parseAlertDestination Ok", () => {
     expect(parseAlertDestination({ id: "x" }).isOk()).toBe(true);
   });
+  it("parsePolicyEntry Ok", () => {
+    expect(parsePolicyEntry({ id: "e1", tag_slug: "x", country_codes: ["US"] }).isOk()).toBe(true);
+  });
 });
 
 describe("standalone parsers", () => {
-  it("parseRunCommand Ok / Err", () => {
-    expect(parseRunCommand({ run_id: "x" }).isOk()).toBe(true);
-    expect(parseRunCommand({}).isErr()).toBe(true);
-    expect(parseRunCommand("x").isErr()).toBe(true);
-  });
-  it("parseTestRule Ok with defaults", () => {
-    const r = parseTestRule({});
+  it("parseRuleTest Ok with defaults", () => {
+    const r = parseRuleTest({});
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().matched).toBe(false);
-    expect(parseTestRule("x").isErr()).toBe(true);
+    expect(parseRuleTest("x").isErr()).toBe(true);
+  });
+  it("parseRuleTest collects tag results", () => {
+    const r = parseRuleTest({
+      matched: true,
+      elapsed_ms: 7,
+      tags: [
+        { tag_slug: "malware", detail: "matched on .exe" },
+        { tag_slug: "phishing", detail: null },
+        { tag_slug: 42 },
+        { not_an_obj: true },
+      ],
+    });
+    expect(r._unsafeUnwrap().tags).toEqual([
+      { tag_slug: "malware", detail: "matched on .exe" },
+      { tag_slug: "phishing", detail: null },
+    ]);
   });
   it("parseAlertStats Ok", () => {
     expect(parseAlertStats({ open: 1 }).isOk()).toBe(true);
@@ -147,23 +165,44 @@ describe("standalone parsers", () => {
     expect(parseUsageSummary({}).isOk()).toBe(true);
     expect(parseUsageSummary("x").isErr()).toBe(true);
   });
-  it("parseWebhookEventCatalog Ok / Err", () => {
-    expect(parseWebhookEventCatalog({ types: [{ type: "scan.done" }] }).isOk()).toBe(true);
-    expect(parseWebhookEventCatalog("x").isErr()).toBe(true);
-    expect(parseWebhookEventCatalog({ types: "x" }).isErr()).toBe(true);
-    expect(parseWebhookEventCatalog({ types: ["x"] }).isErr()).toBe(true);
-    expect(parseWebhookEventCatalog({ types: [{ noType: "x" }] }).isErr()).toBe(true);
-  });
-  it("parseCampaignAlertOverrides Ok / Err", () => {
+  it("parseEventCatalog Ok / Err shapes", () => {
     expect(
-      parseCampaignAlertOverrides({ campaign_id: "x", destination_ids: ["a"], muted: false }).isOk()
+      parseEventCatalog({
+        entries: [{ event_type: "scan.done", description: "" }],
+      }).isOk()
     ).toBe(true);
+    expect(parseEventCatalog("x").isErr()).toBe(true);
+    expect(parseEventCatalog({ entries: "x" }).isErr()).toBe(true);
+    expect(parseEventCatalog({ entries: ["x"] }).isErr()).toBe(true);
+    expect(parseEventCatalog({ entries: [{ noType: "x" }] }).isErr()).toBe(true);
+  });
+  it("parseCampaignAlertOverrides Ok / Err / mode normalization", () => {
+    const r = parseCampaignAlertOverrides({
+      campaign_id: "c1",
+      mode: "include",
+      destination_ids: ["d1"],
+    });
+    expect(r._unsafeUnwrap().mode).toBe("include");
+    expect(parseCampaignAlertOverrides({ campaign_id: "c1" })._unsafeUnwrap().mode).toBe("inherit");
     expect(parseCampaignAlertOverrides("x").isErr()).toBe(true);
     expect(parseCampaignAlertOverrides({}).isErr()).toBe(true);
   });
-  it("parseReplayResponse Ok / Err", () => {
-    expect(parseReplayResponse({ replayed_count: 5 }).isOk()).toBe(true);
-    expect(parseReplayResponse({}).isErr()).toBe(true);
-    expect(parseReplayResponse("x").isErr()).toBe(true);
+  it("parseBulkReplay Ok / Err", () => {
+    expect(parseBulkReplay({ replayed: 5, skipped: 1 }).isOk()).toBe(true);
+    expect(parseBulkReplay("x").isErr()).toBe(true);
+  });
+  it("parseGroupAction Ok / Err", () => {
+    const r = parseGroupAction({
+      group_id: "g1",
+      affected_campaigns: 3,
+      cancelled_count: 0,
+      run_ids: ["r1", "r2"],
+      failures: [{ campaign_id: "c1", error_code: "X", detail: "boom" }],
+    });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap().run_ids).toEqual(["r1", "r2"]);
+    expect(r._unsafeUnwrap().failures.length).toBe(1);
+    expect(parseGroupAction("x").isErr()).toBe(true);
+    expect(parseGroupAction({}).isErr()).toBe(true);
   });
 });

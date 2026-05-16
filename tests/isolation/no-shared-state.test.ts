@@ -7,11 +7,11 @@
  * local `make test` too, not just CI.
  */
 
-import { describe, expect, it } from "vitest";
-
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
 
 describe("isolation: no module-level mutable state in src/", () => {
   it("scripts/check-no-shared-state.ts passes", () => {

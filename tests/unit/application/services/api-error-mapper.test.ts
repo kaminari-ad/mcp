@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapApiError } from "../../../../src/domain/services/api-error-mapper.js";
+import { mapApiError } from "../../../../src/application/services/api-error-mapper.js";
 
 describe("mapApiError", () => {
   it("maps unauthorized", () => {
@@ -40,9 +40,11 @@ describe("mapApiError", () => {
   });
 
   it("maps rate-limited with retry", () => {
-    expect(
-      mapApiError({ kind: "rate-limited", detail: "slow down", retryAfterMs: 5000 })
-    ).toEqual({ kind: "rate-limited", message: "slow down", retryAfterMs: 5000 });
+    expect(mapApiError({ kind: "rate-limited", detail: "slow down", retryAfterMs: 5000 })).toEqual({
+      kind: "rate-limited",
+      message: "slow down",
+      retryAfterMs: 5000,
+    });
   });
 
   it("maps invalid-input without fieldErrors", () => {

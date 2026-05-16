@@ -6,30 +6,26 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { TestCustomRuleResponse } from "../../../domain/ports/api-gateway.js";
+import type { RuleTestResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const TestCustomRuleInputShape = {
   rule_type: z.string().max(50).describe("Rule engine type (regex, substring, ...)."),
   config: z.record(z.unknown()).describe("Rule-type-specific config to test."),
-  target: z
-    .string()
-    .max(30)
-    .describe("Where to apply the rule: page / offer_url / html."),
+  target: z.string().max(30).describe("Where to apply the rule: page / offer_url / html."),
   scan_id: z.string().uuid().describe("Existing scan UUID to evaluate the rule against."),
 } as const;
 type TestCustomRuleInputShape = typeof TestCustomRuleInputShape;
 
-export type TestCustomRuleOutput = TestCustomRuleResponse;
+export type TestCustomRuleOutput = RuleTestResponse;
 
 export const testCustomRuleTool: Tool<TestCustomRuleInputShape, TestCustomRuleOutput> = {
   name: "test_custom_rule",
   description:
-    "Preview-test a rule definition against an existing scan WITHOUT persisting the rule. Returns `matched: bool` plus diagnostic details (e.g. matched substring, full regex group captures). Use to validate config before `create_custom_rule`.",
+    "Preview-test a rule definition against an existing scan WITHOUT persisting the rule. Returns `matched: bool`, evaluation time, and per-tag-slug details. Use to validate config before `create_custom_rule`.",
   annotations: {
     title: "Test Custom Rule",
     readOnlyHint: true,

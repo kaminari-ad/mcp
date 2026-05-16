@@ -29,19 +29,13 @@
 import * as path from "node:path";
 import * as process from "node:process";
 
-import { Node, Project, SyntaxKind, type ExportedDeclarations } from "ts-morph";
+import { type ExportedDeclarations, Node, Project, SyntaxKind } from "ts-morph";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const TOOLS_DIR = path.join(REPO_ROOT, "src", "application", "tools");
 
 const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
-const REQUIRED_FIELDS = [
-  "name",
-  "description",
-  "annotations",
-  "inputSchema",
-  "handler",
-] as const;
+const REQUIRED_FIELDS = ["name", "description", "annotations", "inputSchema", "handler"] as const;
 
 interface Violation {
   readonly file: string;

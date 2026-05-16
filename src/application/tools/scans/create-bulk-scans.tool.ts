@@ -7,19 +7,14 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const CreateBulkScansInputShape = {
-  url: z
-    .string()
-    .url()
-    .optional()
-    .describe("Direct URL. EITHER `url` OR `ad_tag` is required."),
+  url: z.string().url().optional().describe("Direct URL. EITHER `url` OR `ad_tag` is required."),
   ad_tag: z
     .string()
     .optional()
@@ -49,8 +44,14 @@ export interface CreateBulkScansOutput {
 export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScansOutput> = {
   name: "create_bulk_scans",
   description:
-        "Queue one new scan per country in a single call (e.g. test the same URL from US + DE + JP). COSTS N CREDITS where N = number of countries. Returns the list of created scans.",
-      annotations: { title: "Create Bulk Scans", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    "Queue one new scan per country in a single call (e.g. test the same URL from US + DE + JP). COSTS N CREDITS where N = number of countries. Returns the list of created scans.",
+  annotations: {
+    title: "Create Bulk Scans",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   inputSchema: z.object(CreateBulkScansInputShape),
   handler: async (input, ctx): Promise<Result<CreateBulkScansOutput, ToolError>> => {
     const body = {

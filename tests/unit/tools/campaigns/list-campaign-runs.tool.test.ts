@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { listCampaignRunsTool } from "../../../../src/application/tools/campaigns/list-campaign-runs.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -12,7 +13,10 @@ describe("listCampaignRunsTool", () => {
   });
   it("forwards pagination", async () => {
     const api = createFakeApiGateway();
-    await listCampaignRunsTool.handler({ campaign_id: CID, page: 2, limit: 10 }, makeToolContext({ api }));
+    await listCampaignRunsTool.handler(
+      { campaign_id: CID, page: 2, limit: 10 },
+      makeToolContext({ api })
+    );
     const call = api.state.calls[0];
     if (call?.method !== "listCampaignRuns") throw new Error("wrong");
     expect(call.filters).toEqual({ page: 2, limit: 10 });
@@ -22,7 +26,12 @@ describe("listCampaignRunsTool", () => {
     const api = createFakeApiGateway();
     api.state.responses.listCampaignRuns = err(makeApiError("forbidden", "x"));
     expect(
-      (await listCampaignRunsTool.handler({ campaign_id: CID, page: 1, limit: 50 }, makeToolContext({ api }))).isErr()
+      (
+        await listCampaignRunsTool.handler(
+          { campaign_id: CID, page: 1, limit: 50 },
+          makeToolContext({ api })
+        )
+      ).isErr()
     ).toBe(true);
   });
 });

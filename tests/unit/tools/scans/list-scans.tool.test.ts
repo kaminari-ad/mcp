@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import { listScansTool } from "../../../../src/application/tools/scans/list-scans.tool.js";
-import {
-  createFakeApiGateway,
-  err,
-  makeApiError,
-  ok,
-} from "../../../fakes/fake-api-gateway.js";
+import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
+
+const SCAN_BRIEF = {
+  id: "00000000-0000-0000-0000-000000000aaa",
+  url: "https://ad.example.com/a",
+  country_code: "US",
+  status: "completed" as const,
+  offer_url: "https://offer.example",
+  screenshot_url: "",
+  labels: {},
+  elapsed_ms: 100,
+  campaign_id: null,
+  campaign_name: null,
+  is_ad_tag: false,
+  created_at: "2026-05-16T10:00:00Z",
+};
 
 describe("listScansTool", () => {
   it("has the canonical name and pagination defaults", () => {
@@ -20,15 +30,7 @@ describe("listScansTool", () => {
   it("forwards filters verbatim to the gateway and returns the page envelope", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listScans = ok({
-      items: [
-        {
-          id: "00000000-0000-0000-0000-000000000aaa",
-          url: "https://ad.example.com/a",
-          country_code: "US",
-          status: "done",
-          created_at: "2026-05-16T10:00:00Z",
-        },
-      ],
+      items: [SCAN_BRIEF],
       total: 1,
       page: 1,
       limit: 50,
@@ -36,7 +38,7 @@ describe("listScansTool", () => {
 
     const ctx = makeToolContext({ api });
     const result = await listScansTool.handler(
-      { status: "done", country_code: "US", page: 1, limit: 50 },
+      { status: "completed", country_code: "US", page: 1, limit: 50 },
       ctx
     );
     expect(result.isOk()).toBe(true);
@@ -45,7 +47,7 @@ describe("listScansTool", () => {
     const call = api.state.calls[0];
     expect(call?.method).toBe("listScans");
     if (call?.method === "listScans") {
-      expect(call.filters).toMatchObject({ status: "done", country_code: "US" });
+      expect(call.filters).toMatchObject({ status: "completed", country_code: "US" });
     }
   });
 
@@ -67,7 +69,7 @@ describe("listScansTool", () => {
     const ctx = makeToolContext({ api });
     await listScansTool.handler(
       {
-        status: "done",
+        status: "completed",
         country_code: "US",
         url: "ad.example",
         scan_id: "00000000-0000-0000-0000-000000000aaa",
@@ -85,7 +87,7 @@ describe("listScansTool", () => {
       expect(call.filters).toEqual({
         page: 1,
         limit: 50,
-        status: "done",
+        status: "completed",
         country_code: "US",
         url: "ad.example",
         scan_id: "00000000-0000-0000-0000-000000000aaa",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { replayWebhookDeliveryTool } from "../../../../src/application/tools/webhooks/replay-webhook-delivery.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -12,12 +13,19 @@ describe("replayWebhookDeliveryTool", () => {
   });
   it("returns queued=true", async () => {
     const api = createFakeApiGateway();
-    const r = await replayWebhookDeliveryTool.handler({ attempt_id: AID }, makeToolContext({ api }));
+    const r = await replayWebhookDeliveryTool.handler(
+      { attempt_id: AID },
+      makeToolContext({ api })
+    );
     expect(r._unsafeUnwrap()).toEqual({ queued: true });
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.replayWebhookDelivery = err(makeApiError("not-found", "x"));
-    expect((await replayWebhookDeliveryTool.handler({ attempt_id: AID }, makeToolContext({ api }))).isErr()).toBe(true);
+    expect(
+      (
+        await replayWebhookDeliveryTool.handler({ attempt_id: AID }, makeToolContext({ api }))
+      ).isErr()
+    ).toBe(true);
   });
 });

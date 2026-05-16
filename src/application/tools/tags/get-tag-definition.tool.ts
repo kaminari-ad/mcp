@@ -4,19 +4,22 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { TagDefinitionWithDetailResponse } from "../../../domain/ports/api-gateway.js";
+import type { TagDefinitionDetailResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetTagDefinitionInputShape = {
-  slug: z.string().min(1).max(100).describe("Tag slug (e.g. `malware`, `redirect_chain_too_long`)."),
+  slug: z
+    .string()
+    .min(1)
+    .max(100)
+    .describe("Tag slug (e.g. `malware`, `redirect_chain_too_long`)."),
 } as const;
 type GetTagDefinitionInputShape = typeof GetTagDefinitionInputShape;
 
-export type GetTagDefinitionOutput = TagDefinitionWithDetailResponse;
+export type GetTagDefinitionOutput = TagDefinitionDetailResponse;
 
 export const getTagDefinitionTool: Tool<GetTagDefinitionInputShape, GetTagDefinitionOutput> = {
   name: "get_tag_definition",

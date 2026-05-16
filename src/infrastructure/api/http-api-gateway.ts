@@ -10,27 +10,32 @@
  * Per-endpoint parsing logic lives in `./parsers/*`; error mapping
  * lives in `./error-mapping`. This file is the thin shell that ties
  * those together with the actual `undici` request.
+ *
+ * URLs and DTO shapes are validated by the generated openapi.ts types
+ * (Pick projections in `domain/ports/api-gateway.ts`). A drift between
+ * MCP and API forces a regen + tsc failure.
  */
 
-import { request as undiciRequest, type Dispatcher } from "undici";
+import { type Dispatcher, request as undiciRequest } from "undici";
 
 import type {
-  AlertNotificationDestination,
+  AlertNotificationDestinationResponse,
   AlertResponse,
   AlertStatsResponse,
   ApiError,
   ApiGateway,
   ApiKeyCreatedResponse,
   ApiKeyResponse,
-  ArchiveOrCancelResponse,
   BalanceTransactionResponse,
   BillingSummaryResponse,
-  CampaignAlertOverrides,
+  BulkReplayRequest,
+  BulkReplayResponse,
+  BulkScanRequest,
   CampaignGroupResponse,
+  CampaignOverridesResponse,
   CampaignResponse,
   CancelPendingResponse,
   CreateApiKeyRequest,
-  CreateBulkScansRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
   CreateCustomRuleRequest,
@@ -38,33 +43,35 @@ import type {
   CreateScanRequest,
   CreateWebhookRequest,
   CustomRuleResponse,
+  DeliveryAttemptResponse,
   EmulatorResponse,
+  EventCatalogResponse,
   GeoResponse,
+  GroupActionResponse,
   InviteUserRequest,
   InvoiceResponse,
   ListAlertsFilters,
-  ListRunsFilters,
+  ListBalanceHistoryFilters,
+  ListCampaignsFilters,
   ListScansFilters,
   ListUsageFilters,
-  MeResponse,
   OrgResponse,
-  OrgRoleResponse,
-  OrgUserResponse,
+  PageFilters,
   PaginatedResponse,
   PolicySetResponse,
-  PolicySetSummary,
   RecheckRequest,
   RecheckResponse,
-  RunCommandResponse,
+  RoleResponse,
+  RuleTestRequest,
+  RuleTestResponse,
   RunResponse,
   ScanBriefResponse,
   ScanResponse,
   ScanTagResponse,
   SetCampaignOverridesRequest,
+  SetDestinationVersionRequest,
+  TagDefinitionDetailResponse,
   TagDefinitionResponse,
-  TagDefinitionWithDetailResponse,
-  TestCustomRuleRequest,
-  TestCustomRuleResponse,
   UpdateAlertStatusRequest,
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
@@ -76,67 +83,53 @@ import type {
   UpdateWebhookRequest,
   UsagePeriodSummaryResponse,
   UsageResponse,
+  UserResponse,
   WebhookCreatedResponse,
-  WebhookDeliveryAttemptResponse,
-  WebhookEventCatalogEntry,
   WebhookResponse,
 } from "../../domain/ports/api-gateway.js";
 import type { Logger } from "../../domain/ports/logger.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import { err, type Result } from "../../shared/result.js";
-
 import { toApiError } from "./error-mapping.js";
 import { parseAlertPage } from "./parsers/parse-alert.js";
 import { parseApiKeyList } from "./parsers/parse-api-key.js";
 import { parseBillingSummary } from "./parsers/parse-billing-summary.js";
 import { parseCampaign, parseCampaignPage } from "./parsers/parse-campaign.js";
-import {
-  parseCampaignGroup,
-  parseCampaignGroupPage,
-} from "./parsers/parse-campaign-group.js";
+import { parseCampaignGroup, parseCampaignGroupPage } from "./parsers/parse-campaign-group.js";
 import { parseIntField } from "./parsers/parse-count-envelope.js";
-import { parseCustomRule, parseCustomRulePage } from "./parsers/parse-custom-rule.js";
+import { parseCustomRule, parseCustomRuleArray } from "./parsers/parse-custom-rule.js";
 import { parseEmpty } from "./parsers/parse-empty.js";
 import { parseEmulatorList } from "./parsers/parse-emulator.js";
 import {
   parseAlertDestination,
   parseAlertStats,
   parseApiKeyCreated,
-  parseArchiveOrCancel,
   parseArrayOf,
   parseBalanceTx,
+  parseBulkReplay,
   parseCampaignAlertOverrides,
+  parseEventCatalog,
+  parseGroupAction,
   parseInvoice,
   parseOrg,
-  parseOrgRole,
-  parseOrgUser,
   parsePageOf,
-  parseReplayResponse,
-  parseRunCommand,
+  parseRole,
+  parseRuleTest,
   parseScanTag,
   parseTagDetail,
-  parseTestRule,
   parseUsage,
   parseUsageSummary,
+  parseUser,
   parseWebhookDelivery,
-  parseWebhookEventCatalog,
 } from "./parsers/parse-generic.js";
 import { parseGeoList } from "./parsers/parse-geo-list.js";
-import { parseMe } from "./parsers/parse-me.js";
-import {
-  parsePolicySet,
-  parsePolicySetList,
-} from "./parsers/parse-policy-set.js";
-import { parseRun, parseRunPage } from "./parsers/parse-run.js";
-import { parseScan, parseScanList } from "./parsers/parse-scan.js";
+import { parsePolicySet, parsePolicySetList } from "./parsers/parse-policy-set.js";
+import { parseRun } from "./parsers/parse-run.js";
+import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
 import { parseScanPage } from "./parsers/parse-scan-page.js";
-import { parseTagPage } from "./parsers/parse-tag.js";
-import {
-  parseWebhook,
-  parseWebhookCreated,
-  parseWebhookList,
-} from "./parsers/parse-webhook.js";
+import { parseTagDefinitionArray } from "./parsers/parse-tag.js";
+import { parseWebhook, parseWebhookCreated, parseWebhookList } from "./parsers/parse-webhook.js";
 
 export interface HttpApiGatewayConfig {
   readonly baseUrl: string;
@@ -150,14 +143,14 @@ export interface HttpApiGatewayConfig {
   readonly dispatcher?: Dispatcher;
 }
 
-/**
- * Build a fresh `ApiGateway` for one logical request scope.
- */
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+/** Build a fresh `ApiGateway` for one logical request scope. */
 export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   const { baseUrl, bearer, requestId, logger, dispatcher } = config;
 
   async function call<T>(
-    method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
+    method: Method,
     path: string,
     body: unknown,
     parse: (raw: unknown) => Result<T, ApiError>
@@ -178,8 +171,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       };
       const withBody =
         body === undefined ? baseOptions : { ...baseOptions, body: JSON.stringify(body) };
-      const withDispatcher =
-        dispatcher === undefined ? withBody : { ...withBody, dispatcher };
+      const withDispatcher = dispatcher === undefined ? withBody : { ...withBody, dispatcher };
       res = await undiciRequest(url, withDispatcher);
     } catch (cause) {
       logger.warn({ api_path: path, elapsed_ms: Date.now() - startedAtMs }, "api.network_error");
@@ -207,477 +199,431 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     return err(toApiError(status, parsedBody, res.headers["retry-after"]));
   }
 
+  const enc = encodeURIComponent;
+
   return {
-    getMe(): Promise<Result<MeResponse, ApiError>> {
-      return call("GET", "/api/v1/account", undefined, parseMe);
+    // ── Account ───────────────────────────────────────────────────
+    async getAccount(): Promise<Result<OrgResponse, ApiError>> {
+      return call("GET", "/api/v1/account", undefined, parseOrg);
     },
-    listScans(
+    async updateOrg(body: UpdateOrgRequest): Promise<Result<OrgResponse, ApiError>> {
+      return call("PATCH", "/api/v1/account", body, parseOrg);
+    },
+    async listOrgUsers(): Promise<Result<readonly UserResponse[], ApiError>> {
+      return call("GET", "/api/v1/account/users", undefined, parseArrayOf(parseUser));
+    },
+    async inviteUser(body: InviteUserRequest): Promise<Result<UserResponse, ApiError>> {
+      return call("POST", "/api/v1/account/users/invite", body, parseUser);
+    },
+    async updateUserRole(
+      userId: string,
+      body: UpdateUserRoleRequest
+    ): Promise<Result<UserResponse, ApiError>> {
+      return call("PATCH", `/api/v1/account/users/${enc(userId)}/role`, body, parseUser);
+    },
+    async removeUser(userId: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/account/users/${enc(userId)}`, undefined, parseEmpty);
+    },
+    async transferOwnership(userId: string): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        `/api/v1/account/users/${enc(userId)}/transfer-ownership`,
+        undefined,
+        parseEmpty
+      );
+    },
+    async listOrgRoles(): Promise<Result<readonly RoleResponse[], ApiError>> {
+      return call("GET", "/api/v1/account/roles", undefined, parseArrayOf(parseRole));
+    },
+    async listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
+      return call("GET", "/api/v1/account/api-keys", undefined, parseApiKeyList);
+    },
+    async createApiKey(
+      body: CreateApiKeyRequest
+    ): Promise<Result<ApiKeyCreatedResponse, ApiError>> {
+      return call("POST", "/api/v1/account/api-keys", body, parseApiKeyCreated);
+    },
+    async revokeApiKey(keyId: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/account/api-keys/${enc(keyId)}`, undefined, parseEmpty);
+    },
+
+    // ── Scans ─────────────────────────────────────────────────────
+    async listScans(
       filters: ListScansFilters
     ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
-      return call("GET", `/api/v1/scans?${buildScanQuery(filters)}`, undefined, parseScanPage);
+      return call("GET", `/api/v1/scans?${buildQuery(filters)}`, undefined, parseScanPage);
     },
-    getScan(scanId: string): Promise<Result<ScanResponse, ApiError>> {
-      return call("GET", `/api/v1/scans/${encodeURIComponent(scanId)}`, undefined, parseScan);
+    async getScan(scanId: string): Promise<Result<ScanResponse, ApiError>> {
+      return call("GET", `/api/v1/scans/${enc(scanId)}`, undefined, parseScan);
     },
-    createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>> {
+    async createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>> {
       return call("POST", "/api/v1/scans", body, parseScan);
     },
-    createBulkScans(
-      body: CreateBulkScansRequest
+    async createBulkScans(
+      body: BulkScanRequest
     ): Promise<Result<readonly ScanResponse[], ApiError>> {
-      return call("POST", "/api/v1/scans/bulk", body, parseScanList);
+      return call("POST", "/api/v1/scans/bulk", body, parseScanArray);
     },
-    recheckScans(body: RecheckRequest): Promise<Result<RecheckResponse, ApiError>> {
+    async recheckScans(body: RecheckRequest): Promise<Result<RecheckResponse, ApiError>> {
       return call("POST", "/api/v1/scans/recheck", body, (raw) =>
         parseIntField(raw, "queued_count")
       );
     },
-    cancelScan(scanId: string): Promise<Result<CancelPendingResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/scans/${encodeURIComponent(scanId)}/cancel`,
-        undefined,
-        (raw) => parseIntField(raw, "cancelled_count")
+    async cancelScan(scanId: string): Promise<Result<CancelPendingResponse, ApiError>> {
+      return call("POST", `/api/v1/scans/${enc(scanId)}/cancel`, undefined, (raw) =>
+        parseIntField(raw, "cancelled_count")
       );
     },
-    listGeos(): Promise<Result<readonly GeoResponse[], ApiError>> {
-      return call("GET", "/api/v1/geos", undefined, parseGeoList);
-    },
-    listCampaigns(filters): Promise<Result<PaginatedResponse<CampaignResponse>, ApiError>> {
-      return call("GET", `/api/v1/campaigns?${buildPagedQuery({ ...filters })}`, undefined, parseCampaignPage);
-    },
-    getCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call("GET", `/api/v1/campaigns/${encodeURIComponent(id)}`, undefined, parseCampaign);
-    },
-    createCampaign(body: CreateCampaignRequest): Promise<Result<CampaignResponse, ApiError>> {
-      return call("POST", "/api/v1/campaigns", body, parseCampaign);
-    },
-    updateCampaign(
-      id: string,
-      body: UpdateCampaignRequest
-    ): Promise<Result<CampaignResponse, ApiError>> {
-      return call("PATCH", `/api/v1/campaigns/${encodeURIComponent(id)}`, body, parseCampaign);
-    },
-    archiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaigns/${encodeURIComponent(id)}/archive`,
-        undefined,
-        parseCampaign
-      );
-    },
-    listRuns(filters: ListRunsFilters): Promise<Result<PaginatedResponse<RunResponse>, ApiError>> {
-      return call("GET", `/api/v1/runs?${buildPagedQuery({ ...filters })}`, undefined, parseRunPage);
-    },
-    getRun(id: string): Promise<Result<RunResponse, ApiError>> {
-      return call("GET", `/api/v1/runs/${encodeURIComponent(id)}`, undefined, parseRun);
-    },
-    listCampaignGroups(filters): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>> {
+    async listScanTags(scanId: string): Promise<Result<readonly ScanTagResponse[], ApiError>> {
       return call(
         "GET",
-        `/api/v1/campaign-groups?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parseCampaignGroupPage
-      );
-    },
-    getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}`,
-        undefined,
-        parseCampaignGroup
-      );
-    },
-    createCampaignGroup(
-      body: CreateCampaignGroupRequest
-    ): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call("POST", "/api/v1/campaign-groups", body, parseCampaignGroup);
-    },
-    updateCampaignGroup(
-      id: string,
-      body: UpdateCampaignGroupRequest
-    ): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "PATCH",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}`,
-        body,
-        parseCampaignGroup
-      );
-    },
-    listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
-      return call("GET", "/api/v1/emulators", undefined, parseEmulatorList);
-    },
-    listTags(filters): Promise<Result<PaginatedResponse<TagDefinitionResponse>, ApiError>> {
-      return call("GET", `/api/v1/tags?${buildPagedQuery({ ...filters })}`, undefined, parseTagPage);
-    },
-    listCustomRules(filters): Promise<Result<PaginatedResponse<CustomRuleResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/custom-rules?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parseCustomRulePage
-      );
-    },
-    createCustomRule(body: CreateCustomRuleRequest): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("POST", "/api/v1/custom-rules", body, parseCustomRule);
-    },
-    deleteCustomRule(id: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/custom-rules/${encodeURIComponent(id)}`, undefined, parseEmpty);
-    },
-    listPolicySets(): Promise<Result<readonly PolicySetSummary[], ApiError>> {
-      return call("GET", "/api/v1/policy-sets", undefined, parsePolicySetList);
-    },
-    getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("GET", `/api/v1/policy-sets/${encodeURIComponent(id)}`, undefined, parsePolicySet);
-    },
-    createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("POST", "/api/v1/policy-sets", body, parsePolicySet);
-    },
-    listAlerts(filters: ListAlertsFilters): Promise<Result<PaginatedResponse<AlertResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/alerts?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parseAlertPage
-      );
-    },
-    listWebhooks(): Promise<Result<readonly WebhookResponse[], ApiError>> {
-      return call("GET", "/api/v1/webhooks", undefined, parseWebhookList);
-    },
-    createWebhook(body: CreateWebhookRequest): Promise<Result<WebhookCreatedResponse, ApiError>> {
-      return call("POST", "/api/v1/webhooks", body, parseWebhookCreated);
-    },
-    deleteWebhook(id: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/webhooks/${encodeURIComponent(id)}`, undefined, parseEmpty);
-    },
-    getBillingSummary(): Promise<Result<BillingSummaryResponse, ApiError>> {
-      return call("GET", "/api/v1/billing", undefined, parseBillingSummary);
-    },
-    listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/api-keys", undefined, parseApiKeyList);
-    },
-    createApiKey(body: CreateApiKeyRequest): Promise<Result<ApiKeyCreatedResponse, ApiError>> {
-      return call("POST", "/api/v1/account/api-keys", body, parseApiKeyCreated);
-    },
-    revokeApiKey(keyId: string): Promise<Result<null, ApiError>> {
-      return call(
-        "DELETE",
-        `/api/v1/account/api-keys/${encodeURIComponent(keyId)}`,
-        undefined,
-        parseEmpty
-      );
-    },
-    updateOrg(body: UpdateOrgRequest): Promise<Result<OrgResponse, ApiError>> {
-      return call("PATCH", "/api/v1/account", body, parseOrg);
-    },
-    listOrgUsers(): Promise<Result<readonly OrgUserResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/users", undefined, parseArrayOf(parseOrgUser));
-    },
-    inviteUser(body: InviteUserRequest): Promise<Result<OrgUserResponse, ApiError>> {
-      return call("POST", "/api/v1/account/users/invite", body, parseOrgUser);
-    },
-    updateUserRole(
-      userId: string,
-      body: UpdateUserRoleRequest
-    ): Promise<Result<OrgUserResponse, ApiError>> {
-      return call(
-        "PATCH",
-        `/api/v1/account/users/${encodeURIComponent(userId)}/role`,
-        body,
-        parseOrgUser
-      );
-    },
-    removeUser(userId: string): Promise<Result<null, ApiError>> {
-      return call(
-        "DELETE",
-        `/api/v1/account/users/${encodeURIComponent(userId)}`,
-        undefined,
-        parseEmpty
-      );
-    },
-    transferOwnership(userId: string): Promise<Result<null, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/account/users/${encodeURIComponent(userId)}/transfer-ownership`,
-        undefined,
-        parseEmpty
-      );
-    },
-    listOrgRoles(): Promise<Result<readonly OrgRoleResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/roles", undefined, parseArrayOf(parseOrgRole));
-    },
-    listRunScans(
-      runId: string,
-      filters: { readonly page: number; readonly limit: number }
-    ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/runs/${encodeURIComponent(runId)}/scans?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parseScanPage
-      );
-    },
-    listScanTags(scanId: string): Promise<Result<readonly ScanTagResponse[], ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/scans/${encodeURIComponent(scanId)}/tags`,
+        `/api/v1/scans/${enc(scanId)}/tags`,
         undefined,
         parseArrayOf(parseScanTag)
       );
     },
-    getTagDefinition(
-      slug: string
-    ): Promise<Result<TagDefinitionWithDetailResponse, ApiError>> {
-      return call("GET", `/api/v1/tag-definitions/${encodeURIComponent(slug)}`, undefined, parseTagDetail);
+
+    // ── Geos / emulators ──────────────────────────────────────────
+    async listGeos(): Promise<Result<readonly GeoResponse[], ApiError>> {
+      return call("GET", "/api/v1/geos", undefined, parseGeoList);
     },
-    updateTagDefinition(
+    async listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
+      return call("GET", "/api/v1/emulators", undefined, parseEmulatorList);
+    },
+
+    // ── Campaigns ─────────────────────────────────────────────────
+    async listCampaigns(
+      filters: ListCampaignsFilters
+    ): Promise<Result<PaginatedResponse<CampaignResponse>, ApiError>> {
+      return call("GET", `/api/v1/campaigns?${buildQuery(filters)}`, undefined, parseCampaignPage);
+    },
+    async getCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
+      return call("GET", `/api/v1/campaigns/${enc(id)}`, undefined, parseCampaign);
+    },
+    async createCampaign(body: CreateCampaignRequest): Promise<Result<CampaignResponse, ApiError>> {
+      return call("POST", "/api/v1/campaigns", body, parseCampaign);
+    },
+    async updateCampaign(
+      id: string,
+      body: UpdateCampaignRequest
+    ): Promise<Result<CampaignResponse, ApiError>> {
+      return call("PATCH", `/api/v1/campaigns/${enc(id)}`, body, parseCampaign);
+    },
+    async runCampaign(id: string): Promise<Result<RunResponse, ApiError>> {
+      return call("POST", `/api/v1/campaigns/${enc(id)}/run`, undefined, parseRun);
+    },
+    async archiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
+      return call("POST", `/api/v1/campaigns/${enc(id)}/archive`, undefined, parseCampaign);
+    },
+    async unarchiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
+      return call("POST", `/api/v1/campaigns/${enc(id)}/unarchive`, undefined, parseCampaign);
+    },
+    async cancelCampaign(id: string): Promise<Result<CancelPendingResponse, ApiError>> {
+      return call("POST", `/api/v1/campaigns/${enc(id)}/cancel`, undefined, (raw) =>
+        parseIntField(raw, "cancelled_count")
+      );
+    },
+    async listCampaignRuns(
+      campaignId: string,
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<RunResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/campaigns/${enc(campaignId)}/runs?${buildQuery(filters)}`,
+        undefined,
+        parsePageOf(parseRun)
+      );
+    },
+
+    // ── Runs ──────────────────────────────────────────────────────
+    async getRun(id: string): Promise<Result<RunResponse, ApiError>> {
+      return call("GET", `/api/v1/runs/${enc(id)}`, undefined, parseRun);
+    },
+    async cancelRun(id: string): Promise<Result<CancelPendingResponse, ApiError>> {
+      return call("POST", `/api/v1/runs/${enc(id)}/cancel`, undefined, (raw) =>
+        parseIntField(raw, "cancelled_count")
+      );
+    },
+    async listRunScans(
+      runId: string,
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/runs/${enc(runId)}/scans?${buildQuery(filters)}`,
+        undefined,
+        parseScanPage
+      );
+    },
+
+    // ── Campaign groups ───────────────────────────────────────────
+    async listCampaignGroups(
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/campaign-groups?${buildQuery(filters)}`,
+        undefined,
+        parseCampaignGroupPage
+      );
+    },
+    async getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call("GET", `/api/v1/campaign-groups/${enc(id)}`, undefined, parseCampaignGroup);
+    },
+    async createCampaignGroup(
+      body: CreateCampaignGroupRequest
+    ): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call("POST", "/api/v1/campaign-groups", body, parseCampaignGroup);
+    },
+    async updateCampaignGroup(
+      id: string,
+      body: UpdateCampaignGroupRequest
+    ): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call("PATCH", `/api/v1/campaign-groups/${enc(id)}`, body, parseCampaignGroup);
+    },
+    async runCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      return call("POST", `/api/v1/campaign-groups/${enc(id)}/run`, undefined, parseGroupAction);
+    },
+    async cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      return call("POST", `/api/v1/campaign-groups/${enc(id)}/cancel`, undefined, parseGroupAction);
+    },
+    async archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call(
+        "POST",
+        `/api/v1/campaign-groups/${enc(id)}/archive`,
+        undefined,
+        parseCampaignGroup
+      );
+    },
+    async unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call(
+        "POST",
+        `/api/v1/campaign-groups/${enc(id)}/unarchive`,
+        undefined,
+        parseCampaignGroup
+      );
+    },
+    async pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call(
+        "POST",
+        `/api/v1/campaign-groups/${enc(id)}/pause-schedule`,
+        undefined,
+        parseCampaignGroup
+      );
+    },
+    async resumeCampaignGroupSchedule(
+      id: string
+    ): Promise<Result<CampaignGroupResponse, ApiError>> {
+      return call(
+        "POST",
+        `/api/v1/campaign-groups/${enc(id)}/resume-schedule`,
+        undefined,
+        parseCampaignGroup
+      );
+    },
+
+    // ── Tag definitions ───────────────────────────────────────────
+    async listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>> {
+      return call("GET", "/api/v1/tag-definitions", undefined, parseTagDefinitionArray);
+    },
+    async getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
+      return call("GET", `/api/v1/tag-definitions/${enc(slug)}`, undefined, parseTagDetail);
+    },
+    async updateTagDefinition(
       slug: string,
       body: UpdateTagDefinitionRequest
-    ): Promise<Result<TagDefinitionWithDetailResponse, ApiError>> {
-      return call(
-        "PATCH",
-        `/api/v1/tag-definitions/${encodeURIComponent(slug)}`,
-        body,
-        parseTagDetail
-      );
+    ): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
+      return call("PATCH", `/api/v1/tag-definitions/${enc(slug)}`, body, parseTagDetail);
     },
-    deleteTagDefinition(slug: string): Promise<Result<null, ApiError>> {
+    async deleteTagDefinition(slug: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/tag-definitions/${enc(slug)}`, undefined, parseEmpty);
+    },
+
+    // ── Custom rules ──────────────────────────────────────────────
+    async listCustomRules(
+      filters: PageFilters
+    ): Promise<Result<readonly CustomRuleResponse[], ApiError>> {
       return call(
-        "DELETE",
-        `/api/v1/tag-definitions/${encodeURIComponent(slug)}`,
+        "GET",
+        `/api/v1/custom-rules?${buildQuery(filters)}`,
         undefined,
-        parseEmpty
+        parseCustomRuleArray
       );
     },
-    getCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("GET", `/api/v1/custom-rules/${encodeURIComponent(id)}`, undefined, parseCustomRule);
+    async getCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
+      return call("GET", `/api/v1/custom-rules/${enc(id)}`, undefined, parseCustomRule);
     },
-    updateCustomRule(
+    async createCustomRule(
+      body: CreateCustomRuleRequest
+    ): Promise<Result<CustomRuleResponse, ApiError>> {
+      return call("POST", "/api/v1/custom-rules", body, parseCustomRule);
+    },
+    async updateCustomRule(
       id: string,
       body: UpdateCustomRuleRequest
     ): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("PUT", `/api/v1/custom-rules/${encodeURIComponent(id)}`, body, parseCustomRule);
+      return call("PUT", `/api/v1/custom-rules/${enc(id)}`, body, parseCustomRule);
     },
-    testCustomRule(
-      body: TestCustomRuleRequest
-    ): Promise<Result<TestCustomRuleResponse, ApiError>> {
-      return call("POST", "/api/v1/custom-rules/test", body, parseTestRule);
+    async deleteCustomRule(id: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/custom-rules/${enc(id)}`, undefined, parseEmpty);
     },
-    updatePolicySet(
+    async testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>> {
+      return call("POST", "/api/v1/custom-rules/test", body, parseRuleTest);
+    },
+
+    // ── Policy sets ───────────────────────────────────────────────
+    async listPolicySets(): Promise<Result<readonly PolicySetResponse[], ApiError>> {
+      return call("GET", "/api/v1/policy-sets", undefined, parsePolicySetList);
+    },
+    async getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>> {
+      return call("GET", `/api/v1/policy-sets/${enc(id)}`, undefined, parsePolicySet);
+    },
+    async createPolicySet(
+      body: CreatePolicySetRequest
+    ): Promise<Result<PolicySetResponse, ApiError>> {
+      return call("POST", "/api/v1/policy-sets", body, parsePolicySet);
+    },
+    async updatePolicySet(
       id: string,
       body: UpdatePolicySetRequest
     ): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("PUT", `/api/v1/policy-sets/${encodeURIComponent(id)}`, body, parsePolicySet);
+      return call("PUT", `/api/v1/policy-sets/${enc(id)}`, body, parsePolicySet);
     },
-    deletePolicySet(id: string): Promise<Result<null, ApiError>> {
-      return call(
-        "DELETE",
-        `/api/v1/policy-sets/${encodeURIComponent(id)}`,
-        undefined,
-        parseEmpty
-      );
+    async deletePolicySet(id: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/policy-sets/${enc(id)}`, undefined, parseEmpty);
     },
-    requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>> {
+    async requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/policy-sets/${encodeURIComponent(id)}/request-approval`,
+        `/api/v1/policy-sets/${enc(id)}/request-approval`,
         undefined,
         parsePolicySet
       );
     },
-    updateAlertStatus(
+
+    // ── Alerts ────────────────────────────────────────────────────
+    async listAlerts(
+      filters: ListAlertsFilters
+    ): Promise<Result<PaginatedResponse<AlertResponse>, ApiError>> {
+      return call("GET", `/api/v1/alerts?${buildQuery(filters)}`, undefined, parseAlertPage);
+    },
+    async updateAlertStatus(
       alertId: string,
       body: UpdateAlertStatusRequest
     ): Promise<Result<null, ApiError>> {
-      return call(
-        "PATCH",
-        `/api/v1/alerts/${encodeURIComponent(alertId)}/status`,
-        body,
-        parseEmpty
-      );
+      return call("PATCH", `/api/v1/alerts/${enc(alertId)}/status`, body, parseEmpty);
     },
-    getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>> {
+    async getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>> {
       return call("GET", "/api/v1/alerts/stats", undefined, parseAlertStats);
     },
-    runCampaign(id: string): Promise<Result<RunCommandResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaigns/${encodeURIComponent(id)}/run`,
-        undefined,
-        parseRunCommand
-      );
+
+    // ── Webhooks ──────────────────────────────────────────────────
+    async listWebhooks(): Promise<Result<readonly WebhookResponse[], ApiError>> {
+      return call("GET", "/api/v1/webhooks", undefined, parseWebhookList);
     },
-    cancelCampaign(id: string): Promise<Result<ArchiveOrCancelResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaigns/${encodeURIComponent(id)}/cancel`,
-        undefined,
-        parseArchiveOrCancel
-      );
+    async getWebhook(id: string): Promise<Result<WebhookResponse, ApiError>> {
+      return call("GET", `/api/v1/webhooks/${enc(id)}`, undefined, parseWebhook);
     },
-    unarchiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaigns/${encodeURIComponent(id)}/unarchive`,
-        undefined,
-        parseCampaign
-      );
+    async createWebhook(
+      body: CreateWebhookRequest
+    ): Promise<Result<WebhookCreatedResponse, ApiError>> {
+      return call("POST", "/api/v1/webhooks", body, parseWebhookCreated);
     },
-    listCampaignRuns(
-      campaignId: string,
-      filters: { readonly page: number; readonly limit: number }
-    ): Promise<Result<PaginatedResponse<RunResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/campaigns/${encodeURIComponent(campaignId)}/runs?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parseRunPage
-      );
-    },
-    runCampaignGroup(id: string): Promise<Result<RunCommandResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/run`,
-        undefined,
-        parseRunCommand
-      );
-    },
-    cancelCampaignGroup(id: string): Promise<Result<ArchiveOrCancelResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/cancel`,
-        undefined,
-        parseArchiveOrCancel
-      );
-    },
-    archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/archive`,
-        undefined,
-        parseCampaignGroup
-      );
-    },
-    unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/unarchive`,
-        undefined,
-        parseCampaignGroup
-      );
-    },
-    pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/pause-schedule`,
-        undefined,
-        parseCampaignGroup
-      );
-    },
-    resumeCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/campaign-groups/${encodeURIComponent(id)}/resume-schedule`,
-        undefined,
-        parseCampaignGroup
-      );
-    },
-    cancelRun(id: string): Promise<Result<ArchiveOrCancelResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/runs/${encodeURIComponent(id)}/cancel`,
-        undefined,
-        parseArchiveOrCancel
-      );
-    },
-    listUsage(
-      filters: ListUsageFilters
-    ): Promise<Result<PaginatedResponse<UsageResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/billing/usage?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parsePageOf(parseUsage)
-      );
-    },
-    getUsageSummary(): Promise<Result<UsagePeriodSummaryResponse, ApiError>> {
-      return call("GET", "/api/v1/billing/usage/summary", undefined, parseUsageSummary);
-    },
-    listBalanceHistory(filters): Promise<Result<PaginatedResponse<BalanceTransactionResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/billing/history?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parsePageOf(parseBalanceTx)
-      );
-    },
-    listInvoices(filters): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/invoices?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parsePageOf(parseInvoice)
-      );
-    },
-    getWebhook(id: string): Promise<Result<WebhookResponse, ApiError>> {
-      return call("GET", `/api/v1/webhooks/${encodeURIComponent(id)}`, undefined, parseWebhook);
-    },
-    updateWebhook(
+    async updateWebhook(
       id: string,
       body: UpdateWebhookRequest
     ): Promise<Result<WebhookResponse, ApiError>> {
-      return call("PATCH", `/api/v1/webhooks/${encodeURIComponent(id)}`, body, parseWebhook);
+      return call("PATCH", `/api/v1/webhooks/${enc(id)}`, body, parseWebhook);
     },
-    listWebhookEventTypes(): Promise<Result<readonly WebhookEventCatalogEntry[], ApiError>> {
-      return call("GET", "/api/v1/webhooks/event-types", undefined, parseWebhookEventCatalog);
+    async deleteWebhook(id: string): Promise<Result<null, ApiError>> {
+      return call("DELETE", `/api/v1/webhooks/${enc(id)}`, undefined, parseEmpty);
     },
-    listWebhookDeliveries(
-      endpointId: string,
-      filters: { readonly page: number; readonly limit: number }
-    ): Promise<Result<PaginatedResponse<WebhookDeliveryAttemptResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/webhooks/${encodeURIComponent(endpointId)}/deliveries?${buildPagedQuery({ ...filters })}`,
-        undefined,
-        parsePageOf(parseWebhookDelivery)
-      );
+    async testWebhook(endpointId: string): Promise<Result<null, ApiError>> {
+      return call("POST", `/api/v1/webhooks/${enc(endpointId)}/test`, undefined, parseEmpty);
     },
-    testWebhook(endpointId: string): Promise<Result<null, ApiError>> {
+    async rotateWebhookSecret(
+      endpointId: string
+    ): Promise<Result<WebhookCreatedResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/webhooks/${encodeURIComponent(endpointId)}/test`,
-        undefined,
-        parseEmpty
-      );
-    },
-    rotateWebhookSecret(endpointId: string): Promise<Result<WebhookCreatedResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/webhooks/${encodeURIComponent(endpointId)}/rotate-secret`,
+        `/api/v1/webhooks/${enc(endpointId)}/rotate-secret`,
         undefined,
         parseWebhookCreated
       );
     },
-    replayWebhookDelivery(attemptId: string): Promise<Result<null, ApiError>> {
+    async listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>> {
+      return call("GET", "/api/v1/webhooks/event-types", undefined, parseEventCatalog);
+    },
+    async listWebhookDeliveries(
+      endpointId: string,
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/webhooks/${enc(endpointId)}/deliveries?${buildQuery(filters)}`,
+        undefined,
+        parsePageOf(parseWebhookDelivery)
+      );
+    },
+    async replayWebhookDelivery(attemptId: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
-        `/api/v1/webhooks/deliveries/${encodeURIComponent(attemptId)}/replay`,
+        `/api/v1/webhooks/deliveries/${enc(attemptId)}/replay`,
         undefined,
         parseEmpty
       );
     },
-    bulkReplayWebhook(
+    async bulkReplayWebhook(
       endpointId: string,
-      body: { readonly attempt_ids?: readonly string[] }
-    ): Promise<Result<{ readonly replayed_count: number }, ApiError>> {
+      body: BulkReplayRequest
+    ): Promise<Result<BulkReplayResponse, ApiError>> {
+      return call("POST", `/api/v1/webhooks/${enc(endpointId)}/replay`, body, parseBulkReplay);
+    },
+
+    // ── Billing ───────────────────────────────────────────────────
+    async getBillingSummary(): Promise<Result<BillingSummaryResponse, ApiError>> {
+      return call("GET", "/api/v1/billing", undefined, parseBillingSummary);
+    },
+    async listUsage(
+      filters: ListUsageFilters
+    ): Promise<Result<PaginatedResponse<UsageResponse>, ApiError>> {
       return call(
-        "POST",
-        `/api/v1/webhooks/${encodeURIComponent(endpointId)}/replay`,
-        body,
-        parseReplayResponse
+        "GET",
+        `/api/v1/billing/usage?${buildQuery(filters)}`,
+        undefined,
+        parsePageOf(parseUsage)
       );
     },
-    listAlertDestinations(): Promise<Result<readonly AlertNotificationDestination[], ApiError>> {
+    async getUsageSummary(): Promise<Result<UsagePeriodSummaryResponse, ApiError>> {
+      return call("GET", "/api/v1/billing/usage/summary", undefined, parseUsageSummary);
+    },
+    async listBalanceHistory(
+      filters: ListBalanceHistoryFilters
+    ): Promise<Result<PaginatedResponse<BalanceTransactionResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/billing/history?${buildQuery(filters)}`,
+        undefined,
+        parsePageOf(parseBalanceTx)
+      );
+    },
+
+    // ── Invoicing ─────────────────────────────────────────────────
+    async listInvoices(
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>> {
+      return call(
+        "GET",
+        `/api/v1/invoices?${buildQuery(filters)}`,
+        undefined,
+        parsePageOf(parseInvoice)
+      );
+    },
+
+    // ── Alert notifications ───────────────────────────────────────
+    async listAlertDestinations(): Promise<
+      Result<readonly AlertNotificationDestinationResponse[], ApiError>
+    > {
       return call(
         "GET",
         "/api/v1/alert-notifications/destinations",
@@ -685,42 +631,42 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseArrayOf(parseAlertDestination)
       );
     },
-    deleteAlertDestination(id: string): Promise<Result<null, ApiError>> {
+    async deleteAlertDestination(id: string): Promise<Result<null, ApiError>> {
       return call(
         "DELETE",
-        `/api/v1/alert-notifications/destinations/${encodeURIComponent(id)}`,
+        `/api/v1/alert-notifications/destinations/${enc(id)}`,
         undefined,
         parseEmpty
       );
     },
-    setAlertDestinationVersion(
+    async setAlertDestinationVersion(
       id: string,
-      body: { readonly version: number }
-    ): Promise<Result<AlertNotificationDestination, ApiError>> {
+      body: SetDestinationVersionRequest
+    ): Promise<Result<AlertNotificationDestinationResponse, ApiError>> {
       return call(
         "PATCH",
-        `/api/v1/alert-notifications/destinations/${encodeURIComponent(id)}/version`,
+        `/api/v1/alert-notifications/destinations/${enc(id)}/version`,
         body,
         parseAlertDestination
       );
     },
-    getCampaignAlertOverrides(
+    async getCampaignAlertOverrides(
       campaignId: string
-    ): Promise<Result<CampaignAlertOverrides, ApiError>> {
+    ): Promise<Result<CampaignOverridesResponse, ApiError>> {
       return call(
         "GET",
-        `/api/v1/alert-notifications/campaigns/${encodeURIComponent(campaignId)}/overrides`,
+        `/api/v1/alert-notifications/campaigns/${enc(campaignId)}/overrides`,
         undefined,
         parseCampaignAlertOverrides
       );
     },
-    setCampaignAlertOverrides(
+    async setCampaignAlertOverrides(
       campaignId: string,
       body: SetCampaignOverridesRequest
-    ): Promise<Result<CampaignAlertOverrides, ApiError>> {
+    ): Promise<Result<CampaignOverridesResponse, ApiError>> {
       return call(
         "PUT",
-        `/api/v1/alert-notifications/campaigns/${encodeURIComponent(campaignId)}/overrides`,
+        `/api/v1/alert-notifications/campaigns/${enc(campaignId)}/overrides`,
         body,
         parseCampaignAlertOverrides
       );
@@ -728,11 +674,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   };
 }
 
-function buildScanQuery(filters: ListScansFilters): string {
-  return buildPagedQuery({ ...filters });
-}
-
-function buildPagedQuery(filters: Record<string, unknown>): string {
+function buildQuery(filters: object): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === null) continue;

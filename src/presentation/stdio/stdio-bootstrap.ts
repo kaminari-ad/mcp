@@ -22,7 +22,6 @@ import { createHttpApiGateway } from "../../infrastructure/api/http-api-gateway.
 import { createPinoLogger } from "../../infrastructure/logging/pino-logger.js";
 import type { Config } from "../../shared/config.js";
 import { NAME, VERSION } from "../../shared/version.js";
-
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
 
 /**

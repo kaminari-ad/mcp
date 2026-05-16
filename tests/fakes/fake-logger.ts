@@ -24,7 +24,7 @@ export function createFakeLogger(parentFields: LogFields = {}): Logger & {
   const state: FakeLoggerState = { records: [] };
 
   function record(level: LogLevelName, fields: LogFields, message: string): void {
-    (state.records as LogRecord[]).push({
+    state.records.push({
       level,
       fields: { ...parentFields, ...fields },
       message,
@@ -36,11 +36,23 @@ export function createFakeLogger(parentFields: LogFields = {}): Logger & {
     child(extra) {
       return createFakeLogger({ ...parentFields, ...extra });
     },
-    trace: (f, m) => record("trace", f, m),
-    debug: (f, m) => record("debug", f, m),
-    info: (f, m) => record("info", f, m),
-    warn: (f, m) => record("warn", f, m),
-    error: (f, m) => record("error", f, m),
-    fatal: (f, m) => record("fatal", f, m),
+    trace: (f, m) => {
+      record("trace", f, m);
+    },
+    debug: (f, m) => {
+      record("debug", f, m);
+    },
+    info: (f, m) => {
+      record("info", f, m);
+    },
+    warn: (f, m) => {
+      record("warn", f, m);
+    },
+    error: (f, m) => {
+      record("error", f, m);
+    },
+    fatal: (f, m) => {
+      record("fatal", f, m);
+    },
   };
 }

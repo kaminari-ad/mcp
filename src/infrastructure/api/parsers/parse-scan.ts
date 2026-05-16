@@ -10,7 +10,6 @@
 
 import type { ApiError, ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
 import { isStringRecord } from "./shared.js";
 
 function asString(v: unknown, fallback: string): string {
@@ -35,6 +34,9 @@ function asLabels(v: unknown): Readonly<Record<string, string>> {
   return out;
 }
 
+/**
+ *
+ */
 export function parseScan(raw: unknown): Result<ScanResponse, ApiError> {
   if (!isStringRecord(raw)) {
     return err({ kind: "upstream", detail: "malformed scan response" });
@@ -48,20 +50,26 @@ export function parseScan(raw: unknown): Result<ScanResponse, ApiError> {
     url: asString(raw["url"], ""),
     country_code: asString(raw["country_code"], ""),
     emulator_id: asString(raw["emulator_id"], ""),
-    status: asString(raw["status"], ""),
+    status: asString(raw["status"], "") as ScanResponse["status"],
     offer_url: asString(raw["offer_url"], ""),
     screenshot_url: asString(raw["screenshot_url"], ""),
+    ad_tag: asStringOrNull(raw["ad_tag"]),
+    creative_screenshot_url: asString(raw["creative_screenshot_url"], ""),
     page_title: asString(raw["page_title"], ""),
     elapsed_ms: asNumber(raw["elapsed_ms"], 0),
     error: asString(raw["error"], ""),
     labels: asLabels(raw["labels"]),
     campaign_id: asStringOrNull(raw["campaign_id"]),
+    campaign_name: asStringOrNull(raw["campaign_name"]),
     created_at: asString(raw["created_at"], ""),
     completed_at: asStringOrNull(raw["completed_at"]),
   });
 }
 
-export function parseScanList(raw: unknown): Result<readonly ScanResponse[], ApiError> {
+/**
+ *
+ */
+export function parseScanArray(raw: unknown): Result<readonly ScanResponse[], ApiError> {
   if (!Array.isArray(raw)) {
     return err({ kind: "upstream", detail: "expected array of scans" });
   }

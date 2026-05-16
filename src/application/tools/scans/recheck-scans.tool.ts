@@ -9,17 +9,18 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { RecheckResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const RecheckScansInputShape = {
   scope_type: z
     .enum(["last_n", "hours"])
-    .describe("Selection mode. `last_n` = most recent N scans; `hours` = scans from the past N hours."),
+    .describe(
+      "Selection mode. `last_n` = most recent N scans; `hours` = scans from the past N hours."
+    ),
   scope_value: z
     .number()
     .int()
@@ -36,8 +37,14 @@ export type RecheckScansOutput = RecheckResponse;
 export const recheckScansTool: Tool<RecheckScansInputShape, RecheckScansOutput> = {
   name: "recheck_scans",
   description:
-        "Re-run the checker pipeline against recent COMPLETED scans (e.g. after updating policies or custom rules). Returns the number of scans queued for re-evaluation. No new crawl fee — only the checker cost.",
-      annotations: { title: "Recheck Scans", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    "Re-run the checker pipeline against recent COMPLETED scans (e.g. after updating policies or custom rules). Returns the number of scans queued for re-evaluation. No new crawl fee — only the checker cost.",
+  annotations: {
+    title: "Recheck Scans",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   inputSchema: z.object(RecheckScansInputShape),
   handler: async (input, ctx): Promise<Result<RecheckScansOutput, ToolError>> => {
     const result = await ctx.api.recheckScans({

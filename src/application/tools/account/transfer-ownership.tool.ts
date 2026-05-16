@@ -7,9 +7,8 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -22,10 +21,7 @@ export interface TransferOwnershipOutput {
   readonly transferred: true;
 }
 
-export const transferOwnershipTool: Tool<
-  TransferOwnershipInputShape,
-  TransferOwnershipOutput
-> = {
+export const transferOwnershipTool: Tool<TransferOwnershipInputShape, TransferOwnershipOutput> = {
   name: "transfer_ownership",
   description:
     "Hand the organization owner role to another existing member. ONE-WAY: the previous owner becomes a regular member afterwards. Require explicit confirmation from the user.",

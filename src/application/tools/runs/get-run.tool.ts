@@ -4,10 +4,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { RunResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -19,8 +18,14 @@ export type GetRunOutput = RunResponse;
 export const getRunTool: Tool<GetRunInputShape, GetRunOutput> = {
   name: "get_run",
   description:
-        "Get one run by UUID with totals (queued, completed, failed, partial, cancelled), parent campaign, label, source.",
-      annotations: { title: "Get Run", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "Get one run by UUID with totals (queued, completed, failed, partial, cancelled), parent campaign, label, source.",
+  annotations: {
+    title: "Get Run",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(GetRunInputShape),
   handler: async (input, ctx): Promise<Result<GetRunOutput, ToolError>> => {
     const result = await ctx.api.getRun(input.run_id);

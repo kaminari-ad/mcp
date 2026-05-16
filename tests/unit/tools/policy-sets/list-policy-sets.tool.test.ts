@@ -14,10 +14,12 @@ describe("listPolicySetsTool", () => {
     api.state.responses.listPolicySets = ok([
       {
         id: "00000000-0000-0000-0000-000000000eee",
+        organization_id: "00000000-0000-0000-0000-000000000010",
         name: "x",
         description: "",
         visibility: "private",
         is_approved: true,
+        entries: [],
         created_at: "2026-01-01T00:00:00Z",
       },
     ]);

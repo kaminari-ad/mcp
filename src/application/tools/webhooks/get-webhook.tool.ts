@@ -4,14 +4,15 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { WebhookResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
-const GetWebhookInputShape = { webhook_id: z.string().uuid().describe("Webhook endpoint UUID.") } as const;
+const GetWebhookInputShape = {
+  webhook_id: z.string().uuid().describe("Webhook endpoint UUID."),
+} as const;
 type GetWebhookInputShape = typeof GetWebhookInputShape;
 
 export type GetWebhookOutput = WebhookResponse;

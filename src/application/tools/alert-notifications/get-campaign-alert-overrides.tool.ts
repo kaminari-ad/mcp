@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { CampaignAlertOverrides } from "../../../domain/ports/api-gateway.js";
+import type { CampaignOverridesResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -17,7 +16,7 @@ const GetCampaignAlertOverridesInputShape = {
 } as const;
 type GetCampaignAlertOverridesInputShape = typeof GetCampaignAlertOverridesInputShape;
 
-export type GetCampaignAlertOverridesOutput = CampaignAlertOverrides;
+export type GetCampaignAlertOverridesOutput = CampaignOverridesResponse;
 
 export const getCampaignAlertOverridesTool: Tool<
   GetCampaignAlertOverridesInputShape,
@@ -25,7 +24,7 @@ export const getCampaignAlertOverridesTool: Tool<
 > = {
   name: "get_campaign_alert_overrides",
   description:
-    "Get the per-campaign override of which alert destinations receive its alerts, plus the muted flag. Empty `destination_ids` means \"use the org defaults\".",
+    "Get the per-campaign override of which alert destinations receive its alerts. `mode` is one of `inherit` (use org defaults), `include` (use the listed destinations), or `exclude` (use everything EXCEPT the listed destinations).",
   annotations: {
     title: "Get Campaign Alert Overrides",
     readOnlyHint: true,
@@ -34,10 +33,7 @@ export const getCampaignAlertOverridesTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(GetCampaignAlertOverridesInputShape),
-  handler: async (
-    input,
-    ctx
-  ): Promise<Result<GetCampaignAlertOverridesOutput, ToolError>> => {
+  handler: async (input, ctx): Promise<Result<GetCampaignAlertOverridesOutput, ToolError>> => {
     const result = await ctx.api.getCampaignAlertOverrides(input.campaign_id);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);

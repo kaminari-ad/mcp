@@ -10,8 +10,9 @@
  *   - The pino logger's `authorization` field redaction.
  */
 
-import { describe, expect, it } from "vitest";
 import { Writable } from "node:stream";
+
+import { describe, expect, it } from "vitest";
 
 import { BearerToken } from "../../src/domain/value-objects/bearer-token.js";
 import { createPinoLogger } from "../../src/infrastructure/logging/pino-logger.js";

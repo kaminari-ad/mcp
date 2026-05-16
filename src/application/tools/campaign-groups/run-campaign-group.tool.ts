@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { RunCommandResponse } from "../../../domain/ports/api-gateway.js";
+import type { GroupActionResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -17,12 +16,12 @@ const RunCampaignGroupInputShape = {
 } as const;
 type RunCampaignGroupInputShape = typeof RunCampaignGroupInputShape;
 
-export type RunCampaignGroupOutput = RunCommandResponse;
+export type RunCampaignGroupOutput = GroupActionResponse;
 
 export const runCampaignGroupTool: Tool<RunCampaignGroupInputShape, RunCampaignGroupOutput> = {
   name: "run_campaign_group",
   description:
-    "Fire an immediate run of every active (non-archived, non-paused) campaign in the group. Aggregated cost = sum across all triggered campaigns.",
+    "Fire an immediate run of every active (non-archived, non-paused) campaign in the group. Returns aggregate stats: how many campaigns triggered, the per-campaign run UUIDs, and any per-campaign failures.",
   annotations: {
     title: "Run Campaign Group",
     readOnlyHint: false,

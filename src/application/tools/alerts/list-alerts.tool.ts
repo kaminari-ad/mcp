@@ -4,13 +4,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type {
-  AlertResponse,
-  PaginatedResponse,
-} from "../../../domain/ports/api-gateway.js";
+import type { AlertResponse, PaginatedResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -30,8 +26,14 @@ export type ListAlertsOutput = PaginatedResponse<AlertResponse>;
 export const listAlertsTool: Tool<ListAlertsInputShape, ListAlertsOutput> = {
   name: "list_alerts",
   description:
-        "List violation alerts (one per scan + violating-tag combo) with offer URL, tag, country, status, scan back-reference.",
-      annotations: { title: "List Alerts", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "List violation alerts (one per scan + violating-tag combo) with offer URL, tag, country, status, scan back-reference.",
+  annotations: {
+    title: "List Alerts",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ListAlertsInputShape),
   handler: async (input, ctx): Promise<Result<ListAlertsOutput, ToolError>> => {
     const filters = {

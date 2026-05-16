@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { OrgRoleResponse } from "../../../domain/ports/api-gateway.js";
+import type { RoleResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -16,7 +15,7 @@ const ListOrgRolesInputShape = {} as const;
 type ListOrgRolesInputShape = typeof ListOrgRolesInputShape;
 
 export interface ListOrgRolesOutput {
-  readonly items: readonly OrgRoleResponse[];
+  readonly items: readonly RoleResponse[];
   readonly total: number;
 }
 

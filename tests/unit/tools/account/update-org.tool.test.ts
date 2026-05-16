@@ -18,7 +18,10 @@ describe("updateOrgTool", () => {
   });
   it("forwards both fields when supplied", async () => {
     const api = createFakeApiGateway();
-    await updateOrgTool.handler({ name: "x", settings: { theme: "dark" } }, makeToolContext({ api }));
+    await updateOrgTool.handler(
+      { name: "x", settings: { theme: "dark" } },
+      makeToolContext({ api })
+    );
     const call = api.state.calls[0];
     if (call?.method !== "updateOrg") throw new Error("wrong");
     expect(call.body).toEqual({ name: "x", settings: { theme: "dark" } });

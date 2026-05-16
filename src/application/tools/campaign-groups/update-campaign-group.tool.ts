@@ -6,10 +6,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -31,8 +30,14 @@ export const updateCampaignGroupTool: Tool<
 > = {
   name: "update_campaign_group",
   description:
-        "Update a campaign group: rename, or pause/resume the scheduler (the pause cascades to every campaign in the group).",
-      annotations: { title: "Update Campaign Group", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "Update a campaign group: rename, or pause/resume the scheduler (the pause cascades to every campaign in the group).",
+  annotations: {
+    title: "Update Campaign Group",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(UpdateCampaignGroupInputShape),
   handler: async (input, ctx): Promise<Result<UpdateCampaignGroupOutput, ToolError>> => {
     const body = {

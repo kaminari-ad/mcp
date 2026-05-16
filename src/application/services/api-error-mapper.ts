@@ -2,18 +2,16 @@
  * Pure mapping from {@link ApiError} (the gateway port's error type)
  * to {@link ToolError} (the tool-level error type).
  *
- * Lives in `domain/services/` because it encodes business knowledge
- * (how API failures translate to MCP-visible errors) and is consumed
- * by every tool handler. No I/O.
+ * Lives in `application/services/` because `ToolError` is an
+ * application-layer concept; mapping infrastructure-shaped errors
+ * (`ApiError` carries upstream HTTP status, etc.) into the tool
+ * vocabulary is exactly the application layer's job. No I/O.
  */
 
-import type { ApiError } from "../ports/api-gateway.js";
+import type { ApiError } from "../../domain/ports/api-gateway.js";
+import type { ToolError } from "../tools/_shared/tool-result.js";
 
-import type { ToolError } from "../../application/tools/_shared/tool-result.js";
-
-/**
- * Map an API-level error to a tool-level error.
- */
+/** Map an API-level error to a tool-level error. */
 export function mapApiError(apiError: ApiError): ToolError {
   switch (apiError.kind) {
     case "unauthorized":

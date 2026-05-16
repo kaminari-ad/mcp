@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { PolicySetResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -34,10 +33,7 @@ export const requestPolicySetApprovalTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(RequestPolicySetApprovalInputShape),
-  handler: async (
-    input,
-    ctx
-  ): Promise<Result<RequestPolicySetApprovalOutput, ToolError>> => {
+  handler: async (input, ctx): Promise<Result<RequestPolicySetApprovalOutput, ToolError>> => {
     const result = await ctx.api.requestPolicySetApproval(input.policy_set_id);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);

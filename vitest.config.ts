@@ -40,7 +40,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: [
         "src/**/*.d.ts",
-        "src/infrastructure/api/openapi.ts",
+        "src/shared/api/openapi.ts",
         "src/bin.ts",
         // Pure type-only files (interfaces / type aliases): they
         // compile to empty .js, so v8 reports them as 0% covered.

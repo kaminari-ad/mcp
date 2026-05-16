@@ -16,7 +16,7 @@ pre-commit:
 
     lint:
       glob: "*.{ts,mts}"
-      run: npx eslint --max-warnings 0 --fix {staged_files}
+      run: npx eslint --max-warnings 0 --no-warn-ignored --fix {staged_files}
       stage_fixed: true
 
     no-secrets-quick:

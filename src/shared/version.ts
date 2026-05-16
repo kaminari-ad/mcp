@@ -7,5 +7,5 @@
  * constants + one assertion test is simpler and gives the same safety.
  */
 
-export const NAME = "@kaminari-ad/mcp" as const;
-export const VERSION = "0.0.0-dev" as const;
+export const NAME = "@kaminari-ad/mcp";
+export const VERSION = "0.0.0-dev";

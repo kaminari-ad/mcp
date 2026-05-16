@@ -8,16 +8,22 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseAlert, parseAlertPage } from "../../../../../src/infrastructure/api/parsers/parse-alert.js";
+import {
+  parseAlert,
+  parseAlertPage,
+} from "../../../../../src/infrastructure/api/parsers/parse-alert.js";
 import { parseApiKeyList } from "../../../../../src/infrastructure/api/parsers/parse-api-key.js";
 import { parseBillingSummary } from "../../../../../src/infrastructure/api/parsers/parse-billing-summary.js";
 import {
   parseCustomRule,
-  parseCustomRulePage,
+  parseCustomRuleArray,
 } from "../../../../../src/infrastructure/api/parsers/parse-custom-rule.js";
 import { parseEmpty } from "../../../../../src/infrastructure/api/parsers/parse-empty.js";
 import { parseEmulatorList } from "../../../../../src/infrastructure/api/parsers/parse-emulator.js";
-import { parseTag, parseTagPage } from "../../../../../src/infrastructure/api/parsers/parse-tag.js";
+import {
+  parseTag,
+  parseTagDefinitionArray,
+} from "../../../../../src/infrastructure/api/parsers/parse-tag.js";
 import {
   parseWebhook,
   parseWebhookCreated,
@@ -48,7 +54,7 @@ describe("parseEmulatorList", () => {
   });
 });
 
-describe("parseTag / parseTagPage", () => {
+describe("parseTag / parseTagDefinitionArray", () => {
   const VALID = {
     slug: "x",
     category: "c",
@@ -56,6 +62,8 @@ describe("parseTag / parseTagPage", () => {
     display_name: "X",
     description: "",
     is_system: true,
+    organization_id: null,
+    show_in_public_report: false,
     severity: "high",
     scans_count: 0,
     rules_count: 0,
@@ -75,19 +83,17 @@ describe("parseTag / parseTagPage", () => {
     expect(r._unsafeUnwrap().scans_count).toBe(0);
     expect(r._unsafeUnwrap().category).toBe("");
   });
-  it("parseTagPage Ok valid + rejects bad shapes", () => {
-    expect(parseTagPage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()).toBe(true);
-    expect(parseTagPage("x").isErr()).toBe(true);
-    expect(parseTagPage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
-    expect(parseTagPage({ items: [{ no: "slug" }], total: 1, page: 1, limit: 50 }).isErr()).toBe(
-      true
-    );
+  it("parseTagDefinitionArray Ok valid + rejects bad shapes", () => {
+    expect(parseTagDefinitionArray([VALID]).isOk()).toBe(true);
+    expect(parseTagDefinitionArray("x").isErr()).toBe(true);
+    expect(parseTagDefinitionArray([{ no: "slug" }]).isErr()).toBe(true);
   });
 });
 
-describe("parseCustomRule / parseCustomRulePage", () => {
+describe("parseCustomRule / parseCustomRuleArray", () => {
   const VALID = {
     id: "00000000-0000-0000-0000-000000000bbb",
+    organization_id: "00000000-0000-0000-0000-000000000010",
     name: "R",
     tag_slug: "ml.spam",
     rule_type: "regex",
@@ -99,10 +105,12 @@ describe("parseCustomRule / parseCustomRulePage", () => {
   it("Ok valid", () => {
     expect(parseCustomRule(VALID).isOk()).toBe(true);
   });
-  it("rejects non-object / no id", () => {
+  it("rejects non-object / no id / no organization_id", () => {
     expect(parseCustomRule("x").isErr()).toBe(true);
-    const { id: _omit, ...withoutId } = VALID;
+    const { id: _omitId, ...withoutId } = VALID;
     expect(parseCustomRule(withoutId).isErr()).toBe(true);
+    const { organization_id: _omitOrg, ...withoutOrg } = VALID;
+    expect(parseCustomRule(withoutOrg).isErr()).toBe(true);
   });
   it("defaults non-object config to empty", () => {
     const r = parseCustomRule({ ...VALID, config: "x" });
@@ -113,17 +121,10 @@ describe("parseCustomRule / parseCustomRulePage", () => {
     const r = parseCustomRule({ ...VALID, is_active: "x" });
     expect(r._unsafeUnwrap().is_active).toBe(true);
   });
-  it("page parser Ok / rejects bad", () => {
-    expect(
-      parseCustomRulePage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()
-    ).toBe(true);
-    expect(parseCustomRulePage("x").isErr()).toBe(true);
-    expect(
-      parseCustomRulePage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()
-    ).toBe(true);
-    expect(
-      parseCustomRulePage({ items: [{}], total: 1, page: 1, limit: 50 }).isErr()
-    ).toBe(true);
+  it("array parser Ok / rejects bad", () => {
+    expect(parseCustomRuleArray([VALID]).isOk()).toBe(true);
+    expect(parseCustomRuleArray("x").isErr()).toBe(true);
+    expect(parseCustomRuleArray([{}]).isErr()).toBe(true);
   });
 });
 
@@ -133,13 +134,16 @@ describe("parseAlert / parseAlertPage", () => {
     scan_id: "00000000-0000-0000-0000-000000000bbb",
     campaign_id: "00000000-0000-0000-0000-000000000ccc",
     policy_set_id: null,
+    violation_rule_id: null,
     tag_slug: "malware",
     tag_display_name: "Malware",
     country_code: "US",
     status: "open",
+    closed_by: null,
     scan_url: "https://x.com",
     offer_url: "https://o.com",
     created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
   };
   it("Ok valid", () => {
     expect(parseAlert(VALID).isOk()).toBe(true);
@@ -165,9 +169,20 @@ describe("parseWebhook / parseWebhookList / parseWebhookCreated", () => {
   const VALID = {
     id: "00000000-0000-0000-0000-000000000eee",
     url: "https://x.com/wh",
+    description: "ci",
     event_types: ["scan.done"],
+    campaign_ids: [],
     is_active: true,
+    disabled_reason: null,
+    disabled_at: null,
+    health: {
+      consecutive_failures: 0,
+      last_delivery_at: null,
+      last_delivery_status: null,
+      success_rate_7d: 1,
+    },
     created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
   };
   it("Ok valid", () => {
     expect(parseWebhook(VALID).isOk()).toBe(true);
@@ -190,13 +205,15 @@ describe("parseWebhook / parseWebhookList / parseWebhookCreated", () => {
     expect(parseWebhookList({}).isErr()).toBe(true);
     expect(parseWebhookList([{}]).isErr()).toBe(true);
   });
-  it("created parser Ok with secret", () => {
-    expect(parseWebhookCreated({ ...VALID, signing_secret: "whsec" }).isOk()).toBe(true);
+  it("created parser Ok with { webhook, secret } envelope", () => {
+    expect(parseWebhookCreated({ webhook: VALID, secret: "whsec" }).isOk()).toBe(true);
   });
-  it("created parser rejects missing secret", () => {
+  it("created parser rejects bad shapes", () => {
     expect(parseWebhookCreated(VALID).isErr()).toBe(true);
     expect(parseWebhookCreated("x").isErr()).toBe(true);
-    expect(parseWebhookCreated({ ...VALID, signing_secret: 5 }).isErr()).toBe(true);
+    expect(parseWebhookCreated({ webhook: VALID, secret: 5 }).isErr()).toBe(true);
+    const { id: _omit, ...webhookWithoutId } = VALID;
+    expect(parseWebhookCreated({ webhook: webhookWithoutId, secret: "whsec" }).isErr()).toBe(true);
   });
 });
 
@@ -204,11 +221,13 @@ describe("parseBillingSummary", () => {
   it("Ok with full body", () => {
     const r = parseBillingSummary({
       balance_micros: 1000,
+      plan_id: "p1",
       plan_name: "pro",
       checks_per_period: 1000,
       checks_used: 5,
       period_start: "2026-01-01T00:00:00Z",
       period_end: "2026-02-01T00:00:00Z",
+      price_per_extra_check_micros: 100,
       is_suspended: false,
       can_create_scan: true,
       block_reason: null,

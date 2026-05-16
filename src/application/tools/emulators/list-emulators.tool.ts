@@ -7,10 +7,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { EmulatorResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -25,8 +24,14 @@ export interface ListEmulatorsOutput {
 export const listEmulatorsTool: Tool<ListEmulatorsInputShape, ListEmulatorsOutput> = {
   name: "list_emulators",
   description:
-        "List every device/OS emulator profile available for scans (id, display name, category, browser). Use the `id` as `emulator_id` in `create_scan` / `create_campaign`.",
-      annotations: { title: "List Emulators", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "List every device/OS emulator profile available for scans (id, display name, category, browser). Use the `id` as `emulator_id` in `create_scan` / `create_campaign`.",
+  annotations: {
+    title: "List Emulators",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ListEmulatorsInputShape),
   handler: async (_input, ctx): Promise<Result<ListEmulatorsOutput, ToolError>> => {
     const result = await ctx.api.listEmulators();

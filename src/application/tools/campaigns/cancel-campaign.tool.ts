@@ -5,10 +5,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
-import type { ArchiveOrCancelResponse } from "../../../domain/ports/api-gateway.js";
+import type { CancelPendingResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -17,7 +16,7 @@ const CancelCampaignInputShape = {
 } as const;
 type CancelCampaignInputShape = typeof CancelCampaignInputShape;
 
-export type CancelCampaignOutput = ArchiveOrCancelResponse;
+export type CancelCampaignOutput = CancelPendingResponse;
 
 export const cancelCampaignTool: Tool<CancelCampaignInputShape, CancelCampaignOutput> = {
   name: "cancel_campaign",

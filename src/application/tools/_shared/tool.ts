@@ -15,7 +15,6 @@
 import type { z } from "zod";
 
 import type { Result } from "../../../shared/result.js";
-
 import type { ToolContext } from "./tool-context.js";
 import type { ToolError } from "./tool-result.js";
 

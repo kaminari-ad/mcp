@@ -8,7 +8,9 @@ describe("registerAllTools", () => {
     registerAllTools((tool) => {
       seen.push(tool.name);
     });
-    expect(seen).toContain("get_me");
+    expect(seen).toContain("get_account");
+    expect(seen).not.toContain("get_me");
+    expect(seen).not.toContain("list_runs");
     // No duplicates.
     expect(new Set(seen).size).toBe(seen.length);
   });

@@ -12,11 +12,12 @@ describe("deleteWebhookTool", () => {
     expect(() => deleteWebhookTool.inputSchema.parse({ webhook_id: "x" })).toThrow();
   });
 
-  it("returns { deleted: true } on success", async () => {
+  it("returns { deleted: true } and forwards the webhook id", async () => {
     const api = createFakeApiGateway();
     const r = await deleteWebhookTool.handler({ webhook_id: WID }, makeToolContext({ api }));
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap()).toEqual({ deleted: true });
+    expect(api.state.calls[0]).toEqual({ method: "deleteWebhook", id: WID });
   });
 
   it("maps error", async () => {

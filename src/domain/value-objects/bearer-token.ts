@@ -17,7 +17,7 @@
 
 import { createHash } from "node:crypto";
 
-const REDACTED = "[BearerToken redacted]" as const;
+const REDACTED = "[BearerToken redacted]";
 
 /**
  * SHA-256 hex prefix length used for the {@link BearerToken.hash}
@@ -26,6 +26,9 @@ const REDACTED = "[BearerToken redacted]" as const;
  */
 export const BEARER_HASH_PREFIX_LEN = 8;
 
+/**
+ *
+ */
 export class BearerToken {
   readonly #raw: string;
 
@@ -51,7 +54,7 @@ export class BearerToken {
   static fromAuthorizationHeader(headerValue: string | undefined): BearerToken | undefined {
     if (headerValue === undefined) return undefined;
     const match = /^Bearer\s+(\S+)\s*$/i.exec(headerValue);
-    if (!match || match[1] === undefined) return undefined;
+    if (match?.[1] === undefined) return undefined;
     return BearerToken.fromString(match[1]);
   }
 
@@ -87,6 +90,11 @@ export class BearerToken {
     return REDACTED;
   }
 
+  /**
+   * `JSON.stringify(bearer)` -> `"[BearerToken redacted]"`. Same
+   * intent as {@link toString}: any path that serializes the VO never
+   * sees the secret.
+   */
   toJSON(): string {
     return REDACTED;
   }

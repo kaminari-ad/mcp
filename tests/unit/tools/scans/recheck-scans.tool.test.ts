@@ -7,7 +7,9 @@ import { makeToolContext } from "../../../fakes/make-tool-context.js";
 describe("recheckScansTool", () => {
   it("has canonical name and enum validation", () => {
     expect(recheckScansTool.name).toBe("recheck_scans");
-    expect(() => recheckScansTool.inputSchema.parse({ scope_type: "weeks", scope_value: 1 })).toThrow();
+    expect(() =>
+      recheckScansTool.inputSchema.parse({ scope_type: "weeks", scope_value: 1 })
+    ).toThrow();
   });
 
   it("forwards scope verbatim and returns queued_count", async () => {

@@ -74,7 +74,7 @@ Conventional Commits. The first line is `<type>: <imperative summary>`:
 The hosted `mcp.kaminari.ad` endpoint serves many organizations from one process. The HTTP transport, session store, and rate limiter must preserve these invariants:
 
 1. **No module-level mutable state.** No `let`/`var` at module scope, no mutating `static` fields. ESLint and `scripts/check-no-shared-state.ts` enforce this; both have to be edited to bypass.
-2. **No caches indexed by tenant data.** Zero. Session and rate-limit stores hold only `Map<sha256(bearer), ...>` and live in `src/infrastructure/{session,rate-limit}/`.
+2. **No caches indexed by tenant data.** Zero. The only mutable stores allowed are session and rate-limit, in `src/infrastructure/{session,rate-limit}/`. The session store is `Map<SessionId, {bearerHash, expiresAtMs}>` (keyed by MCP session id, values hold `sha256(bearer)` for binding); the rate limiter is `Map<bearerHash, LeakyBucket>`. Neither stores user ids, org ids, scan ids, or any tenant business data.
 3. **`ApiGateway` is constructed per request** from that request's `Authorization`. There is no `globalApiGateway`.
 4. **Missing `Authorization` returns 401 without calling the API.** Test: `tests/isolation/missing_auth.test.ts`.
 5. **`KAMINARI_AD_API_KEY` is forbidden in HTTP mode** — the bootstrap asserts on startup. Test: `tests/isolation/env_fallback_disabled.test.ts`.

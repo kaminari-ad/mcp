@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { listBalanceHistoryTool } from "../../../../src/application/tools/billing/list-balance-history.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -29,7 +30,9 @@ describe("listBalanceHistoryTool", () => {
     const api = createFakeApiGateway();
     api.state.responses.listBalanceHistory = err(makeApiError("forbidden", "x"));
     expect(
-      (await listBalanceHistoryTool.handler({ page: 1, limit: 50 }, makeToolContext({ api }))).isErr()
+      (
+        await listBalanceHistoryTool.handler({ page: 1, limit: 50 }, makeToolContext({ api }))
+      ).isErr()
     ).toBe(true);
   });
 });

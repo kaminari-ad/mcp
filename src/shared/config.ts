@@ -77,7 +77,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
 /**
  * Errors from {@link loadConfig}.
  */
-export type ConfigError = {
+export interface ConfigError {
   readonly kind: "invalid";
   readonly issues: Readonly<Record<string, readonly string[] | undefined>>;
-};
+}

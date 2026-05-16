@@ -15,9 +15,20 @@ describe("listWebhooksTool", () => {
       {
         id: "00000000-0000-0000-0000-000000000eee",
         url: "https://x.com/wh",
+        description: "",
         event_types: ["scan.done"],
+        campaign_ids: [],
         is_active: true,
+        disabled_reason: null,
+        disabled_at: null,
+        health: {
+          consecutive_failures: 0,
+          last_delivery_at: null,
+          last_delivery_status: null,
+          success_rate_7d: 1,
+        },
         created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
       },
     ]);
     const r = await listWebhooksTool.handler({}, makeToolContext({ api }));

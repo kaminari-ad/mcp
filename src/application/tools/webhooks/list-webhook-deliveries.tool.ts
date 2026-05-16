@@ -5,13 +5,12 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type {
+  DeliveryAttemptResponse,
   PaginatedResponse,
-  WebhookDeliveryAttemptResponse,
 } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -22,7 +21,7 @@ const ListWebhookDeliveriesInputShape = {
 } as const;
 type ListWebhookDeliveriesInputShape = typeof ListWebhookDeliveriesInputShape;
 
-export type ListWebhookDeliveriesOutput = PaginatedResponse<WebhookDeliveryAttemptResponse>;
+export type ListWebhookDeliveriesOutput = PaginatedResponse<DeliveryAttemptResponse>;
 
 export const listWebhookDeliveriesTool: Tool<
   ListWebhookDeliveriesInputShape,

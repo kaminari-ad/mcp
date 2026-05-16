@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  parseToolName,
-  toolNameOrThrow,
-} from "../../../../src/domain/value-objects/tool-name.js";
+import { parseToolName, toolNameOrThrow } from "../../../../src/domain/value-objects/tool-name.js";
 
 describe("ToolName", () => {
   it("accepts snake_case lowercase names", () => {

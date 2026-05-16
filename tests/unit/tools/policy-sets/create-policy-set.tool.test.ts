@@ -5,12 +5,20 @@ import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("createPolicySetTool", () => {
-  it("name + validates entries.min(1)", () => {
+  it("name + validates entries.min(1) + required description", () => {
     expect(createPolicySetTool.name).toBe("create_policy_set");
-    expect(() => createPolicySetTool.inputSchema.parse({ name: "x", entries: [] })).toThrow();
+    expect(() =>
+      createPolicySetTool.inputSchema.parse({ name: "x", description: "", entries: [] })
+    ).toThrow();
+    expect(() =>
+      createPolicySetTool.inputSchema.parse({
+        name: "x",
+        entries: [{ tag_slug: "y", country_codes: [] }],
+      })
+    ).toThrow();
   });
 
-  it("forwards body and includes description when supplied", async () => {
+  it("forwards body verbatim", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
     await createPolicySetTool.handler(
@@ -26,18 +34,23 @@ describe("createPolicySetTool", () => {
     expect(call.body.name).toBe("Safe");
     expect(call.body.description).toBe("Block malware");
     expect(call.body.entries[0]?.tag_slug).toBe("malware");
+    expect(call.body.entries[0]?.country_codes).toEqual(["US"]);
   });
 
-  it("omits description when undefined", async () => {
+  it("accepts empty description string", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
     await createPolicySetTool.handler(
-      { name: "x", entries: [{ tag_slug: "malware", country_codes: [] }] },
+      {
+        name: "x",
+        description: "",
+        entries: [{ tag_slug: "malware", country_codes: [] }],
+      },
       ctx
     );
     const call = api.state.calls[0];
     if (call?.method !== "createPolicySet") throw new Error("wrong");
-    expect(call.body.description).toBeUndefined();
+    expect(call.body.description).toBe("");
   });
 
   it("maps error", async () => {
@@ -46,7 +59,11 @@ describe("createPolicySetTool", () => {
     expect(
       (
         await createPolicySetTool.handler(
-          { name: "x", entries: [{ tag_slug: "y", country_codes: [] }] },
+          {
+            name: "x",
+            description: "",
+            entries: [{ tag_slug: "y", country_codes: [] }],
+          },
           makeToolContext({ api })
         )
       ).isErr()

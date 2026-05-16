@@ -9,10 +9,9 @@
 
 import { z } from "zod";
 
-import { mapApiError } from "../../../domain/services/api-error-mapper.js";
 import type { PaginatedResponse, ScanBriefResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
-
+import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -27,14 +26,8 @@ const ListScansInputShape = {
     .string()
     .optional()
     .describe("Comma-separated ISO 3166-1 alpha-2 country codes, e.g. US,DE,JP."),
-  url: z
-    .string()
-    .optional()
-    .describe("Substring match against the scanned URL."),
-  scan_id: z
-    .string()
-    .optional()
-    .describe("Comma-separated scan UUIDs to fetch a specific set."),
+  url: z.string().optional().describe("Substring match against the scanned URL."),
+  scan_id: z.string().optional().describe("Comma-separated scan UUIDs to fetch a specific set."),
   date_from: z
     .string()
     .date()
@@ -45,18 +38,9 @@ const ListScansInputShape = {
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive upper bound on scan creation."),
-  tag: z
-    .string()
-    .optional()
-    .describe("Comma-separated tag slugs to filter by."),
+  tag: z.string().optional().describe("Comma-separated tag slugs to filter by."),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(200)
-    .default(50)
-    .describe("Page size (1-200). Default 50."),
+  limit: z.number().int().min(1).max(200).default(50).describe("Page size (1-200). Default 50."),
 } as const;
 type ListScansInputShape = typeof ListScansInputShape;
 
@@ -65,8 +49,14 @@ export type ListScansOutput = PaginatedResponse<ScanBriefResponse>;
 export const listScansTool: Tool<ListScansInputShape, ListScansOutput> = {
   name: "list_scans",
   description:
-        "List scans for the caller's organization with optional filters (status, country, URL substring, date range, tags). Returns a paginated envelope.",
-      annotations: { title: "List Scans", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    "List scans for the caller's organization with optional filters (status, country, URL substring, date range, tags). Returns a paginated envelope.",
+  annotations: {
+    title: "List Scans",
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: z.object(ListScansInputShape),
   handler: async (input, ctx): Promise<Result<ListScansOutput, ToolError>> => {
     // exactOptionalPropertyTypes: only forward defined fields.

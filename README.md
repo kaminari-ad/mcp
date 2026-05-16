@@ -29,10 +29,10 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
       "command": "npx",
       "args": ["-y", "@kaminari-ad/mcp"],
       "env": {
-        "KAMINARI_AD_API_KEY": "kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
-    }
-  }
+        "KAMINARI_AD_API_KEY": "kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      },
+    },
+  },
 }
 ```
 
@@ -48,10 +48,10 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
     "kaminari-ad": {
       "url": "https://mcp.kaminari.ad/mcp",
       "headers": {
-        "Authorization": "Bearer kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
-    }
-  }
+        "Authorization": "Bearer kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      },
+    },
+  },
 }
 ```
 

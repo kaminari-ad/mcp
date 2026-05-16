@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { Writable } from "node:stream";
+
+import { describe, expect, it } from "vitest";
 
 import { createPinoLogger } from "../../../../src/infrastructure/logging/pino-logger.js";
 
@@ -62,7 +63,9 @@ describe("PinoLogger", () => {
   it("pretty format constructs without throwing (stdio dev mode)", () => {
     const sink = new MemorySink();
     const log = createPinoLogger("info", "pretty", sink);
-    expect(() => log.info({}, "ok")).not.toThrow();
+    expect(() => {
+      log.info({}, "ok");
+    }).not.toThrow();
   });
 
   it("trace / debug / error / fatal go through wrap()", () => {
