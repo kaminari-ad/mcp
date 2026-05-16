@@ -126,12 +126,14 @@ audit:licenses:
 
 test:unit:
   stage: test
-  needs: [lint, typecheck]
+  # `needs: setup` inherits the node_modules/ artifact; lint+typecheck
+  # are gates we want green BEFORE tests run but don't re-export deps.
+  needs: [setup, lint, typecheck]
   script: npm run test:unit -- --coverage
 
 test:integration:
   stage: test
-  needs: [test:unit]
+  needs: [setup, test:unit]
   script: npm run test:integration
 
 # Tenant isolation suite — NON-NEGOTIABLE merge gate.
@@ -139,7 +141,7 @@ test:integration:
 # attributable in the MR UI.
 test:isolation:
   stage: test
-  needs: [test:unit]
+  needs: [setup, test:unit]
   script: npm run test:isolation
   artifacts:
     when: always
@@ -155,6 +157,7 @@ test:isolation:
 build:
   stage: build
   needs:
+    - setup
     - lint
     - format-check
     - typecheck
