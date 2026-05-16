@@ -1,0 +1,177 @@
+# GitLab CI for @kaminari-ad/mcp.
+#
+# Stages:
+#   1. setup           install deps, cache node_modules
+#   2. quality         lint / format-check / typecheck   (parallel)
+#   3. arch_gates      file-sizes / imports / shared-state / tool-naming (parallel)
+#   4. security        npm audit / license-checker        (parallel)
+#   5. test            unit / integration / isolation     (sequential, fail-fast)
+#   6. build           tsup dist
+#   7. publish         npm publish (TAG only)
+#
+# The `test:isolation` job is a non-negotiable merge gate.
+# `setup` produces a `node_modules` artifact that downstream jobs reuse.
+
+default:
+  image: node:20.18.1-alpine3.20
+  before_script:
+    - apk add --no-cache git
+    - corepack disable
+
+stages:
+  - setup
+  - quality
+  - arch_gates
+  - security
+  - test
+  - build
+  - publish
+
+variables:
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  NPM_CONFIG_AUDIT: "false"
+
+# ─────────────────────────────────────────────────────────────────────
+# 1. SETUP — npm ci, cache node_modules, emit lockfile-pinned artefact
+# ─────────────────────────────────────────────────────────────────────
+
+setup:
+  stage: setup
+  script:
+    - npm ci --ignore-scripts
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm-cache/
+    policy: pull-push
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - node_modules/
+
+# ─────────────────────────────────────────────────────────────────────
+# 2. QUALITY (parallel)
+# ─────────────────────────────────────────────────────────────────────
+
+lint:
+  stage: quality
+  needs: [setup]
+  script: npm run lint
+
+format-check:
+  stage: quality
+  needs: [setup]
+  script: npm run format:check
+
+typecheck:
+  stage: quality
+  needs: [setup]
+  script: npm run typecheck
+
+# ─────────────────────────────────────────────────────────────────────
+# 3. ARCH GATES (parallel) — all are merge blockers
+# ─────────────────────────────────────────────────────────────────────
+
+check:file-sizes:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:file-sizes
+
+check:imports:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:imports
+
+check:shared-state:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:shared-state
+
+check:tool-naming:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:tool-naming
+
+# ─────────────────────────────────────────────────────────────────────
+# 4. SECURITY (parallel)
+# ─────────────────────────────────────────────────────────────────────
+
+audit:deps:
+  stage: security
+  needs: [setup]
+  script: npm run audit:deps
+  allow_failure: false
+
+audit:licenses:
+  stage: security
+  needs: [setup]
+  script: npm run audit:licenses
+
+# ─────────────────────────────────────────────────────────────────────
+# 5. TESTS
+# ─────────────────────────────────────────────────────────────────────
+
+test:unit:
+  stage: test
+  needs: [lint, typecheck]
+  script: npm run test:unit -- --coverage
+
+test:integration:
+  stage: test
+  needs: [test:unit]
+  script: npm run test:integration
+
+# Tenant isolation suite — NON-NEGOTIABLE merge gate.
+# Runs as a separate, named job so its failure is immediately
+# attributable in the MR UI.
+test:isolation:
+  stage: test
+  needs: [test:unit]
+  script: npm run test:isolation
+  artifacts:
+    when: always
+    paths:
+      - coverage/
+    reports:
+      junit: coverage/junit.xml
+
+# ─────────────────────────────────────────────────────────────────────
+# 6. BUILD
+# ─────────────────────────────────────────────────────────────────────
+
+build:
+  stage: build
+  needs:
+    - lint
+    - format-check
+    - typecheck
+    - check:file-sizes
+    - check:imports
+    - check:shared-state
+    - check:tool-naming
+    - audit:deps
+    - audit:licenses
+    - test:unit
+    - test:integration
+    - test:isolation
+  script: npm run build
+  artifacts:
+    expire_in: 7 days
+    paths:
+      - dist/
+
+# ─────────────────────────────────────────────────────────────────────
+# 7. PUBLISH — only on git tag matching vX.Y.Z
+# ─────────────────────────────────────────────────────────────────────
+
+publish:npm:
+  stage: publish
+  needs: [build]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/'
+  script:
+    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+    - npm publish --provenance --access public

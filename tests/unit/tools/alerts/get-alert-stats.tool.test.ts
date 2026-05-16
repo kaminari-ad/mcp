@@ -1,0 +1,22 @@
+import { describe, expect, it } from "vitest";
+import { getAlertStatsTool } from "../../../../src/application/tools/alerts/get-alert-stats.tool.js";
+import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
+import { makeToolContext } from "../../../fakes/make-tool-context.js";
+
+describe("getAlertStatsTool", () => {
+  it("read-only", () => {
+    expect(getAlertStatsTool.name).toBe("get_alert_stats");
+    expect(getAlertStatsTool.annotations.readOnlyHint).toBe(true);
+  });
+  it("returns stats", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.getAlertStats = ok({ open: 3, ack: 1, resolved: 5, ignored: 0, total: 9 });
+    const r = await getAlertStatsTool.handler({}, makeToolContext({ api }));
+    expect(r._unsafeUnwrap().total).toBe(9);
+  });
+  it("maps error", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.getAlertStats = err(makeApiError("forbidden", "x"));
+    expect((await getAlertStatsTool.handler({}, makeToolContext({ api }))).isErr()).toBe(true);
+  });
+});

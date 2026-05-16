@@ -1,0 +1,126 @@
+#!/usr/bin/env tsx
+/**
+ * Enforce the 200-effective-line-per-file rule. See CONTRIBUTING.md
+ * "Coding standards" for the rationale.
+ *
+ * Counts effective lines (`total - blank - import`) per `.ts` file under
+ * `src/` and fails if any file exceeds {@link LINE_LIMIT}, except for the
+ * grandfathered list below.
+ *
+ * Tests (`tests/`) and scripts (`scripts/`) are intentionally NOT enforced
+ * here — the rule still applies in spirit but the signal would be diluted
+ * by setup files. Add a dedicated gate later if regressions appear.
+ *
+ * The script exists because ESLint has no file-length rule that counts
+ * effective lines the way `clean-code.mdc` defines them.
+ *
+ * Exit code 0 = pass, 1 = violations found.
+ */
+
+import { promises as fs } from "node:fs";
+import * as path from "node:path";
+import * as process from "node:process";
+
+const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const SRC_DIR = path.join(REPO_ROOT, "src");
+const LINE_LIMIT = 200;
+
+/**
+ * Files allowed to exceed the limit. Reasons must be listed here so the list
+ * is auditable. DO NOT add new entries without a discussion; prefer splitting
+ * the file. The path is relative to `src/`.
+ */
+const GRANDFATHERED: Readonly<Record<string, string>> = {
+  // Composition roots — wiring length scales with tool/port count, not
+  // with design complexity. Splitting them makes wiring harder to follow.
+  "presentation/stdio/stdio-bootstrap.ts": "composition root — wiring scales with tool count",
+  "presentation/http/http-bootstrap.ts": "composition root — wiring scales with tool count",
+  "application/tool-registry.ts": "registry — entries scale with tool count",
+  // Port interface — single source of truth for the API surface.
+  // Length scales with endpoint count, not with design complexity.
+  // Splitting would scatter the ApiGateway contract across files.
+  "domain/ports/api-gateway.ts": "port interface — scales with API endpoint count",
+  // Adapter implementing the port above — by definition the same shape.
+  "infrastructure/api/http-api-gateway.ts": "adapter for the api-gateway port",
+  // Collection of per-DTO parsers. Each parser is tiny (10-20 LOC) and
+  // shares the same primitive helpers (`s` / `n` / `b` / `sOrNull`).
+  // Splitting them would duplicate the helpers or force a separate
+  // shared-helpers module, with no readability gain.
+  "infrastructure/api/parsers/parse-generic.ts": "shared per-DTO parsers + primitive helpers",
+};
+
+const IMPORT_LINE = /^\s*(import |export\s+(\*|\{|type)|export\s+from )/;
+const BLANK_LINE = /^\s*$/;
+
+async function walkTsFiles(dir: string): Promise<readonly string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await walkTsFiles(full)));
+    } else if (entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+async function effectiveLines(filepath: string): Promise<number> {
+  const content = await fs.readFile(filepath, "utf8");
+  let count = 0;
+  for (const line of content.split("\n")) {
+    if (BLANK_LINE.test(line)) continue;
+    if (IMPORT_LINE.test(line)) continue;
+    count += 1;
+  }
+  return count;
+}
+
+async function main(): Promise<number> {
+  const exists = await fs
+    .access(SRC_DIR)
+    .then(() => true)
+    .catch(() => false);
+  if (!exists) {
+    console.log(`No src/ directory yet — nothing to check.`);
+    return 0;
+  }
+
+  const files = await walkTsFiles(SRC_DIR);
+  const violations: { rel: string; effective: number }[] = [];
+
+  for (const file of files) {
+    const rel = path.relative(SRC_DIR, file);
+    if (rel in GRANDFATHERED) continue;
+    const effective = await effectiveLines(file);
+    if (effective > LINE_LIMIT) {
+      violations.push({ rel, effective });
+    }
+  }
+
+  if (violations.length === 0) {
+    const grandfatheredCount = Object.keys(GRANDFATHERED).length;
+    console.log(
+      `All files under ${LINE_LIMIT} effective lines ` +
+        `(${grandfatheredCount} grandfathered).`
+    );
+    return 0;
+  }
+
+  violations.sort((a, b) => b.effective - a.effective);
+  console.error(
+    `File-size violations (${violations.length} files over ${LINE_LIMIT} effective lines):\n`
+  );
+  for (const { rel, effective } of violations) {
+    console.error(`  ${String(effective).padStart(4)}  ${rel}`);
+  }
+  console.error(
+    "\nSplit by responsibility. If the file is a composition root or otherwise " +
+      "irreducible, add it to GRANDFATHERED in scripts/check-file-sizes.ts with a reason."
+  );
+  return 1;
+}
+
+const code = await main();
+process.exit(code);

@@ -1,0 +1,46 @@
+# Pre-commit hooks for @kaminari-ad/mcp.
+#
+# Install once: `make install-hooks` (runs `npx lefthook install`).
+#
+# Hooks only run on staged files where possible — keeps commits fast.
+# CI re-runs the full suite, so hooks are a productivity aid, not a
+# replacement for CI gates.
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,mts,js,mjs,json,jsonc,md,yml,yaml}"
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+
+    lint:
+      glob: "*.{ts,mts}"
+      run: npx eslint --max-warnings 0 --fix {staged_files}
+      stage_fixed: true
+
+    no-secrets-quick:
+      # Belt-and-suspenders quick scan; ESLint plugin-no-secrets does the
+      # real work, this catches `.env` / `.pem` / `id_rsa` style files.
+      glob: "*"
+      run: |
+        for f in {staged_files}; do
+          case "$f" in
+            *.env|*.env.*|*id_rsa*|*.pem|*.key|*.p12|*.pfx)
+              echo "Refusing to commit potential secret: $f"
+              exit 1
+              ;;
+          esac
+        done
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no-install commitlint --edit {1}
+
+pre-push:
+  commands:
+    typecheck:
+      run: npx tsc --noEmit
+    test-unit:
+      run: npx vitest run tests/unit --reporter=dot --no-coverage
