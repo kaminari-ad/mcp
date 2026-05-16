@@ -15,8 +15,11 @@
 default:
   image: node:20.18.1-alpine3.20
   before_script:
-    - apk add --no-cache git
-    - corepack disable
+    # Pulled image is alpine (no git); shell-executor runners are
+    # debian/ubuntu (git already installed). Try `apk` then fall back
+    # silently so both executor types work.
+    - command -v apk >/dev/null 2>&1 && apk add --no-cache git || true
+    - corepack disable 2>/dev/null || true
 
 stages:
   - setup
