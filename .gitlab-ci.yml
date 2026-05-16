@@ -42,7 +42,11 @@ variables:
 setup:
   stage: setup
   script:
-    - npm ci --ignore-scripts
+    # `--legacy-peer-deps` papers over peer-dep mismatches between
+    # eslint 9.x and eslint-plugin-vitest's vendored typescript-eslint
+    # (vitest plugin lags). Safe to drop once the plugin catches up to
+    # @typescript-eslint/utils >= 8.x.
+    - npm ci --ignore-scripts --legacy-peer-deps
   cache:
     key:
       files:
