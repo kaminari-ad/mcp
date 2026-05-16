@@ -13,7 +13,8 @@
 # `setup` produces a `node_modules` artifact that downstream jobs reuse.
 
 default:
-  image: node:20.18.1-alpine3.20
+  # Use latest 20.x LTS (`@eslint/core@1.2.x` requires node 20.19+).
+  image: node:20-alpine
   before_script:
     # Pulled image is alpine (no git); shell-executor runners are
     # debian/ubuntu (git already installed). Try `apk` then fall back
