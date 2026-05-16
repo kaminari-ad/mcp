@@ -411,6 +411,14 @@ export type EventCatalogEntryResponse = Pick<
   readonly sample_payload?: Readonly<Record<string, unknown>>;
 };
 
+/**
+ * Wraps a list of {@link EventCatalogEntryResponse}.
+ *
+ * Defined as a hand-written interface (not `Pick<S["EventCatalogResponse"]>`)
+ * because the projected `entries` field references our narrowed
+ * `EventCatalogEntryResponse` (sample payloads omitted), which is a
+ * structural subtype of the SDK shape but not the same TypeScript type.
+ */
 export interface EventCatalogResponse {
   readonly entries: readonly EventCatalogEntryResponse[];
 }

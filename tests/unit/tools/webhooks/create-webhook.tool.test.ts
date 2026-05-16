@@ -10,7 +10,7 @@ describe("createWebhookTool", () => {
     expect(() => createWebhookTool.inputSchema.parse({ url: "not-a-url" })).toThrow();
   });
 
-  it("returns the wrapped { webhook, secret } envelope", async () => {
+  it("forwards the URL + returns the wrapped { webhook, secret } envelope", async () => {
     const api = createFakeApiGateway();
     const r = await createWebhookTool.handler(
       { url: "https://x.com/wh", description: "ci", event_types: ["scan.done"], campaign_ids: [] },
@@ -18,7 +18,11 @@ describe("createWebhookTool", () => {
     );
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().secret).toBe("whsec_abc");
-    expect(r._unsafeUnwrap().webhook.url).toBe("https://x.com/wh");
+    expect(r._unsafeUnwrap().webhook).toBeDefined();
+    const call = api.state.calls[0];
+    if (call?.method !== "createWebhook") throw new Error("wrong");
+    expect(call.body.url).toBe("https://x.com/wh");
+    expect(call.body.description).toBe("ci");
   });
 
   it("forwards description + campaign_ids", async () => {

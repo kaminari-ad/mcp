@@ -9,10 +9,13 @@ describe("getTagDefinitionTool", () => {
     expect(getTagDefinitionTool.name).toBe("get_tag_definition");
     expect(getTagDefinitionTool.annotations.readOnlyHint).toBe(true);
   });
-  it("returns tag", async () => {
+  it("forwards the slug to the gateway", async () => {
     const api = createFakeApiGateway();
     const r = await getTagDefinitionTool.handler({ slug: "malware" }, makeToolContext({ api }));
-    expect(r._unsafeUnwrap().slug).toBe("malware");
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "getTagDefinition") throw new Error("wrong");
+    expect(call.slug).toBe("malware");
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

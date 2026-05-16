@@ -22,6 +22,7 @@ describe("getAlertStatsTool", () => {
     expect(r._unsafeUnwrap().acknowledged).toBe(1);
     expect(r._unsafeUnwrap().resolved).toBe(5);
     expect(r._unsafeUnwrap().dismissed).toBe(0);
+    expect(api.state.calls).toEqual([{ method: "getAlertStats" }]);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

@@ -93,9 +93,23 @@ describe("withId-based parsers", () => {
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().email).toBe("");
   });
-  it("parseRole filters non-string permissions", () => {
+  it("parseRole on a realistic API payload", () => {
+    const r = parseRole({
+      id: "00000000-0000-0000-0000-000000000033",
+      name: "admin",
+      scope: "organization",
+      is_system: false,
+      permissions: ["scans.read", "scans.write", "billing.read"],
+    });
+    expect(r.isOk()).toBe(true);
+    const v = r._unsafeUnwrap();
+    expect(v.scope).toBe("organization");
+    expect(v.permissions).toEqual(["scans.read", "scans.write", "billing.read"]);
+  });
+  it("parseRole filters non-string permissions and defaults scope", () => {
     const r = parseRole({ id: "r1", permissions: ["a", 1, "b"] });
     expect(r._unsafeUnwrap().permissions).toEqual(["a", "b"]);
+    expect(r._unsafeUnwrap().scope).toBe("organization");
   });
   it("parseApiKeyCreated Ok / requires full_key", () => {
     expect(parseApiKeyCreated({ id: "k1", full_key: "secret" }).isOk()).toBe(true);
@@ -112,11 +126,50 @@ describe("withId-based parsers", () => {
     expect(parseScanTag({}).isErr()).toBe(true);
     expect(parseScanTag("x").isErr()).toBe(true);
   });
-  it("parseUsage Ok", () => {
-    expect(parseUsage({ id: "x" }).isOk()).toBe(true);
+  it("parseUsage on a realistic API row", () => {
+    const r = parseUsage({
+      id: "00000000-0000-0000-0000-000000000444",
+      scan_id: "00000000-0000-0000-0000-000000000aaa",
+      charged_micros: 250,
+      balance_after_micros: 49_750,
+      within_plan: false,
+      event_type: "recheck",
+      created_at: "2026-05-16T12:00:00Z",
+    });
+    expect(r.isOk()).toBe(true);
+    const v = r._unsafeUnwrap();
+    expect(v.charged_micros).toBe(250);
+    expect(v.balance_after_micros).toBe(49_750);
+    expect(v.within_plan).toBe(false);
+    expect(v.event_type).toBe("recheck");
   });
-  it("parseBalanceTx Ok", () => {
-    expect(parseBalanceTx({ id: "x" }).isOk()).toBe(true);
+  it("parseUsage with skeleton input falls back to defaults", () => {
+    const r = parseUsage({ id: "x" });
+    expect(r._unsafeUnwrap().event_type).toBe("scan");
+    expect(r._unsafeUnwrap().charged_micros).toBe(0);
+  });
+  it("parseBalanceTx on a realistic API row", () => {
+    const r = parseBalanceTx({
+      id: "00000000-0000-0000-0000-000000000555",
+      type: "usage_charge",
+      amount_micros: -250,
+      balance_after_micros: 49_750,
+      description: "Scan charge",
+      reference_kind: "scan",
+      reference_id: "00000000-0000-0000-0000-000000000aaa",
+      actor_user_id: null,
+      created_at: "2026-05-16T12:00:00Z",
+    });
+    expect(r.isOk()).toBe(true);
+    const v = r._unsafeUnwrap();
+    expect(v.type).toBe("usage_charge");
+    expect(v.amount_micros).toBe(-250);
+    expect(v.reference_kind).toBe("scan");
+    expect(v.actor_user_id).toBeNull();
+  });
+  it("parseBalanceTx with skeleton input falls back to defaults", () => {
+    const r = parseBalanceTx({ id: "x" });
+    expect(r._unsafeUnwrap().amount_micros).toBe(0);
   });
   it("parseInvoice Ok / null paid_at coercion", () => {
     const r = parseInvoice({ id: "x", paid_at: 5 });
@@ -126,8 +179,73 @@ describe("withId-based parsers", () => {
     const r = parseWebhookDelivery({ id: "x", response_status: null });
     expect(r._unsafeUnwrap().response_status).toBeNull();
   });
-  it("parseAlertDestination Ok", () => {
-    expect(parseAlertDestination({ id: "x" }).isOk()).toBe(true);
+  it("parseAlertDestination on a realistic Slack destination", () => {
+    const r = parseAlertDestination({
+      id: "00000000-0000-0000-0000-000000000999",
+      organization_id: "00000000-0000-0000-0000-000000000010",
+      channel: "slack",
+      name: "Ops alerts",
+      is_active: true,
+      is_default_target: true,
+      version: "internal",
+      consecutive_failures: 0,
+      last_delivery_at: "2026-05-16T11:59:00Z",
+      last_delivery_status: 200,
+      slack_workspace_id: "T01234567",
+      slack_channel_id: "C09876543",
+      slack_channel_name: "ops-alerts",
+      telegram_chat_id: null,
+      telegram_chat_title: null,
+      telegram_chat_type: null,
+      email_address: null,
+      included_label_keys: ["env", "campaign"],
+      created_at: "2026-05-01T00:00:00Z",
+      updated_at: "2026-05-16T11:59:00Z",
+    });
+    expect(r.isOk()).toBe(true);
+    const v = r._unsafeUnwrap();
+    expect(v.channel).toBe("slack");
+    expect(v.is_default_target).toBe(true);
+    expect(v.version).toBe("internal");
+    expect(v.slack_workspace_id).toBe("T01234567");
+    expect(v.slack_channel_name).toBe("ops-alerts");
+    expect(v.included_label_keys).toEqual(["env", "campaign"]);
+  });
+  it("parseAlertDestination on a realistic Telegram destination", () => {
+    const r = parseAlertDestination({
+      id: "00000000-0000-0000-0000-000000000aaa",
+      organization_id: "00000000-0000-0000-0000-000000000010",
+      channel: "telegram",
+      name: "TG bot",
+      is_active: true,
+      is_default_target: false,
+      version: "public",
+      consecutive_failures: 3,
+      last_delivery_at: "2026-05-16T11:00:00Z",
+      last_delivery_status: 403,
+      slack_workspace_id: null,
+      slack_channel_id: null,
+      slack_channel_name: null,
+      telegram_chat_id: "-100123456",
+      telegram_chat_title: "Kaminari alerts",
+      telegram_chat_type: "supergroup",
+      email_address: null,
+      included_label_keys: [],
+      created_at: "2026-04-01T00:00:00Z",
+      updated_at: "2026-05-16T11:00:00Z",
+    });
+    expect(r.isOk()).toBe(true);
+    const v = r._unsafeUnwrap();
+    expect(v.channel).toBe("telegram");
+    expect(v.telegram_chat_title).toBe("Kaminari alerts");
+    expect(v.telegram_chat_type).toBe("supergroup");
+    expect(v.consecutive_failures).toBe(3);
+    expect(v.last_delivery_status).toBe(403);
+  });
+  it("parseAlertDestination with skeleton input falls back to defaults", () => {
+    const r = parseAlertDestination({ id: "x" });
+    expect(r._unsafeUnwrap().channel).toBe("");
+    expect(r._unsafeUnwrap().version).toBe("public");
   });
   it("parsePolicyEntry Ok", () => {
     expect(parsePolicyEntry({ id: "e1", tag_slug: "x", country_codes: ["US"] }).isOk()).toBe(true);

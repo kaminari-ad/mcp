@@ -11,13 +11,16 @@ describe("requestPolicySetApprovalTool", () => {
     expect(requestPolicySetApprovalTool.name).toBe("request_policy_set_approval");
     expect(requestPolicySetApprovalTool.annotations.idempotentHint).toBe(false);
   });
-  it("returns policy set", async () => {
+  it("forwards the policy-set id and returns the gateway's policy set", async () => {
     const api = createFakeApiGateway();
     const r = await requestPolicySetApprovalTool.handler(
       { policy_set_id: PID },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().id).toBe(PID);
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "requestPolicySetApproval") throw new Error("wrong");
+    expect(call.id).toBe(PID);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

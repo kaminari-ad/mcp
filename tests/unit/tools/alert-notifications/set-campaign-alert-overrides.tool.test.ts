@@ -12,28 +12,27 @@ describe("setCampaignAlertOverridesTool", () => {
     expect(setCampaignAlertOverridesTool.name).toBe("set_campaign_alert_overrides");
     expect(setCampaignAlertOverridesTool.annotations.idempotentHint).toBe(true);
   });
-  it("forwards mode + destination_ids", async () => {
+  it("forwards mode + destination_ids on the call body", async () => {
     const api = createFakeApiGateway();
-    const r = await setCampaignAlertOverridesTool.handler(
+    await setCampaignAlertOverridesTool.handler(
       { campaign_id: CID, mode: "include", destination_ids: [DID] },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().mode).toBe("include");
-    expect(r._unsafeUnwrap().destination_ids).toEqual([DID]);
     const call = api.state.calls[0];
     if (call?.method !== "setCampaignAlertOverrides") throw new Error("wrong");
+    expect(call.campaignId).toBe(CID);
     expect(call.body).toEqual({ mode: "include", destination_ids: [DID] });
   });
-  it("inherit mode defaults destination_ids to empty", async () => {
+  it("inherit mode forwards empty destination_ids", async () => {
     const api = createFakeApiGateway();
-    // zod default([]) populates destination_ids when omitted at the
-    // schema boundary — we model that here by passing the post-parsed
-    // shape (handler receives the parsed output, not the raw input).
-    const r = await setCampaignAlertOverridesTool.handler(
+    await setCampaignAlertOverridesTool.handler(
       { campaign_id: CID, mode: "inherit", destination_ids: [] },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().mode).toBe("inherit");
+    const call = api.state.calls[0];
+    if (call?.method !== "setCampaignAlertOverrides") throw new Error("wrong");
+    expect(call.body.mode).toBe("inherit");
+    expect(call.body.destination_ids).toEqual([]);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

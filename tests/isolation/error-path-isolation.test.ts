@@ -5,8 +5,8 @@
  * `Err`), the response goes ONLY to that request. Concurrent requests
  * for other Bearers must NOT see any of the failing request's state.
  *
- * Asserted via two concurrent `getMe()` calls — one configured to
- * return `Err`, the other a happy-path `Ok`. The Ok caller must
+ * Asserted via two concurrent `getAccount()` calls — one configured
+ * to return `Err`, the other a happy-path `Ok`. The Ok caller must
  * receive an untouched Ok result regardless of timing.
  */
 

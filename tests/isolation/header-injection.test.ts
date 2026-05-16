@@ -37,11 +37,11 @@ describe("isolation: header allowlist on outbound API calls", () => {
       .reply(200, (opts) => {
         receivedHeaders = opts.headers as Record<string, string>;
         return {
-          user_id: "u",
-          organization_id: "o",
-          email: "x@y",
-          display_name: "X",
-          permissions: [],
+          id: "00000000-0000-0000-0000-000000000010",
+          name: "Test Org",
+          owner_id: "00000000-0000-0000-0000-000000000001",
+          is_active: true,
+          created_at: "2026-01-01T00:00:00Z",
         };
       });
 

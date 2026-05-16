@@ -401,6 +401,110 @@ const DEFAULT_WEBHOOK: WebhookResponse = {
   updated_at: "2026-05-16T00:00:00Z",
 };
 
+const DEFAULT_WEBHOOK_CREATED: WebhookCreatedResponse = {
+  webhook: DEFAULT_WEBHOOK,
+  secret: "whsec_abc",
+};
+
+const DEFAULT_WEBHOOK_ROTATED: WebhookCreatedResponse = {
+  webhook: DEFAULT_WEBHOOK,
+  secret: "whsec_rotated",
+};
+
+const DEFAULT_USER: UserResponse = {
+  id: "00000000-0000-0000-0000-000000000002",
+  email: "member@example.com",
+  name: "Member",
+  role_name: "member",
+  is_active: true,
+  created_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_API_KEY_CREATED: ApiKeyCreatedResponse = {
+  id: "00000000-0000-0000-0000-000000000fff",
+  key_prefix: "kad_new1",
+  full_key: "kad_full_secret_test_value",
+  name: "ci",
+  expires_at: null,
+  created_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_CAMPAIGN_ARCHIVED: CampaignResponse = { ...DEFAULT_CAMPAIGN, is_archived: true };
+
+const DEFAULT_GROUP_ARCHIVED: CampaignGroupResponse = { ...DEFAULT_GROUP, is_archived: true };
+
+const DEFAULT_GROUP_PAUSED: CampaignGroupResponse = { ...DEFAULT_GROUP, schedule_paused: true };
+
+const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
+  slug: "default-tag",
+  category: "c",
+  source: "system",
+  display_name: "Default tag",
+  description: "",
+  severity: "medium",
+  is_system: true,
+  organization_id: null,
+  show_in_public_report: false,
+  scans_count: 0,
+  rules_count: 0,
+};
+
+const DEFAULT_TAG_DETAIL_CUSTOM: TagDefinitionDetailResponse = {
+  ...DEFAULT_TAG_DETAIL,
+  source: "custom",
+  is_system: false,
+  organization_id: "00000000-0000-0000-0000-000000000010",
+};
+
+const DEFAULT_CUSTOM_RULE: CustomRuleResponse = {
+  id: "00000000-0000-0000-0000-000000000bbb",
+  organization_id: "00000000-0000-0000-0000-000000000010",
+  name: "R",
+  tag_slug: "x",
+  rule_type: "regex",
+  config: {},
+  target: "page",
+  is_active: true,
+  created_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_POLICY_SET: PolicySetResponse = {
+  id: "00000000-0000-0000-0000-000000000ddd",
+  name: "Default",
+  description: "",
+  organization_id: "00000000-0000-0000-0000-000000000010",
+  visibility: "private",
+  is_approved: true,
+  entries: [],
+  created_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_ALERT_DESTINATION: AlertNotificationDestinationResponse = {
+  id: "00000000-0000-0000-0000-000000000999",
+  channel: "slack",
+  name: "default",
+  is_active: true,
+  is_default_target: false,
+  version: "public",
+  consecutive_failures: 0,
+  last_delivery_at: null,
+  last_delivery_status: null,
+  slack_workspace_id: null,
+  slack_channel_name: null,
+  telegram_chat_title: null,
+  telegram_chat_type: null,
+  email_address: null,
+  included_label_keys: [],
+  created_at: "2026-05-16T00:00:00Z",
+  updated_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_CAMPAIGN_OVERRIDES: CampaignOverridesResponse = {
+  campaign_id: "00000000-0000-0000-0000-000000000ccc",
+  mode: "inherit",
+  destination_ids: [],
+};
+
 export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGatewayState } {
   const state: FakeApiGatewayState = { calls: [], responses: {} };
   function push(call: Call): void {
@@ -418,10 +522,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async updateOrg(body) {
       push({ method: "updateOrg", body });
       await Promise.resolve();
-      return (
-        state.responses.updateOrg ??
-        ok<OrgResponse, ApiError>({ ...DEFAULT_ORG, name: body.name ?? DEFAULT_ORG.name })
-      );
+      return state.responses.updateOrg ?? ok<OrgResponse, ApiError>(DEFAULT_ORG);
     },
     async listOrgUsers() {
       push({ method: "listOrgUsers" });
@@ -431,32 +532,12 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async inviteUser(body) {
       push({ method: "inviteUser", body });
       await Promise.resolve();
-      return (
-        state.responses.inviteUser ??
-        ok<UserResponse, ApiError>({
-          id: "00000000-0000-0000-0000-000000000002",
-          email: body.email,
-          name: body.name ?? body.email.split("@")[0] ?? "",
-          role_name: "member",
-          is_active: true,
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.inviteUser ?? ok<UserResponse, ApiError>(DEFAULT_USER);
     },
     async updateUserRole(userId, body) {
       push({ method: "updateUserRole", userId, body });
       await Promise.resolve();
-      return (
-        state.responses.updateUserRole ??
-        ok<UserResponse, ApiError>({
-          id: userId,
-          email: "user@example.com",
-          name: "U",
-          role_name: body.role_id,
-          is_active: true,
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.updateUserRole ?? ok<UserResponse, ApiError>(DEFAULT_USER);
     },
     async removeUser(userId) {
       push({ method: "removeUser", userId });
@@ -482,15 +563,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "createApiKey", body });
       await Promise.resolve();
       return (
-        state.responses.createApiKey ??
-        ok<ApiKeyCreatedResponse, ApiError>({
-          id: "00000000-0000-0000-0000-000000000fff",
-          key_prefix: "kad_new1",
-          name: body.name,
-          expires_at: body.expires_at ?? null,
-          created_at: "2026-05-16T00:00:00Z",
-          full_key: "kad_full_secret_test_value",
-        })
+        state.responses.createApiKey ?? ok<ApiKeyCreatedResponse, ApiError>(DEFAULT_API_KEY_CREATED)
       );
     },
     async revokeApiKey(id) {
@@ -527,8 +600,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "createBulkScans", body });
       await Promise.resolve();
       return (
-        state.responses.createBulkScans ??
-        ok<readonly ScanResponse[], ApiError>(body.country_codes.map(() => DEFAULT_SCAN))
+        state.responses.createBulkScans ?? ok<readonly ScanResponse[], ApiError>([DEFAULT_SCAN])
       );
     },
     async recheckScans(body) {
@@ -599,17 +671,13 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "archiveCampaign", id });
       await Promise.resolve();
       return (
-        state.responses.archiveCampaign ??
-        ok<CampaignResponse, ApiError>({ ...DEFAULT_CAMPAIGN, is_archived: true })
+        state.responses.archiveCampaign ?? ok<CampaignResponse, ApiError>(DEFAULT_CAMPAIGN_ARCHIVED)
       );
     },
     async unarchiveCampaign(id) {
       push({ method: "unarchiveCampaign", id });
       await Promise.resolve();
-      return (
-        state.responses.unarchiveCampaign ??
-        ok<CampaignResponse, ApiError>({ ...DEFAULT_CAMPAIGN, id, is_archived: false })
-      );
+      return state.responses.unarchiveCampaign ?? ok<CampaignResponse, ApiError>(DEFAULT_CAMPAIGN);
     },
     async cancelCampaign(id) {
       push({ method: "cancelCampaign", id });
@@ -683,24 +751,21 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "createCampaignGroup", body });
       await Promise.resolve();
       return (
-        state.responses.createCampaignGroup ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, name: body.name })
+        state.responses.createCampaignGroup ?? ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP)
       );
     },
     async updateCampaignGroup(id, body) {
       push({ method: "updateCampaignGroup", id, body });
       await Promise.resolve();
       return (
-        state.responses.updateCampaignGroup ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, id })
+        state.responses.updateCampaignGroup ?? ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP)
       );
     },
     async runCampaignGroup(id) {
       push({ method: "runCampaignGroup", id });
       await Promise.resolve();
       return (
-        state.responses.runCampaignGroup ??
-        ok<GroupActionResponse, ApiError>({ ...DEFAULT_GROUP_ACTION, group_id: id })
+        state.responses.runCampaignGroup ?? ok<GroupActionResponse, ApiError>(DEFAULT_GROUP_ACTION)
       );
     },
     async cancelCampaignGroup(id) {
@@ -708,7 +773,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.cancelCampaignGroup ??
-        ok<GroupActionResponse, ApiError>({ ...DEFAULT_GROUP_ACTION, group_id: id })
+        ok<GroupActionResponse, ApiError>(DEFAULT_GROUP_ACTION)
       );
     },
     async archiveCampaignGroup(id) {
@@ -716,15 +781,14 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.archiveCampaignGroup ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, id, is_archived: true })
+        ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP_ARCHIVED)
       );
     },
     async unarchiveCampaignGroup(id) {
       push({ method: "unarchiveCampaignGroup", id });
       await Promise.resolve();
       return (
-        state.responses.unarchiveCampaignGroup ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, id, is_archived: false })
+        state.responses.unarchiveCampaignGroup ?? ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP)
       );
     },
     async pauseCampaignGroupSchedule(id) {
@@ -732,7 +796,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.pauseCampaignGroupSchedule ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, id, schedule_paused: true })
+        ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP_PAUSED)
       );
     },
     async resumeCampaignGroupSchedule(id) {
@@ -740,7 +804,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.resumeCampaignGroupSchedule ??
-        ok<CampaignGroupResponse, ApiError>({ ...DEFAULT_GROUP, id, schedule_paused: false })
+        ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP)
       );
     },
 
@@ -755,19 +819,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.getTagDefinition ??
-        ok<TagDefinitionDetailResponse, ApiError>({
-          slug,
-          category: "c",
-          source: "system",
-          display_name: slug,
-          description: "",
-          severity: "medium",
-          is_system: true,
-          organization_id: null,
-          show_in_public_report: false,
-          scans_count: 0,
-          rules_count: 0,
-        })
+        ok<TagDefinitionDetailResponse, ApiError>(DEFAULT_TAG_DETAIL)
       );
     },
     async updateTagDefinition(slug, body) {
@@ -775,19 +827,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.updateTagDefinition ??
-        ok<TagDefinitionDetailResponse, ApiError>({
-          slug,
-          category: "c",
-          source: "custom",
-          display_name: body.display_name ?? slug,
-          description: body.description ?? "",
-          severity: body.severity ?? "medium",
-          is_system: false,
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          show_in_public_report: body.show_in_public_report ?? false,
-          scans_count: 0,
-          rules_count: 0,
-        })
+        ok<TagDefinitionDetailResponse, ApiError>(DEFAULT_TAG_DETAIL_CUSTOM)
       );
     },
     async deleteTagDefinition(slug) {
@@ -805,55 +845,20 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async getCustomRule(id) {
       push({ method: "getCustomRule", id });
       await Promise.resolve();
-      return (
-        state.responses.getCustomRule ??
-        ok<CustomRuleResponse, ApiError>({
-          id,
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          name: "R",
-          tag_slug: "x",
-          rule_type: "regex",
-          config: {},
-          target: "page",
-          is_active: true,
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.getCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE);
     },
     async createCustomRule(body) {
       push({ method: "createCustomRule", body });
       await Promise.resolve();
       return (
-        state.responses.createCustomRule ??
-        ok<CustomRuleResponse, ApiError>({
-          id: "00000000-0000-0000-0000-000000000bbb",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          name: body.name,
-          tag_slug: body.tag_slug ?? "",
-          rule_type: body.rule_type,
-          config: body.config,
-          target: body.target ?? "page",
-          is_active: true,
-          created_at: "2026-05-16T00:00:00Z",
-        })
+        state.responses.createCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
       );
     },
     async updateCustomRule(id, body) {
       push({ method: "updateCustomRule", id, body });
       await Promise.resolve();
       return (
-        state.responses.updateCustomRule ??
-        ok<CustomRuleResponse, ApiError>({
-          id,
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          name: body.name ?? "R",
-          tag_slug: body.tag_slug ?? "x",
-          rule_type: "regex",
-          config: body.config ?? {},
-          target: body.target ?? "page",
-          is_active: body.is_active ?? true,
-          created_at: "2026-05-16T00:00:00Z",
-        })
+        state.responses.updateCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
       );
     },
     async deleteCustomRule(id) {
@@ -879,61 +884,17 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async getPolicySet(id) {
       push({ method: "getPolicySet", id });
       await Promise.resolve();
-      return (
-        state.responses.getPolicySet ??
-        ok<PolicySetResponse, ApiError>({
-          id,
-          name: "default",
-          description: "",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          visibility: "private",
-          is_approved: true,
-          entries: [],
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.getPolicySet ?? ok<PolicySetResponse, ApiError>(DEFAULT_POLICY_SET);
     },
     async createPolicySet(body) {
       push({ method: "createPolicySet", body });
       await Promise.resolve();
-      return (
-        state.responses.createPolicySet ??
-        ok<PolicySetResponse, ApiError>({
-          id: "00000000-0000-0000-0000-000000000ddd",
-          name: body.name,
-          description: body.description ?? "",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          visibility: "private",
-          is_approved: false,
-          entries: body.entries.map((e, i) => ({
-            id: `entry-${i}`,
-            tag_slug: e.tag_slug,
-            country_codes: [...(e.country_codes ?? [])],
-          })),
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.createPolicySet ?? ok<PolicySetResponse, ApiError>(DEFAULT_POLICY_SET);
     },
     async updatePolicySet(id, body) {
       push({ method: "updatePolicySet", id, body });
       await Promise.resolve();
-      return (
-        state.responses.updatePolicySet ??
-        ok<PolicySetResponse, ApiError>({
-          id,
-          name: body.name,
-          description: body.description ?? "",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          visibility: "private",
-          is_approved: false,
-          entries: body.entries.map((e, i) => ({
-            id: `entry-${i}`,
-            tag_slug: e.tag_slug,
-            country_codes: [...(e.country_codes ?? [])],
-          })),
-          created_at: "2026-05-16T00:00:00Z",
-        })
-      );
+      return state.responses.updatePolicySet ?? ok<PolicySetResponse, ApiError>(DEFAULT_POLICY_SET);
     },
     async deletePolicySet(id) {
       push({ method: "deletePolicySet", id });
@@ -945,16 +906,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.requestPolicySetApproval ??
-        ok<PolicySetResponse, ApiError>({
-          id,
-          name: "x",
-          description: "",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          visibility: "public",
-          is_approved: false,
-          entries: [],
-          created_at: "2026-05-16T00:00:00Z",
-        })
+        ok<PolicySetResponse, ApiError>(DEFAULT_POLICY_SET)
       );
     },
 
@@ -1009,39 +961,13 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.createWebhook ??
-        ok<WebhookCreatedResponse, ApiError>({
-          webhook: {
-            ...DEFAULT_WEBHOOK,
-            url: body.url,
-            description: body.description ?? "",
-            event_types: [...(body.event_types ?? [])],
-            campaign_ids: [...(body.campaign_ids ?? [])],
-          },
-          secret: "whsec_abc",
-        })
+        ok<WebhookCreatedResponse, ApiError>(DEFAULT_WEBHOOK_CREATED)
       );
     },
     async updateWebhook(id, body) {
       push({ method: "updateWebhook", id, body });
       await Promise.resolve();
-      return (
-        state.responses.updateWebhook ??
-        ok<WebhookResponse, ApiError>({
-          ...DEFAULT_WEBHOOK,
-          id,
-          url: body.url ?? DEFAULT_WEBHOOK.url,
-          description: body.description ?? DEFAULT_WEBHOOK.description,
-          event_types:
-            body.event_types === undefined || body.event_types === null
-              ? DEFAULT_WEBHOOK.event_types
-              : [...body.event_types],
-          campaign_ids:
-            body.campaign_ids === undefined || body.campaign_ids === null
-              ? DEFAULT_WEBHOOK.campaign_ids
-              : [...body.campaign_ids],
-          is_active: body.is_active ?? DEFAULT_WEBHOOK.is_active,
-        })
-      );
+      return state.responses.updateWebhook ?? ok<WebhookResponse, ApiError>(DEFAULT_WEBHOOK);
     },
     async deleteWebhook(id) {
       push({ method: "deleteWebhook", id });
@@ -1058,10 +984,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.rotateWebhookSecret ??
-        ok<WebhookCreatedResponse, ApiError>({
-          webhook: { ...DEFAULT_WEBHOOK, id: endpointId },
-          secret: "whsec_rotated",
-        })
+        ok<WebhookCreatedResponse, ApiError>(DEFAULT_WEBHOOK_ROTATED)
       );
     },
     async listWebhookEventTypes() {
@@ -1195,25 +1118,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.setAlertDestinationVersion ??
-        ok<AlertNotificationDestinationResponse, ApiError>({
-          id,
-          channel: "slack",
-          name: "default",
-          is_active: true,
-          is_default_target: false,
-          version: body.version,
-          consecutive_failures: 0,
-          last_delivery_at: null,
-          last_delivery_status: null,
-          slack_workspace_id: null,
-          slack_channel_name: null,
-          telegram_chat_title: null,
-          telegram_chat_type: null,
-          email_address: null,
-          included_label_keys: [],
-          created_at: "2026-05-16T00:00:00Z",
-          updated_at: "2026-05-16T00:00:00Z",
-        })
+        ok<AlertNotificationDestinationResponse, ApiError>(DEFAULT_ALERT_DESTINATION)
       );
     },
     async getCampaignAlertOverrides(campaignId) {
@@ -1221,11 +1126,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.getCampaignAlertOverrides ??
-        ok<CampaignOverridesResponse, ApiError>({
-          campaign_id: campaignId,
-          mode: "inherit",
-          destination_ids: [],
-        })
+        ok<CampaignOverridesResponse, ApiError>(DEFAULT_CAMPAIGN_OVERRIDES)
       );
     },
     async setCampaignAlertOverrides(campaignId, body) {
@@ -1233,11 +1134,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.setCampaignAlertOverrides ??
-        ok<CampaignOverridesResponse, ApiError>({
-          campaign_id: campaignId,
-          mode: body.mode,
-          destination_ids: [...(body.destination_ids ?? [])],
-        })
+        ok<CampaignOverridesResponse, ApiError>(DEFAULT_CAMPAIGN_OVERRIDES)
       );
     },
   };

@@ -13,7 +13,7 @@ describe("updateAlertStatusTool", () => {
       updateAlertStatusTool.inputSchema.parse({ alert_id: AID, status: "weird" })
     ).toThrow();
   });
-  it("forwards status", async () => {
+  it("forwards alert id + status", async () => {
     const api = createFakeApiGateway();
     await updateAlertStatusTool.handler(
       { alert_id: AID, status: "resolved" },
@@ -21,7 +21,8 @@ describe("updateAlertStatusTool", () => {
     );
     const call = api.state.calls[0];
     if (call?.method !== "updateAlertStatus") throw new Error("wrong");
-    expect(call.body.status).toBe("resolved");
+    expect(call.alertId).toBe(AID);
+    expect(call.body).toEqual({ status: "resolved" });
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

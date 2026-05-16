@@ -23,6 +23,7 @@ describe("getUsageSummaryTool", () => {
     const r = await getUsageSummaryTool.handler({}, makeToolContext({ api }));
     expect(r._unsafeUnwrap().checks).toBe(5);
     expect(r._unsafeUnwrap().charged_micros).toBe(1000);
+    expect(api.state.calls).toEqual([{ method: "getUsageSummary" }]);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

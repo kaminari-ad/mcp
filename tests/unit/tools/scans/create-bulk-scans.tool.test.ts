@@ -16,7 +16,7 @@ describe("createBulkScansTool", () => {
     ).toThrow();
   });
 
-  it("returns items+total and forwards labels + ad_tag when given", async () => {
+  it("forwards labels + ad_tag + country list verbatim to the gateway", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
     const result = await createBulkScansTool.handler(
@@ -29,7 +29,6 @@ describe("createBulkScansTool", () => {
       ctx
     );
     expect(result.isOk()).toBe(true);
-    expect(result._unsafeUnwrap().total).toBe(3);
 
     const call = api.state.calls[0];
     if (call?.method !== "createBulkScans") throw new Error("wrong method");
@@ -67,7 +66,7 @@ describe("createBulkScansTool", () => {
     expect(result.isErr()).toBe(true);
   });
 
-  it("default response sizes match the requested country list", async () => {
+  it("propagates the gateway's empty-array response as total=0", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createBulkScans = ok([]);
     const ctx = makeToolContext({ api });

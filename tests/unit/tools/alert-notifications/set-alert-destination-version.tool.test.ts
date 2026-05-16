@@ -11,13 +11,16 @@ describe("setAlertDestinationVersionTool", () => {
     expect(setAlertDestinationVersionTool.name).toBe("set_alert_destination_version");
     expect(setAlertDestinationVersionTool.annotations.idempotentHint).toBe(true);
   });
-  it("forwards version", async () => {
+  it("forwards version on the call body", async () => {
     const api = createFakeApiGateway();
-    const r = await setAlertDestinationVersionTool.handler(
+    await setAlertDestinationVersionTool.handler(
       { destination_id: DID, version: "internal" },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().version).toBe("internal");
+    const call = api.state.calls[0];
+    if (call?.method !== "setAlertDestinationVersion") throw new Error("wrong");
+    expect(call.id).toBe(DID);
+    expect(call.body).toEqual({ version: "internal" });
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

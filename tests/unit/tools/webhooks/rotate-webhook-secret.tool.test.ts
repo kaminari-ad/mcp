@@ -11,11 +11,12 @@ describe("rotateWebhookSecretTool", () => {
     expect(rotateWebhookSecretTool.name).toBe("rotate_webhook_secret");
     expect(rotateWebhookSecretTool.annotations.destructiveHint).toBe(true);
   });
-  it("returns new secret in the wrapped envelope", async () => {
+  it("forwards the endpoint id and returns the new wrapped envelope", async () => {
     const api = createFakeApiGateway();
     const r = await rotateWebhookSecretTool.handler({ webhook_id: WID }, makeToolContext({ api }));
     expect(r._unsafeUnwrap().secret).toBe("whsec_rotated");
-    expect(r._unsafeUnwrap().webhook.id).toBe(WID);
+    expect(r._unsafeUnwrap().webhook).toBeDefined();
+    expect(api.state.calls).toEqual([{ method: "rotateWebhookSecret", endpointId: WID }]);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();
