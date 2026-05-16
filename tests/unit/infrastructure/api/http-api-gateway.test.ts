@@ -295,12 +295,16 @@ describe("HttpApiGateway", () => {
         })
         .reply(200, { items: [], total: 0, page: 1, limit: 50 });
 
-      await buildGateway(agent).listScans({
-        page: 1,
-        limit: 50,
+      // Construct an object with explicitly-undefined optional fields
+      // via `Object.assign` to keep `exactOptionalPropertyTypes` happy
+      // (the type only allows absence; the runtime check still has to
+      // tolerate `undefined` from JSON.parse outputs / dynamic input).
+      const filters = Object.assign({ page: 1, limit: 50 }, {
         status: undefined,
         country_code: undefined,
-      });
+      }) as unknown as Parameters<ReturnType<typeof buildGateway>["listScans"]>[0];
+
+      await buildGateway(agent).listScans(filters);
 
       expect(receivedPath).not.toContain("status=");
       expect(receivedPath).not.toContain("country_code=");
