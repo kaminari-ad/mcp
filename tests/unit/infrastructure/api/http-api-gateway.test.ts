@@ -282,6 +282,30 @@ describe("HttpApiGateway", () => {
       expect(result.isErr()).toBe(true);
     });
 
+    it("omits undefined optional filters from the query string (covers buildQuery `continue`)", async () => {
+      let receivedPath = "";
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) => {
+            receivedPath = p;
+            return p.startsWith("/api/v1/scans");
+          },
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+
+      await buildGateway(agent).listScans({
+        page: 1,
+        limit: 50,
+        status: undefined,
+        country_code: undefined,
+      });
+
+      expect(receivedPath).not.toContain("status=");
+      expect(receivedPath).not.toContain("country_code=");
+    });
+
     it("returns upstream on malformed scan item", async () => {
       agent
         .get(ORIGIN)

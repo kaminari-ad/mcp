@@ -677,7 +677,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 function buildQuery(filters: object): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value === undefined || value === null) continue;
+    // Port filter types only ever produce `undefined` for unset
+    // optional fields; we don't need to handle `null`.
+    if (value === undefined) continue;
     qs.set(key, String(value));
   }
   return qs.toString();

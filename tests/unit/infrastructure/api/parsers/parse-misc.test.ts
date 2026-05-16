@@ -83,6 +83,19 @@ describe("parseTag / parseTagDefinitionArray", () => {
     expect(r._unsafeUnwrap().scans_count).toBe(0);
     expect(r._unsafeUnwrap().category).toBe("");
   });
+  it("preserves explicit null organization_id (covers sOrNull null branch)", () => {
+    const r = parseTag({ ...VALID, organization_id: null });
+    expect(r._unsafeUnwrap().organization_id).toBeNull();
+  });
+  it("preserves string organization_id (covers sOrNull string branch)", () => {
+    const orgId = "00000000-0000-0000-0000-000000000010";
+    const r = parseTag({ ...VALID, organization_id: orgId });
+    expect(r._unsafeUnwrap().organization_id).toBe(orgId);
+  });
+  it("coerces non-string non-null organization_id to null", () => {
+    const r = parseTag({ ...VALID, organization_id: 5 });
+    expect(r._unsafeUnwrap().organization_id).toBeNull();
+  });
   it("parseTagDefinitionArray Ok valid + rejects bad shapes", () => {
     expect(parseTagDefinitionArray([VALID]).isOk()).toBe(true);
     expect(parseTagDefinitionArray("x").isErr()).toBe(true);
@@ -256,6 +269,10 @@ describe("parseBillingSummary", () => {
     const r = parseBillingSummary({ checks_per_period: "x" });
     expect(r._unsafeUnwrap().checks_per_period).toBeNull();
   });
+  it("preserves explicit null checks_per_period (covers nOrNull null branch)", () => {
+    const r = parseBillingSummary({ checks_per_period: null });
+    expect(r._unsafeUnwrap().checks_per_period).toBeNull();
+  });
 });
 
 describe("parseApiKeyList", () => {
@@ -279,6 +296,10 @@ describe("parseApiKeyList", () => {
   });
   it("treats non-null non-string expires_at as null", () => {
     const r = parseApiKeyList([{ ...VALID, expires_at: 5 }]);
+    expect(r._unsafeUnwrap()[0]?.expires_at).toBeNull();
+  });
+  it("preserves null expires_at", () => {
+    const r = parseApiKeyList([{ ...VALID, expires_at: null }]);
     expect(r._unsafeUnwrap()[0]?.expires_at).toBeNull();
   });
 });

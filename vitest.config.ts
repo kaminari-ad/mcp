@@ -42,6 +42,9 @@ export default defineConfig({
         "src/**/*.d.ts",
         "src/shared/api/openapi.ts",
         "src/bin.ts",
+        // Pure re-export barrel — nothing to execute, v8 reports 0%
+        // when measured against `tests/unit/` only.
+        "src/shared/result.ts",
         // Pure type-only files (interfaces / type aliases): they
         // compile to empty .js, so v8 reports them as 0% covered.
         // No runtime code to test.

@@ -150,6 +150,7 @@ describe("standalone parsers", () => {
         { tag_slug: "phishing", detail: null },
         { tag_slug: 42 },
         { not_an_obj: true },
+        "not-an-object-at-all",
       ],
     });
     expect(r._unsafeUnwrap().tags).toEqual([

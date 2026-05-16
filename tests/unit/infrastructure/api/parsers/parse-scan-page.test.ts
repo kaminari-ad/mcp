@@ -53,6 +53,25 @@ describe("parseScanPage", () => {
     ).toBe(true);
   });
 
+  it("preserves explicit null campaign_id (sOrNull null branch)", () => {
+    const r = parseScanPage({
+      items: [
+        {
+          id: "00000000-0000-0000-0000-000000000aaa",
+          url: "https://x",
+          country_code: "US",
+          status: "completed",
+          campaign_id: null,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+    expect(r._unsafeUnwrap().items[0]?.campaign_id).toBeNull();
+  });
+
   it("preserves labels and filters non-string label values", () => {
     const r = parseScanPage({
       items: [
