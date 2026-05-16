@@ -299,10 +299,13 @@ describe("HttpApiGateway", () => {
       // via `Object.assign` to keep `exactOptionalPropertyTypes` happy
       // (the type only allows absence; the runtime check still has to
       // tolerate `undefined` from JSON.parse outputs / dynamic input).
-      const filters = Object.assign({ page: 1, limit: 50 }, {
-        status: undefined,
-        country_code: undefined,
-      }) as unknown as Parameters<ReturnType<typeof buildGateway>["listScans"]>[0];
+      const filters = Object.assign(
+        { page: 1, limit: 50 },
+        {
+          status: undefined,
+          country_code: undefined,
+        }
+      ) as unknown as Parameters<ReturnType<typeof buildGateway>["listScans"]>[0];
 
       await buildGateway(agent).listScans(filters);
 

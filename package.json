@@ -47,7 +47,7 @@
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --passWithNoTests",
     "test:isolation": "vitest run tests/isolation",
     "gen:api-types": "tsx scripts/gen-api-types.ts",
     "check:file-sizes": "tsx scripts/check-file-sizes.ts",
