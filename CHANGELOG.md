@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-17
+
+Comprehensive parser-drift sweep across all `/api/v1/*` list
+endpoints, a new tool for slim campaign selection, an MCP-client
+interop fix, and small docs polish. Semver-minor because two list
+tools changed output shape (breaking) and one new tool was added.
+
+The MCP audit covered all 21 `/api/v1/*` list/page endpoints — the 18
+that were already wired correctly stayed untouched, the 4 with drift
+were rewritten, and 1 missing tool was added. See
+[MIGRATION_0_2.md](./MIGRATION_0_2.md) for the agent-side migration
+notes.
+
+### Breaking
+
+- **`list_run_scans` output element type:** `ScanBriefResponse` →
+  `ScanTileResponse`. The slim DTO drops `url` / `created_at` /
+  `labels` / `campaign_id` / `campaign_name` / `is_ad_tag` and adds
+  `error`. The tool no longer fails on prod data with `malformed
+  scans page: items.0.url: Required`; agents needing full scan
+  details should call `get_scan` per tile.
+- **`list_custom_rules` output shape:** `readonly CustomRuleResponse[]`
+  → `PaginatedResponse<CustomRuleResponse>`. New optional
+  `page` / `limit` inputs (defaults `1` / `50`). Previously the tool
+  silently dropped pagination metadata; orgs with > 50 rules
+  appeared to have exactly 50.
+- **`list_policy_sets` output shape:** `readonly PolicySetListItemResponse[]`
+  → `PaginatedResponse<PolicySetListItemResponse>`. New optional
+  `page` / `limit` inputs (defaults `1` / `50`). Same pagination
+  drop as `list_custom_rules`.
+
+### Fixed
+
+- **`list_run_scans` failed with `malformed scans page:
+  items.0.url: Required`.** Parser wired the wrong DTO
+  (`ScanBriefResponse`) for an endpoint that returns
+  `ScanTileResponse`. Same drift class as `list_policy_sets` v0.1.1.
+- **`list_custom_rules` / `list_policy_sets` silently dropped
+  pagination metadata.** Now expose `total` / `page` / `limit` so
+  agents iterate correctly past the default page size.
+- **`get_tag_definition` now returns `linked_rules`** (the custom
+  rules currently producing this tag — `id` / `name` / `is_active`).
+  Previously silently dropped because the parser reused the list-row
+  schema. Agents no longer need to grep `list_custom_rules` by
+  `tag_slug` themselves.
+- **`invalid-input` (HTTP 400 / 422) error responses now preserve
+  the API's machine-readable `code` field.** Forward-compat for
+  `delete_policy_set` growing `code: "policies.in_use"` — agents
+  can branch programmatically as soon as the API ships the code,
+  no MCP release required.
+
+### Added
+
+- **`list_campaigns_picker`** (82nd tool) — slim per-row campaign
+  list for selection UIs (id, name, group_id, is_archived). Cheaper
+  than `list_campaigns` for orgs with thousands of campaigns. Use
+  `get_campaign(id)` after a selection.
+- **Server now declares empty `resources` and `prompts` capabilities
+  with handlers returning `[]`.** Cursor / Claude Desktop / Cline
+  probe these at session start; previously the SDK responded with
+  `-32601 Method not found`, which Cursor's client mistranslated
+  as a misleading `"MCP error -32000: Connection closed"` warning.
+  Functional impact was zero (all tools remained callable) but
+  downstream agent logs filled with false positives once per session
+  per server. Now clean.
+
+### Docs
+
+- **README:** replaced the fictional `kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+  API-key placeholder with `<your-kaminari-ad-api-key>` + a note
+  that keys are opaque (no required prefix or fixed length).
+- **`create_custom_rule` / `update_custom_rule` / `test_custom_rule`:**
+  the `target` parameter description no longer claims a stale
+  `page | offer_url | html` enum (OpenAPI declares it as a freeform
+  string; `html` may not be currently valid). Defers to API docs.
+- **`delete_policy_set`:** description now explicitly mentions the
+  API returns `HTTP 400` if campaigns are bound, and suggests the
+  unbind-via-`update_campaign` workflow before retry.
+
+### Internal
+
+- Comprehensive parser-drift audit across all 21 `/api/v1/*` list
+  endpoints (run via parallel `explore` subagents covering API + MCP
+  sides). 18 endpoints clean, 4 fixed, 1 tool added — no remaining
+  drift.
+- New parser modules: `parse-run-scan-page.ts`, `parse-custom-rule-page.ts`,
+  `parse-policy-set-page.ts`, `parse-campaign-picker.ts`. The old
+  defensive bare-or-envelope helpers (`parseCustomRuleArray`,
+  `parsePolicySetList`) are gone; their files now expose only the
+  per-entity parsers. `parseTagDetail` moved out of `parse-generic.ts`
+  into `parse-tag.ts` because it now needs the detail schema's
+  `linked_rules` field which the list schema doesn't have.
+- New shared helper `presentation/shared/declare-empty-caps.ts`
+  used by both stdio and HTTP bootstraps. Unit test against an
+  in-memory `Client` + `InMemoryTransport.createLinkedPair()` pair,
+  plus an end-to-end probe in the CLI smoke that hits a real HTTP
+  RPC after the `initialize` handshake.
+
 ## [0.1.5] - 2026-05-17
 
 Re-release of v0.1.4 — the Corepack-based npm upgrade in v0.1.4

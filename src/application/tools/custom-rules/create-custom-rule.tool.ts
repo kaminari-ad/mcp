@@ -31,7 +31,9 @@ const CreateCustomRuleInputShape = {
     .string()
     .max(30)
     .optional()
-    .describe("Where to apply: page | offer_url | html. Default: page."),
+    .describe(
+      "Where to apply the rule (e.g. 'page' for landing HTML). Default: page. See API docs for the full set of valid values."
+    ),
 } as const;
 type CreateCustomRuleInputShape = typeof CreateCustomRuleInputShape;
 

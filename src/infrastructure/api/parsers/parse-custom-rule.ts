@@ -1,15 +1,17 @@
 /**
- * Parsers for `/api/v1/custom-rules`.
+ * Per-entity parser for a single `CustomRuleResponse` (used by
+ * `GET /api/v1/custom-rules/{rule_id}` and `POST /custom-rules`).
  *
- * `GET /api/v1/custom-rules` returns the standard FastAPI paginated
- * envelope `{ items, total, page, limit, pages }`. `parseCustomRuleArray`
- * accepts both envelope and bare-array shapes defensively.
+ * For the paginated list endpoint see `parse-custom-rule-page.ts` —
+ * before v0.2.0 a defensive `parseCustomRuleArray` lived here that
+ * silently dropped pagination metadata; that parser is gone and the
+ * gateway now surfaces the full envelope to the agent.
  */
 
 import type { ApiError, CustomRuleResponse } from "../../../domain/ports/api-gateway.js";
 import { schemas } from "../../../shared/api/zod-schemas.js";
 import type { Result } from "../../../shared/result.js";
-import { parseArrayOrItemsWithSchema, parseWithSchema } from "./parse-with-schema.js";
+import { parseWithSchema } from "./parse-with-schema.js";
 
 const CustomRuleSchema = schemas.CustomRuleResponse.pick({
   id: true,
@@ -25,11 +27,3 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
 
 export const parseCustomRule = (raw: unknown): Result<CustomRuleResponse, ApiError> =>
   parseWithSchema(CustomRuleSchema, raw, "custom-rule") as Result<CustomRuleResponse, ApiError>;
-
-export const parseCustomRuleArray = (
-  raw: unknown
-): Result<readonly CustomRuleResponse[], ApiError> =>
-  parseArrayOrItemsWithSchema(CustomRuleSchema, raw, "custom-rules") as Result<
-    readonly CustomRuleResponse[],
-    ApiError
-  >;

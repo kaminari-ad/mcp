@@ -69,7 +69,12 @@ export function toApiError(
       : { kind: "forbidden", detail: message, code };
   }
   if (status === 404) return { kind: "not-found", detail: message };
-  if (status === 422 || status === 400) return { kind: "invalid-input", detail: message };
+  if (status === 422 || status === 400) {
+    const code = errCode(parsed);
+    return code === undefined
+      ? { kind: "invalid-input", detail: message }
+      : { kind: "invalid-input", detail: message, code };
+  }
   if (status === 429) {
     const ra = Array.isArray(retryAfterHeader) ? retryAfterHeader[0] : retryAfterHeader;
     const retryMs = ra === undefined ? undefined : Number.parseInt(ra, 10) * 1000;

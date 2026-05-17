@@ -232,6 +232,36 @@ describe("CLI smoke (built dist)", () => {
         result: { tools: { name: string }[] };
       };
       expect(parsed.result.tools.length).toBeGreaterThan(50);
+
+      // `resources/list` + `prompts/list` should return clean empty
+      // arrays, NOT JSON-RPC `-32601 Method not found`. Most MCP
+      // clients (Cursor, Claude Desktop, Cline) probe these at session
+      // start; without our declared-empty-caps handler the SDK would
+      // 404 here and Cursor would mistranslate that into a misleading
+      // "Connection closed" warning in downstream agent logs.
+      for (const method of ["resources/list", "prompts/list"]) {
+        const probe = await mcpRpc(port, sessionId, {
+          jsonrpc: "2.0",
+          id: 3,
+          method,
+          params: {},
+        });
+        expect(probe.body.statusCode).toBe(200);
+        const probePayloadJson = probe.body.payload.startsWith("event:")
+          ? probe.body.payload.split("data:").slice(1).join("data:").trim()
+          : probe.body.payload;
+        const probeParsed = JSON.parse(probePayloadJson) as {
+          error?: { code: number; message: string };
+          result?: { resources?: unknown[]; prompts?: unknown[] };
+        };
+        expect(probeParsed.error).toBeUndefined();
+        expect(probeParsed.result).toBeDefined();
+        if (method === "resources/list") {
+          expect(probeParsed.result?.resources).toEqual([]);
+        } else {
+          expect(probeParsed.result?.prompts).toEqual([]);
+        }
+      }
     } finally {
       child.kill("SIGTERM");
       await Promise.race([

@@ -22,6 +22,7 @@ import type {
   BulkScanRequest,
   CampaignGroupResponse,
   CampaignOverridesResponse,
+  CampaignPickerItem,
   CampaignResponse,
   CancelPendingResponse,
   CreateApiKeyRequest,
@@ -58,6 +59,7 @@ import type {
   ScanBriefResponse,
   ScanResponse,
   ScanTagResponse,
+  ScanTileResponse,
   SetCampaignOverridesRequest,
   SetDestinationVersionRequest,
   TagDefinitionDetailResponse,
@@ -123,6 +125,7 @@ type Call =
       readonly campaignId: string;
       readonly filters: PageFilters;
     }
+  | { readonly method: "listCampaignsPicker" }
   | { readonly method: "getRun"; readonly id: string }
   | { readonly method: "cancelRun"; readonly id: string }
   | {
@@ -162,7 +165,7 @@ type Call =
     }
   | { readonly method: "deleteCustomRule"; readonly id: string }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
-  | { readonly method: "listPolicySets" }
+  | { readonly method: "listPolicySets"; readonly filters: PageFilters }
   | { readonly method: "getPolicySet"; readonly id: string }
   | { readonly method: "createPolicySet"; readonly body: CreatePolicySetRequest }
   | {
@@ -257,9 +260,10 @@ export interface FakeApiGatewayState {
     unarchiveCampaign?: Result<CampaignResponse, ApiError>;
     cancelCampaign?: Result<CancelPendingResponse, ApiError>;
     listCampaignRuns?: Result<PaginatedResponse<RunResponse>, ApiError>;
+    listCampaignsPicker?: Result<readonly CampaignPickerItem[], ApiError>;
     getRun?: Result<RunResponse, ApiError>;
     cancelRun?: Result<CancelPendingResponse, ApiError>;
-    listRunScans?: Result<PaginatedResponse<ScanBriefResponse>, ApiError>;
+    listRunScans?: Result<PaginatedResponse<ScanTileResponse>, ApiError>;
     listCampaignGroups?: Result<readonly CampaignGroupResponse[], ApiError>;
     getCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
     createCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
@@ -274,13 +278,13 @@ export interface FakeApiGatewayState {
     getTagDefinition?: Result<TagDefinitionDetailResponse, ApiError>;
     updateTagDefinition?: Result<null, ApiError>;
     deleteTagDefinition?: Result<null, ApiError>;
-    listCustomRules?: Result<readonly CustomRuleResponse[], ApiError>;
+    listCustomRules?: Result<PaginatedResponse<CustomRuleResponse>, ApiError>;
     getCustomRule?: Result<CustomRuleResponse, ApiError>;
     createCustomRule?: Result<CustomRuleResponse, ApiError>;
     updateCustomRule?: Result<CustomRuleResponse, ApiError>;
     deleteCustomRule?: Result<null, ApiError>;
     testCustomRule?: Result<RuleTestResponse, ApiError>;
-    listPolicySets?: Result<readonly PolicySetListItemResponse[], ApiError>;
+    listPolicySets?: Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>;
     getPolicySet?: Result<PolicySetResponse, ApiError>;
     createPolicySet?: Result<PolicySetResponse, ApiError>;
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
@@ -368,6 +372,19 @@ const DEFAULT_GROUP: CampaignGroupResponse = {
   created_at: "2026-05-16T00:00:00Z",
 };
 
+// `GET /runs/{run_id}/scans` returns a SLIM `ScanTileResponse` per item.
+// Distinct from `DEFAULT_SCAN` (full `ScanResponse`) — see the port
+// `ScanTileResponse` type in `domain/ports/api-gateway.ts`.
+const DEFAULT_SCAN_TILE: ScanTileResponse = {
+  id: "00000000-0000-0000-0000-000000000bbb",
+  country_code: "US",
+  status: "completed",
+  offer_url: "https://offer.example",
+  screenshot_url: "",
+  elapsed_ms: 1234,
+  error: "",
+};
+
 const DEFAULT_RUN: RunResponse = {
   id: "00000000-0000-0000-0000-000000000222",
   campaign_id: DEFAULT_CAMPAIGN.id,
@@ -379,6 +396,13 @@ const DEFAULT_RUN: RunResponse = {
   cancelled: 0,
   source: "api",
   created_at: "2026-05-16T00:00:00Z",
+};
+
+const DEFAULT_CAMPAIGN_PICKER_ITEM: CampaignPickerItem = {
+  id: "00000000-0000-0000-0000-000000000ccc",
+  name: "Test Campaign",
+  group_id: "00000000-0000-0000-0000-000000000111",
+  is_archived: false,
 };
 
 const DEFAULT_GROUP_ACTION: GroupActionResponse = {
@@ -452,6 +476,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   show_in_public_report: false,
   scans_count: 0,
   rules_count: 0,
+  linked_rules: [],
 };
 
 /**
@@ -732,6 +757,14 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         })
       );
     },
+    async listCampaignsPicker() {
+      push({ method: "listCampaignsPicker" });
+      await Promise.resolve();
+      return (
+        state.responses.listCampaignsPicker ??
+        ok<readonly CampaignPickerItem[], ApiError>([DEFAULT_CAMPAIGN_PICKER_ITEM])
+      );
+    },
 
     // ── Runs ───────────────────────────────────────────────────
     async getRun(id) {
@@ -751,9 +784,9 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.listRunScans ??
-        ok<PaginatedResponse<ScanBriefResponse>, ApiError>({
-          items: [],
-          total: 0,
+        ok<PaginatedResponse<ScanTileResponse>, ApiError>({
+          items: [DEFAULT_SCAN_TILE],
+          total: 1,
           page: filters.page,
           limit: filters.limit,
         })
@@ -864,7 +897,15 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async listCustomRules(filters) {
       push({ method: "listCustomRules", filters });
       await Promise.resolve();
-      return state.responses.listCustomRules ?? ok<readonly CustomRuleResponse[], ApiError>([]);
+      return (
+        state.responses.listCustomRules ??
+        ok<PaginatedResponse<CustomRuleResponse>, ApiError>({
+          items: [],
+          total: 0,
+          page: filters.page,
+          limit: filters.limit,
+        })
+      );
     },
     async getCustomRule(id) {
       push({ method: "getCustomRule", id });
@@ -900,12 +941,17 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     },
 
     // ── Policy sets ────────────────────────────────────────────
-    async listPolicySets() {
-      push({ method: "listPolicySets" });
+    async listPolicySets(filters) {
+      push({ method: "listPolicySets", filters });
       await Promise.resolve();
       return (
         state.responses.listPolicySets ??
-        ok<readonly PolicySetListItemResponse[], ApiError>([DEFAULT_POLICY_SET_LIST_ITEM])
+        ok<PaginatedResponse<PolicySetListItemResponse>, ApiError>({
+          items: [DEFAULT_POLICY_SET_LIST_ITEM],
+          total: 1,
+          page: filters.page,
+          limit: filters.limit,
+        })
       );
     },
     async getPolicySet(id) {

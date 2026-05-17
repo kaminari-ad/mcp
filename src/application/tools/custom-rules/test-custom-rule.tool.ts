@@ -15,7 +15,12 @@ import type { ToolError } from "../_shared/tool-result.js";
 const TestCustomRuleInputShape = {
   rule_type: z.string().max(50).describe("Rule engine type (regex, substring, ...)."),
   config: z.record(z.unknown()).describe("Rule-type-specific config to test."),
-  target: z.string().max(30).describe("Where to apply the rule: page / offer_url / html."),
+  target: z
+    .string()
+    .max(30)
+    .describe(
+      "Where to apply the rule (e.g. 'page' for landing HTML). See API docs for the full set of valid values."
+    ),
   scan_id: z.string().uuid().describe("Existing scan UUID to evaluate the rule against."),
 } as const;
 type TestCustomRuleInputShape = typeof TestCustomRuleInputShape;

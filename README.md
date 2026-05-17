@@ -19,6 +19,8 @@ Lets AI agents (Cursor, Claude Desktop, Cline, and any MCP-compatible client) la
 2. Once signed in, go to **Settings → API Keys** and generate a new key, OR have an existing AI assistant (with a temporary login) call the [`create_api_key`](#tools) tool — both paths produce the same result.
 3. The key is shown **once**. Copy it. The full key is hashed server-side immediately.
 
+> Keys are opaque random strings — no required prefix or fixed length. Treat the whole value as a raw secret and paste it verbatim into your client config.
+
 > Tip for evaluators / Anthropic Software Directory reviewers: ask the team at [hello@kaminari.ad](mailto:hello@kaminari.ad) for a sandboxed test account with seeded sample scans, campaigns, and alerts.
 
 ### 2a. Local install (stdio transport)
@@ -32,14 +34,14 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
       "command": "npx",
       "args": ["-y", "@kaminari-ad/mcp"],
       "env": {
-        "KAMINARI_AD_API_KEY": "kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "KAMINARI_AD_API_KEY": "<your-kaminari-ad-api-key>",
       },
     },
   },
 }
 ```
 
-Restart your client. You should see `kaminari-ad` in the MCP servers list with 82 tools exposed.
+Restart your client. You should see `kaminari-ad` in the MCP servers list with 83 tools exposed.
 
 ### 2b. Hosted HTTP transport (no install)
 
@@ -51,7 +53,7 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
     "kaminari-ad": {
       "url": "https://mcp.kaminari.ad/mcp",
       "headers": {
-        "Authorization": "Bearer kad_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "Authorization": "Bearer <your-kaminari-ad-api-key>",
       },
     },
   },
@@ -62,11 +64,11 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
 
 ## Tools
 
-82 tools mirroring most of the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. Highlights:
+83 tools mirroring most of the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. Highlights:
 
 - **Account** (11) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `list_api_keys`, `create_api_key`, `revoke_api_key`
 - **Scans** (7) — `list_scans`, `get_scan`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `list_scan_tags`
-- **Campaigns** (9) — `list_campaigns`, `get_campaign`, `create_campaign`, `update_campaign`, `archive_campaign`, `unarchive_campaign`, `cancel_campaign`, `run_campaign`, `list_campaign_runs`
+- **Campaigns** (10) — `list_campaigns`, `list_campaigns_picker`, `get_campaign`, `create_campaign`, `update_campaign`, `archive_campaign`, `unarchive_campaign`, `cancel_campaign`, `run_campaign`, `list_campaign_runs`
 - **Campaign groups** (10) — list/get/create/update/run/cancel/archive/unarchive + `pause_campaign_group_schedule`, `resume_campaign_group_schedule`
 - **Runs** (3) — `get_run`, `list_run_scans`, `cancel_run` (use `list_campaign_runs` to enumerate runs of a campaign — the API has no standalone `/runs` index)
 - **Tags** (4) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`
@@ -79,7 +81,7 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
 - **Reference data** (2) — `list_geos`, `list_emulators`
 
-Not exposed (intentionally): binary scan-screenshot fetchers, invoice PDF, the UI-only campaign picker, and the public marketing forms (`/contact`, `/demo-inquiries`). Open an issue if you need one of those.
+Not exposed (intentionally): binary scan-screenshot fetchers, invoice PDF, and the public marketing forms (`/contact`, `/demo-inquiries`). Open an issue if you need one of those.
 
 ## Example agent prompts
 

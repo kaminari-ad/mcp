@@ -17,10 +17,7 @@ import {
 } from "../../../../../src/infrastructure/api/parsers/parse-alert.js";
 import { parseApiKeyList } from "../../../../../src/infrastructure/api/parsers/parse-api-key.js";
 import { parseBillingSummary } from "../../../../../src/infrastructure/api/parsers/parse-billing-summary.js";
-import {
-  parseCustomRule,
-  parseCustomRuleArray,
-} from "../../../../../src/infrastructure/api/parsers/parse-custom-rule.js";
+import { parseCustomRule } from "../../../../../src/infrastructure/api/parsers/parse-custom-rule.js";
 import { parseEmpty } from "../../../../../src/infrastructure/api/parsers/parse-empty.js";
 import { parseEmulatorList } from "../../../../../src/infrastructure/api/parsers/parse-emulator.js";
 import {
@@ -108,7 +105,10 @@ describe("parseTag / parseTagDefinitionArray", () => {
   });
 });
 
-describe("parseCustomRule / parseCustomRuleArray", () => {
+describe("parseCustomRule (single entity)", () => {
+  // List endpoint coverage lives in parse-custom-rule-page.test.ts —
+  // the per-page parser replaced the legacy bare-or-envelope helper
+  // (`parseCustomRuleArray`) in v0.2.0.
   const VALID = {
     id: UUID_B,
     organization_id: "00000000-0000-0000-0000-000000000010",
@@ -116,7 +116,7 @@ describe("parseCustomRule / parseCustomRuleArray", () => {
     tag_slug: "ml.spam",
     rule_type: "regex",
     config: { pattern: "x" },
-    target: "html",
+    target: "page",
     is_active: true,
     created_at: TS,
   };
@@ -129,28 +129,6 @@ describe("parseCustomRule / parseCustomRuleArray", () => {
     expect(parseCustomRule(withoutId).isErr()).toBe(true);
     const { organization_id: _omitOrg, ...withoutOrg } = VALID;
     expect(parseCustomRule(withoutOrg).isErr()).toBe(true);
-  });
-  it("array parser Ok from bare array", () => {
-    expect(parseCustomRuleArray([VALID]).isOk()).toBe(true);
-  });
-  it("array parser Ok from paginated envelope (FastAPI shape)", () => {
-    expect(
-      parseCustomRuleArray({ items: [VALID], total: 1, page: 1, limit: 50, pages: 1 }).isOk()
-    ).toBe(true);
-  });
-  it("array parser Ok from empty paginated envelope", () => {
-    expect(parseCustomRuleArray({ items: [], total: 0, page: 1, limit: 50, pages: 0 }).isOk()).toBe(
-      true
-    );
-  });
-  it("array parser rejects garbage", () => {
-    expect(parseCustomRuleArray("x").isErr()).toBe(true);
-    expect(parseCustomRuleArray({ items: "x" }).isErr()).toBe(true);
-    expect(parseCustomRuleArray(42).isErr()).toBe(true);
-  });
-  it("array parser rejects when an item is malformed", () => {
-    expect(parseCustomRuleArray([{}]).isErr()).toBe(true);
-    expect(parseCustomRuleArray({ items: [{}] }).isErr()).toBe(true);
   });
 });
 

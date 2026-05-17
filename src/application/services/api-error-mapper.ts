@@ -26,10 +26,17 @@ export function mapApiError(apiError: ApiError): ToolError {
       return apiError.retryAfterMs === undefined
         ? { kind: "rate-limited", message: apiError.detail }
         : { kind: "rate-limited", message: apiError.detail, retryAfterMs: apiError.retryAfterMs };
-    case "invalid-input":
-      return apiError.fieldErrors === undefined
-        ? { kind: "invalid-input", message: apiError.detail }
-        : { kind: "invalid-input", message: apiError.detail, fieldErrors: apiError.fieldErrors };
+    case "invalid-input": {
+      const out: {
+        kind: "invalid-input";
+        message: string;
+        fieldErrors?: Readonly<Record<string, readonly string[]>>;
+        code?: string;
+      } = { kind: "invalid-input", message: apiError.detail };
+      if (apiError.fieldErrors !== undefined) out.fieldErrors = apiError.fieldErrors;
+      if (apiError.code !== undefined) out.code = apiError.code;
+      return out;
+    }
     case "upstream":
       return apiError.status === undefined
         ? { kind: "upstream", message: apiError.detail }

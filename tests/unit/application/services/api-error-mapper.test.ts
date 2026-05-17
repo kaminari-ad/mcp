@@ -68,6 +68,36 @@ describe("mapApiError", () => {
     });
   });
 
+  it("maps invalid-input with code (forward-compat for `policies.in_use`)", () => {
+    expect(
+      mapApiError({
+        kind: "invalid-input",
+        detail: "Policy set is in use",
+        code: "policies.in_use",
+      })
+    ).toEqual({
+      kind: "invalid-input",
+      message: "Policy set is in use",
+      code: "policies.in_use",
+    });
+  });
+
+  it("maps invalid-input with both fieldErrors and code", () => {
+    expect(
+      mapApiError({
+        kind: "invalid-input",
+        detail: "x",
+        fieldErrors: { name: ["taken"] },
+        code: "some.code",
+      })
+    ).toEqual({
+      kind: "invalid-input",
+      message: "x",
+      fieldErrors: { name: ["taken"] },
+      code: "some.code",
+    });
+  });
+
   it("maps upstream without status", () => {
     expect(mapApiError({ kind: "upstream", detail: "ECONNRESET" })).toEqual({
       kind: "upstream",

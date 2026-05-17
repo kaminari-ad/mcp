@@ -1,8 +1,12 @@
 /**
  * Tool: `delete_policy_set` — permanently remove a policy set.
  *
- * Campaigns bound to it lose the binding; alerts created under it
- * persist with `policy_set_id = null`.
+ * NOTE: API returns HTTP 400 ("Policy set is in use by campaigns")
+ * if any active campaign is still bound to this set. To unbind: call
+ * `list_campaigns` filtered by `policy_set_id`, then `update_campaign`
+ * for each match setting `policy_set_id=null`, then retry delete.
+ * Alerts created under the deleted set persist (their `policy_set_id`
+ * becomes `null`).
  */
 
 import { z } from "zod";
@@ -24,7 +28,7 @@ export interface DeletePolicySetOutput {
 export const deletePolicySetTool: Tool<DeletePolicySetInputShape, DeletePolicySetOutput> = {
   name: "delete_policy_set",
   description:
-    "Permanently delete a policy set. Campaigns bound to it lose the binding; alerts persist (their policy_set_id becomes null).",
+    "Permanently delete a policy set. IMPORTANT: API returns HTTP 400 if any active campaign is still bound to this set. To unbind first, call `list_campaigns` with a `policy_set_id` filter (when available) or scan your campaigns for matches, then `update_campaign` for each match setting `policy_set_id=null`, then retry delete. Alerts created under this set persist (their `policy_set_id` becomes `null`).",
   annotations: {
     title: "Delete Policy Set",
     readOnlyHint: false,

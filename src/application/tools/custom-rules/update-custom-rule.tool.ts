@@ -19,7 +19,13 @@ const UpdateCustomRuleInputShape = {
   name: z.string().min(1).max(200).optional().describe("New display name."),
   tag_slug: z.string().max(100).optional().describe("New tag slug to assign on match."),
   config: z.record(z.unknown()).optional().describe("New rule-type-specific config object."),
-  target: z.string().max(30).optional().describe("Where to apply: page / offer_url / html."),
+  target: z
+    .string()
+    .max(30)
+    .optional()
+    .describe(
+      "Where to apply the rule (e.g. 'page' for landing HTML). See API docs for the full set of valid values."
+    ),
   is_active: z.boolean().optional().describe("Enable/disable the rule."),
 } as const;
 type UpdateCustomRuleInputShape = typeof UpdateCustomRuleInputShape;

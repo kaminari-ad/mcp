@@ -117,7 +117,7 @@ function formatToolError(error: ToolError): string {
         error.retryAfterMs === undefined ? "" : ` (retry after ${String(error.retryAfterMs)} ms)`
       }`;
     case "invalid-input":
-      return `Invalid input: ${error.message}`;
+      return `Invalid input${error.code === undefined ? "" : ` (${error.code})`}: ${error.message}`;
     case "upstream":
       return `Upstream error: ${error.message}`;
     case "internal":

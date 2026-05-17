@@ -34,7 +34,6 @@ import {
   parseRole,
   parseRuleTest,
   parseScanTag,
-  parseTagDetail,
   parseUsage,
   parseUsageSummary,
   parseUser,
@@ -221,44 +220,9 @@ describe("parseScanTag", () => {
   });
 });
 
-describe("parseTagDetail", () => {
-  it("Ok valid system tag", () => {
-    const r = parseTagDetail({
-      slug: "malware",
-      category: "security",
-      source: "system",
-      display_name: "Malware",
-      description: "Malicious payload",
-      severity: "high",
-      is_system: true,
-      organization_id: null,
-      show_in_public_report: true,
-      scans_count: 0,
-      rules_count: 0,
-    });
-    expect(r._unsafeUnwrap().organization_id).toBeNull();
-  });
-  it("Ok valid custom tag with org id", () => {
-    const r = parseTagDetail({
-      slug: "custom",
-      category: "security",
-      source: "custom",
-      display_name: "Custom",
-      description: "",
-      severity: "medium",
-      is_system: false,
-      organization_id: UUID_A,
-      show_in_public_report: false,
-      scans_count: 12,
-      rules_count: 3,
-    });
-    expect(r._unsafeUnwrap().organization_id).toBe(UUID_A);
-  });
-  it("rejects on missing slug", () => {
-    const r = parseTagDetail({ category: "security" });
-    expect(r.isErr()).toBe(true);
-  });
-});
+// `parseTagDetail` moved to `parse-tag.ts` in v0.2.0 (it needs the
+// detail schema's `linked_rules` field which the list-row schema
+// doesn't have). See `parse-tag.test.ts` for its coverage.
 
 describe("parseRuleTest", () => {
   it("Ok valid", () => {
