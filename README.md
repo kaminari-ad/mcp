@@ -4,7 +4,10 @@ Official Model Context Protocol (MCP) server for [Kaminari Ad](https://kaminari.
 
 Lets AI agents (Cursor, Claude Desktop, Cline, and any MCP-compatible client) launch scans, inspect results, manage campaigns and policies, and read alerts directly against your Kaminari Ad workspace via your API key.
 
-> Status: **pre-release** (`0.0.0-dev`). Not yet published on npm. First public release will be tagged `v0.1.0`.
+[![npm](https://img.shields.io/npm/v/@kaminari-ad/mcp.svg)](https://www.npmjs.com/package/@kaminari-ad/mcp)
+[![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Provenance](https://img.shields.io/npm/v/@kaminari-ad/mcp?label=provenance&logo=github)](https://www.npmjs.com/package/@kaminari-ad/mcp)
 
 ---
 
@@ -125,7 +128,7 @@ npm run lint && npm run typecheck && npm test
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and how to add a tool.
 
-> The maintainers run CI on a private GitLab instance and mirror the repo to GitHub. The `.github/` directory carries issue/PR templates only — there are no GitHub Actions wired up yet. Community PRs are welcome on the GitHub mirror; the maintainers re-apply them to the internal repo to run the pipeline.
+> The maintainers run the full development gate (integration tests, deploy automation, prod smoke) on a private GitLab instance and mirror the repo to GitHub. The public CI on GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint + typecheck + unit tests + build + bundle-size check on every community PR, so contributors get fast green/red feedback without needing access to the internal infra. Tag pushes (`v*.*.*`) trigger [`.github/workflows/release.yml`](.github/workflows/release.yml), which publishes the package to npm with OIDC provenance and creates the GitHub Release.
 
 ---
 

@@ -1,0 +1,69 @@
+name: CI
+
+# Public CI gate for community PRs + sanity checks on every push to
+# main. Mirrors the static + unit-level checks from the private GitLab
+# pipeline (.gitlab-ci.yml). The GitLab pipeline owns deeper checks
+# (integration tests against real infra, prod smoke, deploy) — those
+# require credentials not available to forks.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      # `--legacy-peer-deps` covers the eslint 9 / @eslint/js 10 peer
+      # mismatch (eslint-plugin-vitest vendors typescript-eslint <8).
+      # `--ignore-scripts` skips lefthook auto-install; we don't need
+      # git hooks in CI.
+      - name: Install
+        run: npm ci --legacy-peer-deps --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit + isolation tests with coverage
+        run: npm run test:cov
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle size gate
+        run: npm run check:bundle-size
+
+      - name: Architecture gates
+        run: |
+          npm run check:file-sizes
+          npm run check:shared-state
+          npm run check:tool-naming
+          npm run check:no-handwritten-parsers
+          npm run check:imports
+
+      - name: License audit
+        run: npm run audit:licenses

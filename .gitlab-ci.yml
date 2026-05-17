@@ -299,25 +299,19 @@ publish:npm:
   stage: publish
   needs: [build]
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/'
-  # `NPM_TOKEN` MUST be configured in GitLab as a `Protected` AND
-  # `Masked` CI/CD variable. Without `Masked`, an accidental
-  # `set -x` or `npm publish --dry-run` could leak the token into the
-  # job log. `Protected` keeps it scoped to protected tags only.
-  variables:
-    NPM_CONFIG_AUDIT: "false"
-    # Force `npm config set` (below) NOT to echo the token. Belt and
-    # suspenders alongside the GitLab masking.
-    NPM_CONFIG_LOGLEVEL: "warn"
+    # DISABLED — npm publish moved to GitHub Actions (.github/workflows/
+    # release.yml) for OIDC provenance support. GitLab CI cannot produce
+    # npm provenance attestations: only GitHub Actions, GitLab.com SaaS,
+    # and CircleCI are in npm's OIDC trust list. Our self-hosted GitLab
+    # is not, so a `--provenance` publish from here would either silently
+    # ship an unsigned package or fail outright.
+    #
+    # The job stub stays for traceability (so a future maintainer searching
+    # for "publish:npm" in this file lands on the explicit "we moved it"
+    # explanation instead of finding nothing). To re-enable: pick a tag
+    # build manually, but understand the loss of provenance.
+    - when: never
   script:
-    # Sync the package.json version with the git tag (strip the `v`
-    # prefix). package.json on the branch stays at `0.0.0-dev` —
-    # `npm version` writes the tagged version without committing.
-    - VERSION="${CI_COMMIT_TAG#v}"
-    - 'echo "Publishing version: $VERSION"'
-    - npm version "$VERSION" --no-git-tag-version --allow-same-version
-    # Use `npm config set --location project` to write the token into
-    # a project-scoped `.npmrc` that is wiped with the job's working
-    # directory. Token never crosses stdout.
-    - npm config set --location project "//registry.npmjs.org/:_authToken=$NPM_TOKEN"
-    - npm publish --provenance --access public
+    - echo "Publishing moved to GitHub Actions (.github/workflows/release.yml)."
+    - echo "This stub is intentional and should not run."
+    - exit 0
