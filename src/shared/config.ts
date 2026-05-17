@@ -24,6 +24,20 @@ export const LogLevelSchema = z.enum(["trace", "debug", "info", "warn", "error",
 export type LogLevel = z.infer<typeof LogLevelSchema>;
 
 /**
+ * pino log output format.
+ *
+ * - `pretty` — colorised single-line ANSI output for terminals. Default
+ *   in stdio mode (operator reads stderr in their shell).
+ * - `json` — newline-delimited JSON, one record per line. Default in
+ *   HTTP mode (Docker/k8s log aggregators expect JSON). MCP hosts that
+ *   capture stderr from the stdio process (Cursor, Claude Desktop)
+ *   parse much better with `json` — flip this when the operator is a
+ *   machine, not a human.
+ */
+export const LogFormatSchema = z.enum(["pretty", "json"]);
+export type LogFormat = z.infer<typeof LogFormatSchema>;
+
+/**
  * Parsed configuration. All fields are `readonly` — mutation post-load
  * is a bug.
  */
@@ -31,6 +45,7 @@ export interface Config {
   readonly transport: Transport;
   readonly apiBaseUrl: string;
   readonly logLevel: LogLevel;
+  readonly logFormat: LogFormat;
   readonly httpPort: number;
   readonly sessionTtlSec: number;
   readonly rateLimitRpm: number;
@@ -41,13 +56,27 @@ export interface Config {
   readonly stdioApiKey: string | undefined;
 }
 
+/**
+ * Every env var carries the `KAMINARI_AD_` namespace prefix.
+ *
+ * Why: this process inherits the host's full environment (Cursor /
+ * Claude Desktop / Docker compose / k8s pod), where `API_BASE_URL` /
+ * `LOG_LEVEL` / `HTTP_PORT` are common generic names. Without a
+ * namespace, another tool in the same shell trivially poisons our
+ * config — e.g. `LOG_LEVEL=debug` set for some app library suddenly
+ * makes the MCP server log every secret-redacted-but-still-noisy
+ * request to stderr, and the user has no idea why. With the prefix
+ * the boundary is explicit and `env | grep KAMINARI_AD_` enumerates
+ * exactly what we read.
+ */
 const RawSchema = z.object({
-  TRANSPORT: TransportSchema.default("stdio"),
-  API_BASE_URL: z.string().url().default("https://kaminari.ad"),
-  LOG_LEVEL: LogLevelSchema.default("info"),
-  HTTP_PORT: z.coerce.number().int().min(0).max(65535).default(8080),
-  SESSION_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(1800),
-  RATE_LIMIT_RPM: z.coerce.number().int().min(1).max(10_000).default(120),
+  KAMINARI_AD_TRANSPORT: TransportSchema.default("stdio"),
+  KAMINARI_AD_API_URL: z.string().url().default("https://kaminari.ad"),
+  KAMINARI_AD_LOG_LEVEL: LogLevelSchema.default("info"),
+  KAMINARI_AD_LOG_FORMAT: LogFormatSchema.optional(),
+  KAMINARI_AD_HTTP_PORT: z.coerce.number().int().min(0).max(65535).default(8080),
+  KAMINARI_AD_SESSION_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(1800),
+  KAMINARI_AD_RATE_LIMIT_RPM: z.coerce.number().int().min(1).max(10_000).default(120),
   KAMINARI_AD_API_KEY: z.string().min(8).optional(),
 });
 
@@ -56,6 +85,10 @@ const RawSchema = z.object({
  *
  * Returns `Err<ConfigError>` on validation failure. Caller (typically
  * `bin.ts`) prints the error and exits non-zero.
+ *
+ * `KAMINARI_AD_LOG_FORMAT` defaults are transport-dependent: `pretty`
+ * for stdio (terminal-facing) and `json` for http (aggregator-facing).
+ * If the user sets the env var explicitly, that wins.
  */
 export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> {
   const parsed = RawSchema.safeParse(env);
@@ -63,13 +96,16 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
     return err({ kind: "invalid", issues: parsed.error.flatten().fieldErrors });
   }
   const raw = parsed.data;
+  const transport = raw.KAMINARI_AD_TRANSPORT;
+  const logFormat = raw.KAMINARI_AD_LOG_FORMAT ?? (transport === "stdio" ? "pretty" : "json");
   return ok({
-    transport: raw.TRANSPORT,
-    apiBaseUrl: raw.API_BASE_URL,
-    logLevel: raw.LOG_LEVEL,
-    httpPort: raw.HTTP_PORT,
-    sessionTtlSec: raw.SESSION_TTL_SEC,
-    rateLimitRpm: raw.RATE_LIMIT_RPM,
+    transport,
+    apiBaseUrl: raw.KAMINARI_AD_API_URL,
+    logLevel: raw.KAMINARI_AD_LOG_LEVEL,
+    logFormat,
+    httpPort: raw.KAMINARI_AD_HTTP_PORT,
+    sessionTtlSec: raw.KAMINARI_AD_SESSION_TTL_SEC,
+    rateLimitRpm: raw.KAMINARI_AD_RATE_LIMIT_RPM,
     stdioApiKey: raw.KAMINARI_AD_API_KEY,
   });
 }

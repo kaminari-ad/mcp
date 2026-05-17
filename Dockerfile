@@ -49,8 +49,8 @@ ENTRYPOINT ["/sbin/tini", "--"]
 ENV NODE_ENV=production \
     NPM_CONFIG_FUND=false \
     NPM_CONFIG_UPDATE_NOTIFIER=false \
-    LOG_LEVEL=info \
-    HTTP_PORT=8080
+    KAMINARI_AD_LOG_LEVEL=info \
+    KAMINARI_AD_HTTP_PORT=8080
 
 COPY --chown=node:node --from=deps   /app/node_modules ./node_modules
 COPY --chown=node:node --from=build  /app/dist         ./dist
@@ -58,7 +58,7 @@ COPY --chown=node:node package.json LICENSE README.md SECURITY.md ./
 
 # Healthcheck — Docker compose probes this.
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget -qO- "http://127.0.0.1:${HTTP_PORT}/healthz" || exit 1
+    CMD wget -qO- "http://127.0.0.1:${KAMINARI_AD_HTTP_PORT}/healthz" || exit 1
 
 EXPOSE 8080
 

@@ -10,7 +10,7 @@
  * and config, then hands off.
  */
 
-import * as process from "node:process";
+import process from "node:process";
 
 import { loadConfig, type Transport } from "./shared/config.js";
 import { NAME, VERSION } from "./shared/version.js";
@@ -56,7 +56,7 @@ async function main(): Promise<number> {
 
   const cliTransport = parseTransportFlag(argv);
   const env: NodeJS.ProcessEnv = cliTransport
-    ? { ...process.env, TRANSPORT: cliTransport }
+    ? { ...process.env, KAMINARI_AD_TRANSPORT: cliTransport }
     : process.env;
 
   const configResult = loadConfig(env);

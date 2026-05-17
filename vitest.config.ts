@@ -56,10 +56,16 @@ export default defineConfig({
         // tests/isolation/. The bootstraps ship without unit coverage;
         // ESLint, dependency-cruiser, and the architecture gates
         // protect their structural correctness. http-request-handler
-        // is exercised end-to-end by tests/isolation/.
+        // + the session-resolver / mcp-session-factory it delegates
+        // to are exercised end-to-end by tests/isolation/ (bearer
+        // swap, missing auth, header injection, env-fallback) AND by
+        // tests/integration/cli-smoke.test.ts (real `dist/bin.js`
+        // boot + full initialize → initialized → tools/list flow).
         "src/presentation/stdio/stdio-bootstrap.ts",
         "src/presentation/http/http-bootstrap.ts",
         "src/presentation/http/http-request-handler.ts",
+        "src/presentation/http/session-resolver.ts",
+        "src/presentation/http/mcp-session-factory.ts",
         "src/presentation/shared/wire-tools.ts",
       ],
       thresholds: {

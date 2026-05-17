@@ -38,19 +38,33 @@ export type ToolContextProvider = () => ToolContext;
  */
 export function wireToolsIntoMcpServer(server: McpServer, ctxProvider: ToolContextProvider): void {
   registerAllTools((tool) => {
-    // The SDK accepts either a ZodRawShape or a full ZodObject for
-    // `inputSchema`. We pass the ZodObject — it's the same source of
-    // truth as the handler's input type, with no chance of drift.
+    // The SDK accepts either a `ZodRawShape` (record of zod schemas)
+    // or a full `ZodObject` for `inputSchema`. We pass the `ZodObject`
+    // — same source of truth as the handler's input type, no chance
+    // of drift between schema and TS type.
+    //
+    // The two casts below work around a typing limitation in
+    // `@modelcontextprotocol/sdk@1.29`:
+    //   1. `inputSchema: ... as never` — the SDK's union of
+    //      `RegisterToolParams` overloads makes TS try to resolve our
+    //      `ZodObject<RawShape>` against `ZodRawShape | ZodObject<...>`
+    //      and blow the instantiation depth limit. The cast skips the
+    //      union-check; the SDK reads the value at runtime and accepts
+    //      both shapes.
+    //   2. The callback cast at the end — because of (1), TS picks the
+    //      no-input-schema overload whose callback is `(extra) => ...`
+    //      instead of `(args, extra) => ...`. The runtime invokes our
+    //      callback with both args; the cast realigns the signatures.
+    //
+    // Both casts are unsafe to TS only; runtime behaviour is identical
+    // to the strictly-typed path. When the SDK ships a zod-version-
+    // agnostic public type for `registerTool`, drop both.
     server.registerTool(
       tool.name,
       {
         title: tool.annotations.title,
         description: tool.description,
-        // @ts-expect-error SDK bundles its own zod v4 internally; our project
-        // pins zod v3, so the ZodObject branded type does not line up with
-        // the SDK's `AnySchema`. The runtime accepts both — only the static
-        // types disagree. Remove this comment when we upgrade to zod v4.
-        inputSchema: tool.inputSchema,
+        inputSchema: tool.inputSchema as never,
         annotations: {
           title: tool.annotations.title,
           readOnlyHint: tool.annotations.readOnlyHint,
@@ -59,7 +73,7 @@ export function wireToolsIntoMcpServer(server: McpServer, ctxProvider: ToolConte
           openWorldHint: tool.annotations.openWorldHint,
         },
       },
-      async (rawArgs: unknown, _extra: unknown): Promise<CallToolResult> => {
+      (async (rawArgs: unknown, _extra: unknown): Promise<CallToolResult> => {
         const ctx = ctxProvider();
         // `rawArgs` was already validated by the SDK; re-parse once
         // through our schema to recover the precise narrow type the
@@ -70,7 +84,7 @@ export function wireToolsIntoMcpServer(server: McpServer, ctxProvider: ToolConte
           return toolErrorToMcpResult(result.error);
         }
         return toolOkToMcpResult(result.value);
-      }
+      }) as never
     );
   });
 }

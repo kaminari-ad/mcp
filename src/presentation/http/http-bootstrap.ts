@@ -16,7 +16,7 @@
  */
 
 import { createServer } from "node:http";
-import * as process from "node:process";
+import process from "node:process";
 
 import { createSystemClock } from "../../infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../infrastructure/logging/pino-logger.js";
@@ -30,7 +30,7 @@ import { createHttpRequestHandler } from "./http-request-handler.js";
  * code when the server shuts down (SIGTERM / SIGINT).
  */
 export async function bootstrapHttp(config: Config): Promise<number> {
-  const logger = createPinoLogger(config.logLevel, "json");
+  const logger = createPinoLogger(config.logLevel, config.logFormat);
 
   // Rule #5 — KAMINARI_AD_API_KEY is stdio-only. Refuse to start with
   // it set in HTTP mode so we never serve a default-Bearer fallback.

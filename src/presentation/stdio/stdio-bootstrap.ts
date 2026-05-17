@@ -11,7 +11,7 @@
  * CONTRIBUTING.md "Tenant isolation".
  */
 
-import * as process from "node:process";
+import process from "node:process";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -29,7 +29,7 @@ import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
  * the transport closes. Returns a process exit code.
  */
 export async function bootstrapStdio(config: Config): Promise<number> {
-  const logger = createPinoLogger(config.logLevel, "pretty");
+  const logger = createPinoLogger(config.logLevel, config.logFormat);
 
   if (config.stdioApiKey === undefined) {
     logger.fatal({}, "stdio.missing_api_key");

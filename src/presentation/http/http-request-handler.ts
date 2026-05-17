@@ -7,28 +7,45 @@
  *
  * The function returned by {@link createHttpRequestHandler} is pure
  * over its dependencies — no module-level state, no shared mutable
- * caches. Long-lived dependencies (`SessionStore`, `RateLimiter`,
- * top-level `Logger`) are supplied by the caller (`http-bootstrap.ts`),
- * and each request constructs a fresh per-request `ApiGateway` from
- * the incoming Bearer.
+ * caches across handler factories. Long-lived dependencies
+ * (`SessionStore`, `RateLimiter`, top-level `Logger`) are supplied by
+ * the caller (`http-bootstrap.ts`), and each request constructs a
+ * fresh per-request `ApiGateway` from the incoming Bearer.
+ *
+ * Session lifecycle (Streamable HTTP):
+ *
+ *   1. First POST (`initialize`) — no `Mcp-Session-Id` header. We
+ *      build a fresh {@link McpServer} + {@link StreamableHTTPServerTransport}
+ *      via {@link initNewSession}, let the SDK generate a session id,
+ *      then bind it to `bearerHash` in {@link SessionStore} and cache
+ *      the transport so the next request on the same session reuses
+ *      the same SDK state.
+ *   2. Subsequent requests on the same session — same bearer ⇒ reuse
+ *      the cached transport (rule #9 enforced via `SessionStore`
+ *      bearer-hash equality); different bearer ⇒ destroy the session
+ *      and respond 401.
+ *   3. Session close — when the SDK fires `transport.onclose` (client
+ *      sent DELETE /mcp, or session TTL expired and we evicted) we
+ *      drop the transport from the cache to free memory.
+ *
+ * Rule #10 ("fresh state per tenant") still holds: every cached
+ * transport is bound to exactly one bearer (rule #9), and any attempt
+ * to reuse a session id with a different bearer is rejected before any
+ * SDK code runs.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-
 import type { Logger } from "../../domain/ports/logger.js";
 import type { RateLimiter } from "../../domain/ports/rate-limiter.js";
 import type { SessionStore } from "../../domain/ports/session-store.js";
-import { decideSessionAction } from "../../domain/services/session-binding-policy.js";
 import { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import { newRequestId } from "../../domain/value-objects/request-id.js";
-import { parseSessionId } from "../../domain/value-objects/session-id.js";
+import type { SessionId } from "../../domain/value-objects/session-id.js";
 import { createHttpApiGateway } from "../../infrastructure/api/http-api-gateway.js";
 import type { Config } from "../../shared/config.js";
-import { NAME, VERSION } from "../../shared/version.js";
-import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
+import { initNewSession, type SessionEntry } from "./mcp-session-factory.js";
+import { resolveExistingSession } from "./session-resolver.js";
 
 export interface HttpRequestHandlerDeps {
   readonly config: Config;
@@ -45,6 +62,11 @@ export function createHttpRequestHandler(
   deps: HttpRequestHandlerDeps
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   const { config, logger, sessions, rateLimiter } = deps;
+
+  // Transport cache. Closed over by the handler — one cache per
+  // bootstrap, never shared across factories. Cleared on transport
+  // close (see `mcp-session-factory.ts`).
+  const liveSessions = new Map<SessionId, SessionEntry>();
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // Rule #16 — health probe carries no tenant data and needs no auth.
@@ -88,27 +110,16 @@ export function createHttpRequestHandler(
       return;
     }
 
-    // Rule #9 — session-id binding: existing sessions are pinned to the
-    // bearer that initialised them; a different bearer is rejected and
-    // the session destroyed.
     const sessionIdRaw = first(req.headers["mcp-session-id"]);
-    if (sessionIdRaw !== undefined) {
-      const sessionId = parseSessionId(sessionIdRaw);
-      if (sessionId === undefined) {
-        writeJson(res, 400, { error: "Invalid Mcp-Session-Id" });
-        return;
-      }
-      const action = decideSessionAction(sessions.checkAndTouch(sessionId, bearer.fullHash()));
-      if (action.kind === "reject-bearer-mismatch") {
-        sessions.destroy(sessionId);
-        reqLogger.warn({}, "http.session_bearer_mismatch");
-        writeJson(res, 401, { error: "Session bound to a different bearer" });
-        return;
-      }
-      // `unknown-session` is allowed through — the SDK will treat it as
-      // a fresh initialize (or reject as malformed if not). We do not
-      // pre-validate session state beyond the bearer check.
-    }
+    const existingEntry = await resolveExistingSession({
+      sessionIdRaw,
+      bearer,
+      reqLogger,
+      sessions,
+      liveSessions,
+      res,
+    });
+    if (existingEntry === "rejected") return;
 
     // Rule #3 — per-request ApiGateway, holding only this request's Bearer.
     const api = createHttpApiGateway({
@@ -118,30 +129,17 @@ export function createHttpRequestHandler(
       logger: reqLogger,
     });
 
-    // Rule #10 — a fresh McpServer per request avoids any chance of
-    // cross-request state on the SDK side.
-    const server = new McpServer({ name: NAME, version: VERSION });
-    wireToolsIntoMcpServer(server, () => ({ api, logger: reqLogger, requestId }));
+    const entry =
+      existingEntry ??
+      (await initNewSession({ requestId, reqLogger, liveSessions, sessions, bearer }));
 
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: (): string => requestId, // request-scoped; SDK uses this for response correlation
-      enableJsonResponse: true,
-    });
+    // Swap the per-request context BEFORE handing off to the SDK so
+    // the tool callback's lexical-closure read sees this request's
+    // gateway.
+    entry.ctxRef.current = { api, logger: reqLogger, requestId };
 
     try {
-      // @ts-expect-error SDK's Transport.onclose union (() => void) | undefined
-      // mismatches Server.connect's expected non-optional type. Harmless;
-      // fixed upstream in a future SDK release.
-      await server.connect(transport);
-      await transport.handleRequest(req, res);
-      // On a fresh initialize the SDK has now emitted a session-id on
-      // the response. Bind it to this bearer so the NEXT request on
-      // the same session is locked in.
-      const issued = first(res.getHeader("mcp-session-id"));
-      if (typeof issued === "string") {
-        const sid = parseSessionId(issued);
-        if (sid !== undefined) sessions.bind(sid, bearer.fullHash());
-      }
+      await entry.transport.handleRequest(req, res);
       reqLogger.info({}, "http.request_done");
     } catch (cause) {
       reqLogger.error(

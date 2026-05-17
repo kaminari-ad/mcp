@@ -5,12 +5,19 @@
  *
  *   - Bearers never appear in logs. pino's redact paths cover the
  *     known fields (`Authorization`, `bearer`, `headers.authorization`).
- *   - Stdio mode writes to stderr (so stdout stays a pure MCP JSON-RPC
- *     channel). HTTP mode also writes to stderr; the container's
- *     stdout is reserved for crash dumps.
+ *   - Stdio mode writes to **stderr** (so stdout stays a pure MCP
+ *     JSON-RPC channel). HTTP mode also writes to stderr; the
+ *     container's stdout is reserved for crash dumps. This invariant
+ *     is enforced even in `pretty` format — see the `prettyStream`
+ *     workaround below.
  */
 
 import { type Logger as PinoLoggerImpl, type LoggerOptions, pino, stdTimeFunctions } from "pino";
+// `pino-pretty` is a runtime `dependency` (not `devDependency`) so
+// `npx -y @kaminari-ad/mcp` works on a fresh install — without it
+// the default `stdio + pretty` path crashes with "unable to determine
+// transport target".
+import pinoPretty from "pino-pretty";
 
 import type { LogFields, Logger } from "../../domain/ports/logger.js";
 import type { LogLevel } from "../../shared/config.js";
@@ -31,6 +38,13 @@ const REDACTION_PATHS: readonly string[] = [
 /**
  * Build a `Logger` backed by pino.
  *
+ * In `pretty` mode we instantiate `pino-pretty` **synchronously as a
+ * write stream** instead of using pino's `transport` option. The
+ * `transport` option spawns a worker that defaults to `process.stdout`
+ * and ignores any destination we pass to `pino()` — which would
+ * corrupt the MCP JSON-RPC channel in stdio mode. The sync stream
+ * preserves our stderr invariant.
+ *
  * @param level - Minimum level to emit; below this, calls are dropped.
  * @param format - `json` for production / Docker logs, `pretty` for
  *                 local stdio development.
@@ -50,16 +64,17 @@ export function createPinoLogger(
     formatters: {
       level: (label) => ({ level: label }),
     },
-    ...(format === "pretty"
-      ? {
-          transport: {
-            target: "pino-pretty",
-            options: { colorize: true, ignore: "pid,hostname" },
-          },
-        }
-      : {}),
   };
-  const sink = destination ?? pino.destination(process.stderr.fd);
+  const sink =
+    destination ??
+    (format === "pretty"
+      ? pinoPretty({
+          colorize: true,
+          ignore: "pid,hostname",
+          destination: process.stderr.fd,
+          sync: true,
+        })
+      : pino.destination(process.stderr.fd));
   return wrap(pino(options, sink));
 }
 

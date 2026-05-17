@@ -63,12 +63,12 @@ export async function spinUpServer(
   const logger = createPinoLogger("debug", "json", sink);
 
   const configResult = loadConfig({
-    TRANSPORT: "http",
-    API_BASE_URL: "https://kaminari.test",
-    LOG_LEVEL: "debug",
-    HTTP_PORT: "0",
-    SESSION_TTL_SEC: String(overrides.SESSION_TTL_SEC ?? 1800),
-    RATE_LIMIT_RPM: String(overrides.RATE_LIMIT_RPM ?? 1000),
+    KAMINARI_AD_TRANSPORT: "http",
+    KAMINARI_AD_API_URL: "https://kaminari.test",
+    KAMINARI_AD_LOG_LEVEL: "debug",
+    KAMINARI_AD_HTTP_PORT: "0",
+    KAMINARI_AD_SESSION_TTL_SEC: String(overrides.SESSION_TTL_SEC ?? 1800),
+    KAMINARI_AD_RATE_LIMIT_RPM: String(overrides.RATE_LIMIT_RPM ?? 1000),
   });
   if (configResult.isErr()) throw new Error("test config invalid");
   const config = configResult.value;
