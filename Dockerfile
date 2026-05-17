@@ -13,8 +13,12 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache tini=~0.19
-ENV NODE_ENV=production \
-    NPM_CONFIG_FUND=false \
+# NOTE: `NODE_ENV=production` is intentionally NOT set here. With it
+# set, `npm ci` silently omits devDependencies even when `--omit=dev`
+# is not passed — which breaks the `build` stage (tsup needs
+# typescript / @types/node from devDeps). The runtime stage sets
+# `NODE_ENV=production` for the actual server.
+ENV NPM_CONFIG_FUND=false \
     NPM_CONFIG_AUDIT=false \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 
