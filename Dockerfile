@@ -22,15 +22,20 @@ ENV NODE_ENV=production \
 FROM base AS deps
 COPY package.json package-lock.json ./
 COPY .npmrc ./
+# `--legacy-peer-deps` works around a transient peerOptional conflict
+# in the devDependency tree (`@eslint/js@10` declares peerOptional
+# `eslint@^10`, but we still pin `eslint@9`). Production deps are
+# unaffected; both `npm ci` calls in this Dockerfile use the same
+# flag for consistency. Remove when the dev deps are upgraded.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts
+    npm ci --omit=dev --ignore-scripts --legacy-peer-deps
 
 # ── 3. build (all deps + tsup) ───────────────────────────────────────
 FROM base AS build
 COPY package.json package-lock.json ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --ignore-scripts
+    npm ci --ignore-scripts --legacy-peer-deps
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN npx tsup --config tsup.config.ts
