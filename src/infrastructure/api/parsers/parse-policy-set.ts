@@ -67,14 +67,26 @@ export function parsePolicySet(raw: unknown): Result<PolicySetResponse, ApiError
  *
  */
 export function parsePolicySetList(raw: unknown): Result<readonly PolicySetResponse[], ApiError> {
-  if (!Array.isArray(raw)) {
-    return err({ kind: "upstream", detail: "expected array of policy sets" });
+  // API returns the FastAPI paginated envelope `{ items, total, page,
+  // limit, pages }`. The MCP tool only needs the inner array — pagination
+  // metadata is discarded. Bare-array shape is accepted as a defensive
+  // fallback so a future API change that unwraps the envelope does not
+  // break the parser.
+  const items = unwrapItems(raw);
+  if (items === undefined) {
+    return err({ kind: "upstream", detail: "expected array (or {items:[]}) of policy sets" });
   }
   const out: PolicySetResponse[] = [];
-  for (const item of raw) {
+  for (const item of items) {
     const r = parsePolicySet(item);
     if (r.isErr()) return err(r.error);
     out.push(r.value);
   }
   return ok(out);
+}
+
+function unwrapItems(raw: unknown): readonly unknown[] | undefined {
+  if (Array.isArray(raw)) return raw;
+  if (isStringRecord(raw) && Array.isArray(raw["items"])) return raw["items"];
+  return undefined;
 }

@@ -42,6 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Paginated list parsers (custom-rules, policy-sets) accept the
+  FastAPI envelope.** Both `parseCustomRuleArray` and
+  `parsePolicySetList` expected a bare `T[]`, but the API returns the
+  standard `{ items, total, page, limit, pages }` envelope — every
+  call to `list_custom_rules` / `list_policy_sets` returned `Upstream
+  error: expected array of …`. Parsers now accept both shapes
+  (envelope is unwrapped to the inner array; pagination metadata is
+  discarded since the tool DTOs return `readonly T[]`). Bug
+  surfaced by a real-org smoke run against a fresh
+  `/api/v1/custom-rules` instance. Other list parsers
+  (`parseScanPage`, `parseCampaignPage`, `parseAlertPage`) were
+  already envelope-aware; this brings the remaining two in line.
+
 - **HTTP transport: Streamable HTTP session continuity.** The
   per-request handler used to spin up a fresh `McpServer` +
   `StreamableHTTPServerTransport` on every POST, so the SDK state

@@ -134,10 +134,28 @@ describe("parseCustomRule / parseCustomRuleArray", () => {
     const r = parseCustomRule({ ...VALID, is_active: "x" });
     expect(r._unsafeUnwrap().is_active).toBe(true);
   });
-  it("array parser Ok / rejects bad", () => {
+  it("array parser Ok from bare array", () => {
     expect(parseCustomRuleArray([VALID]).isOk()).toBe(true);
+  });
+  it("array parser Ok from paginated envelope (FastAPI shape)", () => {
+    const envelope = { items: [VALID], total: 1, page: 1, limit: 50, pages: 1 };
+    const r = parseCustomRuleArray(envelope);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
+  });
+  it("array parser Ok from empty paginated envelope", () => {
+    const r = parseCustomRuleArray({ items: [], total: 0, page: 1, limit: 50, pages: 0 });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual([]);
+  });
+  it("array parser rejects garbage (neither array nor envelope)", () => {
     expect(parseCustomRuleArray("x").isErr()).toBe(true);
+    expect(parseCustomRuleArray({ items: "x" }).isErr()).toBe(true);
+    expect(parseCustomRuleArray(42).isErr()).toBe(true);
+  });
+  it("array parser rejects when an item is malformed", () => {
     expect(parseCustomRuleArray([{}]).isErr()).toBe(true);
+    expect(parseCustomRuleArray({ items: [{}] }).isErr()).toBe(true);
   });
 });
 

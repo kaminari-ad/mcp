@@ -1,6 +1,13 @@
 /**
- * Parser for `GET /api/v1/custom-rules` — list returns a top-level
- * array (not paginated envelope per OpenAPI).
+ * Parser for `GET /api/v1/custom-rules`.
+ *
+ * The API returns the standard FastAPI paginated envelope
+ * `{ items, total, page, limit, pages }`. The MCP tool surface only
+ * needs the array of rules, so we accept either the envelope (current
+ * production shape) or a bare array (defensive — covers a future
+ * unwrapping breaking change). The pagination metadata is discarded;
+ * if pagination ever matters for AI workflows, lift the DTO to
+ * `PaginatedResponse<CustomRuleResponse>` like `listScans`.
  */
 
 import type { ApiError, CustomRuleResponse } from "../../../domain/ports/api-gateway.js";
@@ -49,14 +56,27 @@ export function parseCustomRule(raw: unknown): Result<CustomRuleResponse, ApiErr
 export function parseCustomRuleArray(
   raw: unknown
 ): Result<readonly CustomRuleResponse[], ApiError> {
-  if (!Array.isArray(raw)) {
-    return err({ kind: "upstream", detail: "expected array of custom-rules" });
+  const items = unwrapItems(raw);
+  if (items === undefined) {
+    return err({ kind: "upstream", detail: "expected array (or {items:[]}) of custom-rules" });
   }
   const out: CustomRuleResponse[] = [];
-  for (const item of raw) {
+  for (const item of items) {
     const r = parseCustomRule(item);
     if (r.isErr()) return err(r.error);
     out.push(r.value);
   }
   return ok(out);
+}
+
+/**
+ * Accept either a bare `T[]` or the standard paginated envelope
+ * `{ items: T[], ... }` and return the inner array. Returns
+ * `undefined` for anything else so the caller can produce a useful
+ * upstream error.
+ */
+function unwrapItems(raw: unknown): readonly unknown[] | undefined {
+  if (Array.isArray(raw)) return raw;
+  if (isStringRecord(raw) && Array.isArray(raw["items"])) return raw["items"];
+  return undefined;
 }

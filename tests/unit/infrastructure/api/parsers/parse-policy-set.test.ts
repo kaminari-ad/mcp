@@ -66,13 +66,27 @@ describe("parsePolicySet", () => {
 });
 
 describe("parsePolicySetList", () => {
-  it("Ok valid", () => {
+  it("Ok valid bare array", () => {
     expect(parsePolicySetList([VALID_FULL]).isOk()).toBe(true);
   });
-  it("rejects non-array", () => {
+  it("Ok valid paginated envelope (FastAPI default shape)", () => {
+    const envelope = { items: [VALID_FULL], total: 1, page: 1, limit: 50, pages: 1 };
+    const r = parsePolicySetList(envelope);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
+  });
+  it("Ok empty paginated envelope", () => {
+    const r = parsePolicySetList({ items: [], total: 0, page: 1, limit: 50, pages: 0 });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual([]);
+  });
+  it("rejects garbage shape (neither array nor envelope)", () => {
     expect(parsePolicySetList({}).isErr()).toBe(true);
+    expect(parsePolicySetList({ items: "not-an-array" }).isErr()).toBe(true);
+    expect(parsePolicySetList(42).isErr()).toBe(true);
   });
   it("rejects when an item is malformed", () => {
     expect(parsePolicySetList([{}]).isErr()).toBe(true);
+    expect(parsePolicySetList({ items: [{}] }).isErr()).toBe(true);
   });
 });
