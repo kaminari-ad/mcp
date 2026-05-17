@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-17
+
+Re-release of v0.1.3 — that release's `npm install -g npm@^11`
+step broke mid-upgrade with `Cannot find module 'promise-retry'`
+(npm 10 → 11 in-place self-upgrade leaves a broken state because
+newer arborist references modules the old bundled tree never had).
+
+### Fixed
+
+- **Upgrade npm via Corepack instead of in-place self-upgrade.**
+  Corepack (bundled with Node 22+) manages the npm install via a
+  separate symlink layer and avoids the self-upgrade race. The
+  publish step now reliably runs against npm 11.x with full OIDC
+  Trusted Publisher support.
+
 ## [0.1.3] - 2026-05-17
 
 Re-release of 0.1.1 / 0.1.2 (both failed at the npm publish step).
@@ -438,7 +453,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.4
 [0.1.3]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.3
 [0.1.2]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.2
 [0.1.1]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.1

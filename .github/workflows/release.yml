@@ -41,15 +41,24 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Node 22 LTS ships with npm 10.x; npm Trusted Publisher OIDC
-      # publishing was added in npm 11.5.1 (August 2025). Without
-      # this upgrade `--provenance` signs the sigstore attestation
-      # but the publish itself goes out unauthenticated and the
-      # registry replies HTTP 404 (security obscurity hiding "no
-      # auth"). Pin to the latest 11.x line to keep the upgrade
-      # bounded (npm 12 may land breaking changes).
-      - name: Upgrade npm to OIDC-publish-capable version
-        run: npm install -g npm@^11
+      # Node 22 LTS ships with npm 10.x bundled; npm Trusted
+      # Publisher OIDC publishing was added in npm 11.5.1 (Aug 2025).
+      # Without it, `npm publish --provenance` signs the sigstore
+      # attestation but sends the actual PUT unauthenticated → HTTP
+      # 404 (registry obscurity for "no credentials").
+      #
+      # We use Corepack (bundled with Node 22+) instead of
+      # `npm install -g npm@latest` because in-place self-upgrade
+      # of npm 10 → 11 leaves a broken state (newer arborist
+      # references modules the old bundled tree never had:
+      # `Cannot find module 'promise-retry'`). Corepack manages
+      # the npm install via a separate symlink layer and avoids the
+      # self-upgrade race.
+      - name: Upgrade npm via Corepack
+        run: |
+          corepack enable
+          corepack prepare npm@^11 --activate
+          echo "npm version: $(npm --version)"
 
       - name: Install
         run: npm ci --legacy-peer-deps --ignore-scripts
