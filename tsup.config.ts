@@ -11,7 +11,7 @@ export default defineConfig({
   entry: ["src/bin.ts"],
   outDir: "dist",
   format: ["esm"],
-  target: "node20",
+  target: "node22",
   platform: "node",
   dts: true,
   clean: true,

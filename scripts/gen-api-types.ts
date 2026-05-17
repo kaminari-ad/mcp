@@ -31,10 +31,18 @@ const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), 
 const OUTPUT = path.join(REPO_ROOT, "src", "shared", "api", "openapi.ts");
 const DEFAULT_URL = "https://kaminari.ad/openapi.json";
 
-const HEADER = `/**
+/**
+ * Render the file-header. The Source line always shows the canonical
+ * public URL, even when a contributor regenerated from a cached
+ * `file://` snapshot — the committed artifact must look reproducible
+ * to a stranger reading the file on GitHub.
+ */
+function header(): string {
+  return `/**
  * GENERATED FILE — do not edit by hand.
  *
- * Source : ${process.env["API_OPENAPI_URL"] ?? DEFAULT_URL}
+ * Source : ${DEFAULT_URL} (cached locally during generation; the live
+ *          URL is the canonical source).
  * Tool   : openapi-typescript
  * Refresh: \`npm run gen:api-types\`
  *
@@ -45,6 +53,7 @@ const HEADER = `/**
 /* eslint-disable */
 
 `;
+}
 
 async function main(): Promise<number> {
   const source = process.env["API_OPENAPI_URL"] ?? DEFAULT_URL;
@@ -63,7 +72,7 @@ async function main(): Promise<number> {
   }
 
   const body = astToString(ast);
-  await fs.writeFile(OUTPUT, HEADER + body, "utf8");
+  await fs.writeFile(OUTPUT, header() + body, "utf8");
   process.stderr.write(`gen-api-types: wrote ${OUTPUT} (${body.length} bytes)\n`);
   return 0;
 }

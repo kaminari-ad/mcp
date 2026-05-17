@@ -9,7 +9,7 @@
         docker-build docker-shell
 
 # ──────────────────────────────────────────────────────────────────────
-# All commands run inside a pinned node:20-alpine container so the
+# All commands run inside a pinned node:22-alpine container so the
 # host Node version doesn't matter. The `mcp-dev` service in
 # docker-compose.yml mounts the repo and a named node_modules volume.
 # ──────────────────────────────────────────────────────────────────────

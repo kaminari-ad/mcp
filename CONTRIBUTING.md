@@ -6,10 +6,9 @@ Thanks for considering a contribution! This document walks you through the devel
 
 ## Prerequisites
 
-- Docker (24+). All build/test/lint commands run inside a pinned `node:20-alpine` container — your host Node version does not matter.
-- `make` (BSD make on macOS / GNU make on Linux both work).
-
-You do NOT need a local Node install to develop. If you want one for editor integration, install Node 20 LTS (matches `.nvmrc`).
+- **Docker 24+** — every `make` target runs inside a pinned `node:22-alpine` container, so the build / lint / test path is identical on your machine and in CI.
+- **`make`** (BSD on macOS, GNU on Linux — both work).
+- **Node 22 on the host** if you plan to commit. The lefthook pre-commit hook runs `prettier` + `eslint` + `tsc` + `vitest` on staged files via `npx` on the host (fast iteration), so it needs a local Node. The `.nvmrc` pins `22`; `nvm install` works. If you'd rather not install Node locally, run commits with `git commit --no-verify` and let CI catch any issues.
 
 ## Get the code
 

@@ -187,6 +187,15 @@ publish:npm:
   needs: [build]
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/'
+  # `NPM_TOKEN` MUST be configured in GitLab as a `Protected` AND
+  # `Masked` CI/CD variable. Without `Masked`, an accidental
+  # `set -x` or `npm publish --dry-run` could leak the token into the
+  # job log. `Protected` keeps it scoped to protected tags only.
+  variables:
+    NPM_CONFIG_AUDIT: "false"
+    # Force `npm config set` (below) NOT to echo the token. Belt and
+    # suspenders alongside the GitLab masking.
+    NPM_CONFIG_LOGLEVEL: "warn"
   script:
     # Sync the package.json version with the git tag (strip the `v`
     # prefix). package.json on the branch stays at `0.0.0-dev` —
@@ -194,5 +203,8 @@ publish:npm:
     - VERSION="${CI_COMMIT_TAG#v}"
     - 'echo "Publishing version: $VERSION"'
     - npm version "$VERSION" --no-git-tag-version --allow-same-version
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+    # Use `npm config set --location project` to write the token into
+    # a project-scoped `.npmrc` that is wiped with the job's working
+    # directory. Token never crosses stdout.
+    - npm config set --location project "//registry.npmjs.org/:_authToken=$NPM_TOKEN"
     - npm publish --provenance --access public

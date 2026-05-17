@@ -37,6 +37,16 @@
     "kaminari-ad-mcp": "./dist/bin.js"
   },
   "main": "./dist/bin.js",
+  "types": "./dist/bin.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/bin.d.ts",
+      "import": "./dist/bin.js",
+      "default": "./dist/bin.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",

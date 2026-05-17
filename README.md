@@ -107,7 +107,7 @@ To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
-Requires Docker. All commands run in a pinned `node:22-alpine` container so your host Node version does not matter (Node 22 LTS is required by the dep tree — see `.nvmrc` / `engines.node`):
+The Docker path (no local Node required for the build, but see [CONTRIBUTING](CONTRIBUTING.md) for the host-side commit hooks):
 
 ```bash
 make check           # lint + format-check + typecheck + arch-gates + test-cov
@@ -116,9 +116,29 @@ make test-unit       # unit only
 make test-isolation  # tenant-isolation suite
 ```
 
+Or directly with `npm` if you have Node 22 LTS on the host (matches `.nvmrc` / `engines.node`):
+
+```bash
+npm ci --legacy-peer-deps
+npm run lint && npm run typecheck && npm test
+```
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and how to add a tool.
 
-CI runs on GitLab at <https://gitlab.sdev.pw/adverif/mcp/-/pipelines>. The `.github/` directory only carries issue/PR templates — there are no GitHub Actions; pull requests opened on the GitHub mirror need to be re-applied to the GitLab repo for the pipeline to run.
+> The maintainers run CI on a private GitLab instance and mirror the repo to GitHub. The `.github/` directory carries issue/PR templates only — there are no GitHub Actions wired up yet. Community PRs are welcome on the GitHub mirror; the maintainers re-apply them to the internal repo to run the pipeline.
+
+---
+
+## Stability
+
+The **public surface** of this package is:
+
+1. The **CLI binary** `kaminari-ad-mcp` and its `--transport stdio|http` flag, the env vars documented in `.env.example`, and the exit codes (0 / 1 fatal / 2 invalid config).
+2. The **MCP wire protocol** as implemented by every registered tool (tool names, input schemas, output shapes, annotations). Tools deprecated in a future major version will keep working for at least one minor version with a console warning.
+
+Everything else — the TypeScript types exported from `dist/bin.d.ts`, deep imports, internal class shapes — is **not** part of the public contract and may change in any release. Treat this package as a CLI, not a library.
+
+We follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for the two items above. See [`CHANGELOG.md`](CHANGELOG.md) for the per-release record.
 
 ---
 

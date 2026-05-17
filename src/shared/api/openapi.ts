@@ -1,7 +1,8 @@
 /**
  * GENERATED FILE — do not edit by hand.
  *
- * Source : file:///spec/kaminari-openapi.json
+ * Source : https://kaminari.ad/openapi.json (cached locally during
+ *          generation; the live URL is the canonical source).
  * Tool   : openapi-typescript
  * Refresh: `npm run gen:api-types`
  *
