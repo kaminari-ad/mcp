@@ -60,6 +60,7 @@
     "test:integration": "vitest run tests/integration --passWithNoTests",
     "test:isolation": "vitest run tests/isolation",
     "gen:api-types": "tsx scripts/gen-api-types.ts",
+    "prod:smoke": "tsx scripts/prod-smoke.ts",
     "check:file-sizes": "tsx scripts/check-file-sizes.ts",
     "check:imports": "depcruise --config .dependency-cruiser.cjs src",
     "check:bundle-size": "tsx scripts/check-bundle-size.ts",

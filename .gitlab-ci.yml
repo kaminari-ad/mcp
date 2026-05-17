@@ -236,6 +236,35 @@ docker:build:
     - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt sample (first 50) ===="; head -50 files.txt; exit 1; }; done'
     - echo "image contains all expected runtime files"
 
+# Prod smoke — fires a read-only subset of MCP tools at the deployed
+# endpoint using a long-lived sandbox-org bearer.
+#
+# Catches drifts that escape compile-time gates: API shape changes
+# between releases, feature-flag-gated routes flipping on/off,
+# parser regressions invisible to fakes.
+#
+# Manual trigger by default (`when: manual`) so the job appears in
+# the pipeline UI but doesn't burn CI minutes on every push. Flip
+# to a daily schedule via GitLab CI/CD → Schedules once the sandbox
+# org + token are provisioned (see the operations runbook).
+#
+# Required CI variables (both Masked + Protected):
+#   KAMINARI_AD_MCP_PROD_TOKEN — long-lived bearer for a dedicated
+#                                sandbox org. Rotated quarterly.
+#   KAMINARI_AD_MCP_PROD_URL   — optional override; defaults to
+#                                https://mcp.kaminari.ad/mcp.
+prod:smoke:
+  stage: test
+  needs:
+    - setup
+  rules:
+    - when: manual
+      allow_failure: true
+  variables:
+    NPM_CONFIG_AUDIT: "false"
+  script:
+    - npm run prod:smoke
+
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
 # ─────────────────────────────────────────────────────────────────────

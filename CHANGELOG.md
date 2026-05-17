@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (parser-drift phase 1)
+
+Production smoke against a fresh test org found 8 of the 82 tools
+broken on 4 distinct root-cause patterns. All fixed; the global
+masking bug that hid the real failure mode is fixed too.
+
+- **API returns 204 No Content, parser expected entity.** Four tools
+  hit this — `set_campaign_alert_overrides`, `request_policy_set_approval`,
+  `update_tag_definition`, `update_user_role` — with errors like
+  `malformed user` / `malformed tag detail` / `malformed policy-set`.
+  Parsers now use `parseEmpty`; port DTOs return `null`; the tool
+  output is `{ updated: true }` / `{ requested: true }` so JSON output
+  stays a plain object. Tool descriptions updated to point at the
+  follow-up GET when the caller needs the new state echoed.
+- **Action endpoint returns `GroupActionResponse` summary, parser
+  expected the group entity.** `archive_campaign_group` and
+  `unarchive_campaign_group` both POST endpoints return
+  `{ group_id, affected_campaigns, cancelled_count, run_ids,
+  failures }` like `run_campaign_group` / `cancel_campaign_group`.
+  Parsers now use the existing `parseGroupAction`; port DTO is
+  `GroupActionResponse`.
+- **Paginated envelope vs bare array (inverted from last week).**
+  `list_campaign_groups` — OpenAPI documents the response as a bare
+  `CampaignGroupResponse[]` but the parser was `parseCampaignGroupPage`
+  expecting `{items, total, page, limit}`. New
+  `parseCampaignGroupArray` accepts both shapes defensively (same
+  `unwrapItems` pattern used in `parsePolicySetList`). Tool DTO becomes
+  `readonly CampaignGroupResponse[]` and the bogus `page` / `limit`
+  query params (the endpoint only documents `archived?`) are dropped.
+- **Missing required request body + ignored response.** `test_webhook`
+  sent `undefined` body, but the API requires `{event_type: string}`
+  (422 without). The rich `TestWebhookResponse` was dropped via
+  `parseEmpty`. The gateway now sends the body; new
+  `parseTestWebhookResponse` decodes
+  `{ success, response_status, elapsed_ms, error_code, response_body }`
+  so the agent can diagnose a receiver failure from one call.
+- **`error-mapping.ts::detail()` only handled string `detail`.**
+  FastAPI 422 returns `detail: ValidationError[]`. Every 422 across
+  every tool degraded to opaque `"Upstream error"` — which masked the
+  real `test_webhook` failure mode. The detail extractor now walks
+  the array, formats each entry as `"<loc>: <msg>"`, joins with
+  `; `, surfaces field-level RCA in the tool error string.
+
+### Added (parser-drift phase 2a — infrastructure for the rest)
+
+- **Generated zod runtime schemas** at `src/shared/api/zod-schemas.ts`.
+  `scripts/gen-api-types.ts` now emits both
+  `src/shared/api/openapi.ts` (types, via `openapi-typescript`) and
+  `src/shared/api/zod-schemas.ts` (runtime schemas + Zodios endpoint
+  catalogue, via `openapi-zod-client`) from the SAME live OpenAPI
+  document — so the two files cannot drift relative to each other,
+  and the existing CI drift-check on the committed copies covers
+  both. Source URL changed from `https://kaminari.ad/openapi.json`
+  (returns a Next.js 404) to `https://app.kaminari.ad/openapi.json`
+  (the actual API host).
+- **`parseWithSchema` helper** at
+  `src/infrastructure/api/parsers/parse-with-schema.ts` — wraps
+  `schema.safeParse()` with typed `ApiError` failure mapping AND
+  strips explicit-`undefined` keys from the parsed object so the
+  output matches the port DTO's `exactOptionalPropertyTypes` style.
+  Foundation for Phase 2b (converting each hand-written
+  `parse-*.ts` to a one-liner backed by `schemas.X.pick({...})`).
+
+### Added (parser-drift phase 4 — production observability)
+
+- **`scripts/prod-smoke.ts`** + **`npm run prod:smoke`** + a manual
+  `prod:smoke` GitLab CI job. Fires a read-only subset of MCP tools
+  at the hosted endpoint using a long-lived sandbox-org bearer
+  (`KAMINARI_AD_MCP_PROD_TOKEN` CI variable, Masked + Protected).
+  Catches drifts that escape compile-time gates — API shape changes,
+  feature-flag-gated routes flipping on/off, parser regressions.
+  Manual trigger by default; flip to a daily schedule once the
+  sandbox org + token are provisioned.
+
+### Deferred — followup MR
+
+- **Phase 2b: parser conversion.** Each `parse-*.ts` to be rewritten
+  as `parseWithSchema(schemas.X.pick({...}).strip(), raw, label)`.
+  Tried in this MR; cascades into ~20 test-fixture failures because
+  the old hand-parsers tolerated loose stubs (`id: "u1"`, `created_at:
+  "t"`) which strict zod (`z.string().uuid()`,
+  `z.string().datetime({offset:true})`) rejects. Better as a sweeping
+  parser-by-parser MR with matching fixture upgrades.
+- **Phase 3: replace hand-written http-api-gateway with openapi-fetch.**
+  Same fixture-migration scope as Phase 2b; defer until 2b is in.
+
 ### Changed (breaking — pre-release, no API consumers yet)
 
 - **Env vars now carry the `KAMINARI_AD_` namespace prefix.** Generic
