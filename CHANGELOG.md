@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-18
+
+Patch release — clear Node-version error message, correct `engines`
+declaration, and the default API URL is now the real API host. No
+tool surface change.
+
+### Fixed
+
+- **Default `KAMINARI_AD_API_URL` pointed at the wrong host.**
+  v0.2.0 defaulted to `https://kaminari.ad`, which is the marketing
+  landing page — `kaminari.ad` does NOT serve `/api/v1/*` routes
+  (returns HTTP 404 for every tool call). The actual API host is
+  `https://app.kaminari.ad` (note the `app.` subdomain).
+  Users who set `KAMINARI_AD_API_URL` explicitly were unaffected;
+  users who relied on the default got 404 on every tool call. The
+  internal `gen-api-types` script already used the correct host
+  (`app.kaminari.ad`) for OpenAPI generation — only the runtime
+  default drifted. Now corrected here, in `.env.example`, and pinned
+  by a unit test against future regressions.
+- **Cryptic `webidl.util.markAsUncloneable is not a function`
+  startup crash on Node < 22.19.** The underlying `undici@8.x`
+  removed feature probes in v8.0.3 and now imports `markAsUncloneable`
+  unconditionally — that symbol only exists on Node 22.19+. v0.2.0
+  declared `engines.node = ">=22.13.0"`, so npm warned but did not
+  block install on Node 22.13–22.18 or Node 20; users hit the
+  cryptic webidl error at first invocation.
+  - `engines.node` bumped to `>=22.19.0` to match the real floor.
+    Consumers with `engine-strict=true` (or `npm install
+    --engine-strict`) are now blocked at install time with a clear
+    `EBADENGINE` message.
+  - New runtime preflight in `bin.ts::main()` catches the case where
+    install slipped through (npx pulls fresh on every run; npx does
+    not honour `engine-strict` by default). Prints a clean message
+    and exits with code 2, BEFORE any dynamic import pulls undici:
+
+    ```
+    @kaminari-ad/mcp requires Node.js >=22.19.0 (you have v20.x.x).
+    The underlying undici 8.x HTTP client uses markAsUncloneable
+    from node:worker_threads, available only on Node 22.19+.
+    Older Node crashes at import time with the cryptic message
+    `webidl.util.markAsUncloneable is not a function`.
+
+    Please upgrade Node and re-run: https://nodejs.org/en/download
+    ```
+
+### Internal
+
+- `tsup.config.ts` flipped to `splitting: true`. Required for the
+  preflight to actually run before undici loads: without splitting
+  esbuild inlines every dynamic `await import("./presentation/...")`
+  call into the top-level bundle, eagerly importing undici/MCP SDK/
+  pino at startup. With splitting on, transport bootstraps stay as
+  separate chunks loaded only after `main()` runs the Node check.
+
 ## [0.2.0] - 2026-05-17
 
 Comprehensive parser-drift sweep across all `/api/v1/*` list

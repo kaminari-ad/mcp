@@ -8,7 +8,10 @@ describe("loadConfig", () => {
     expect(result.isOk()).toBe(true);
     const cfg = result._unsafeUnwrap();
     expect(cfg.transport).toBe("stdio");
-    expect(cfg.apiBaseUrl).toBe("https://kaminari.ad");
+    // The API host is `app.kaminari.ad` (the bare `kaminari.ad` is
+    // marketing only — no /api/v1/* routes). Pinned here so a regression
+    // back to the v0.2.0 default-URL bug fails this test.
+    expect(cfg.apiBaseUrl).toBe("https://app.kaminari.ad");
     expect(cfg.logLevel).toBe("info");
     expect(cfg.logFormat).toBe("pretty");
     expect(cfg.httpPort).toBe(8080);
@@ -66,7 +69,7 @@ describe("loadConfig", () => {
     expect(result.isOk()).toBe(true);
     const cfg = result._unsafeUnwrap();
     expect(cfg.logLevel).toBe("info");
-    expect(cfg.apiBaseUrl).toBe("https://kaminari.ad");
+    expect(cfg.apiBaseUrl).toBe("https://app.kaminari.ad");
     expect(cfg.transport).toBe("stdio");
   });
 
