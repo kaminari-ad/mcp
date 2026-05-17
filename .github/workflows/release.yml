@@ -75,9 +75,38 @@ jobs:
       - name: Bundle size gate
         run: npm run check:bundle-size
 
+      # Diagnostic: print the OIDC subject claim that npm sees. If
+      # the publish step below returns HTTP 404, compare this `sub`
+      # / `workflow` / `environment` against the npm Trusted Publisher
+      # config — npm hides auth failures as 404 for security obscurity,
+      # so this step is the only way to debug a mismatch.
+      #
+      # Logs only the public JWT payload (claims) — the signed token
+      # itself is short-lived and not printed.
+      - name: Debug OIDC subject claim for npm
+        run: |
+          set -e
+          RESPONSE=$(curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org")
+          TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['value'])")
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          PAD=$(( (4 - ${#PAYLOAD} % 4) % 4 ))
+          if [ "$PAD" -gt 0 ]; then PAYLOAD="${PAYLOAD}$(printf '=%.0s' $(seq 1 $PAD))"; fi
+          DECODED=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
+          echo "::group::Full OIDC JWT payload (audience: npm:registry.npmjs.org)"
+          echo "$DECODED" | python3 -m json.tool
+          echo "::endgroup::"
+          echo "Key claims for Trusted Publisher matching:"
+          echo "$DECODED" | python3 -c "
+          import json, sys
+          c = json.load(sys.stdin)
+          for k in ('sub', 'repository', 'repository_owner', 'workflow', 'workflow_ref', 'job_workflow_ref', 'ref', 'event_name', 'environment'):
+              print(f'  {k} = {c.get(k)!r}')
+          "
+
       # OIDC publish with provenance attestation. v0.1.0 used a
       # classic NPM_TOKEN (npm requires an existing package to register
-      # a Trusted Publisher); v0.1.1+ ships with full provenance:
+      # a Trusted Publisher); v0.1.2+ ships with full provenance:
       #   - permissions.id-token: write (declared above)
       #   - Trusted Publisher registered on the package settings page
       #     pointing at this workflow + the `npm-publish` environment

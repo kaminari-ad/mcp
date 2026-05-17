@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-17
+
+Re-release of v0.1.1 — that tag's release pipeline failed at the
+npm publish step (HTTP 404 — npm Trusted Publisher OIDC subject
+mismatch we couldn't pre-diagnose). No 0.1.1 tarball ever landed
+on the registry; users skip straight from 0.1.0 to 0.1.2. Bin
+alias fix and OIDC switch from 0.1.1 carry forward; this release
+adds a diagnostic step that prints the GitHub OIDC subject claim
+before the publish attempt, so any future Trusted Publisher
+mismatch is visible in workflow logs (not silently 404'd).
+
+### Added
+
+- `release.yml` "Debug OIDC subject claim" step — fetches the
+  `npm:registry.npmjs.org`-audience OIDC token, decodes the JWT
+  payload, prints the `sub` / `repository` / `workflow` /
+  `environment` claims. Sensitive data is the signed token itself
+  (logged claims are public metadata).
+
 ## [0.1.1] - 2026-05-17
 
 ### Fixed
@@ -401,6 +420,7 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.2
 [0.1.1]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kaminari-ad/mcp/releases/tag/v0.1.0
