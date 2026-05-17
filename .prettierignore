@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+.tsbuildinfo
+src/infrastructure/api/openapi.ts
+CHANGELOG.md
+package-lock.json

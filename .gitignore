@@ -1,0 +1,46 @@
+# ── Dependencies ──
+node_modules/
+
+# ── Build artifacts ──
+dist/
+build/
+*.tsbuildinfo
+
+# ── Test / coverage ──
+coverage/
+.nyc_output/
+.vitest-cache/
+
+# ── Logs ──
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Environment ──
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ── Editor / OS ──
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Cache ──
+.eslintcache
+.cache/
+.turbo/
+
+# ── Generated artifacts (committed but check before regenerating) ──
+# Keep src/infrastructure/api/openapi.ts under version control —
+# it is generated but its diff is reviewed.
+
+# ── Local CI artifacts ──
+.gitlab-ci-local/

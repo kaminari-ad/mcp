@@ -1,0 +1,24 @@
+# Development compose file for @kaminari-ad/mcp.
+#
+# Used by the Makefile to run lint / test / typecheck in a pinned
+# node:22-alpine container. Mounts the repo and a named volume for
+# node_modules (so the host doesn't need a local install).
+#
+# Production compose lives one level up at ~/adverif/docker-compose.yml
+# (the infra repo); see Phase 6.
+
+services:
+  mcp-dev:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - mcp-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      NPM_CONFIG_FUND: "false"
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+    command: sh
+
+volumes:
+  mcp-node-modules:

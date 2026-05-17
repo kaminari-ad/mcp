@@ -1,0 +1,42 @@
+/**
+ * Tool: `update_alert_status` — move an alert through its lifecycle
+ * (open → ack → resolved | ignored).
+ */
+
+import { z } from "zod";
+
+import { err, ok, type Result } from "../../../shared/result.js";
+import { mapApiError } from "../../services/api-error-mapper.js";
+import type { Tool } from "../_shared/tool.js";
+import type { ToolError } from "../_shared/tool-result.js";
+
+const UpdateAlertStatusInputShape = {
+  alert_id: z.string().uuid().describe("Alert UUID."),
+  status: z
+    .enum(["open", "acknowledged", "resolved", "dismissed"])
+    .describe("New status: open | acknowledged | resolved | dismissed."),
+} as const;
+type UpdateAlertStatusInputShape = typeof UpdateAlertStatusInputShape;
+
+export interface UpdateAlertStatusOutput {
+  readonly updated: true;
+}
+
+export const updateAlertStatusTool: Tool<UpdateAlertStatusInputShape, UpdateAlertStatusOutput> = {
+  name: "update_alert_status",
+  description:
+    "Update an alert's status in its lifecycle: open → acknowledged → resolved | dismissed. The API enforces valid transitions; an invalid one returns 422.",
+  annotations: {
+    title: "Update Alert Status",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  inputSchema: z.object(UpdateAlertStatusInputShape),
+  handler: async (input, ctx): Promise<Result<UpdateAlertStatusOutput, ToolError>> => {
+    const result = await ctx.api.updateAlertStatus(input.alert_id, { status: input.status });
+    if (result.isErr()) return err(mapApiError(result.error));
+    return ok({ updated: true });
+  },
+};

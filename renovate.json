@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    ":separateMajorReleases",
+    "group:allNonMajor",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/Moscow",
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 4am on monday"] },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "minimumReleaseAge": "0 days"
+  },
+  "packageRules": [
+    {
+      "description": "Tighten review for MCP SDK and HTTP client — these are core to tenant isolation.",
+      "matchPackageNames": ["@modelcontextprotocol/sdk", "undici"],
+      "minimumReleaseAge": "7 days",
+      "labels": ["needs-careful-review"]
+    },
+    {
+      "description": "Pin Node engine bumps separately so they get explicit review.",
+      "matchManagers": ["nvm"],
+      "labels": ["node-engine"]
+    },
+    {
+      "description": "Auto-merge dev-dep patch updates after CI green.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr"
+    }
+  ]
+}

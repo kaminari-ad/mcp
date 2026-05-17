@@ -1,0 +1,210 @@
+# GitLab CI for @kaminari-ad/mcp.
+#
+# Stages:
+#   1. setup           install deps, cache node_modules
+#   2. quality         lint / format-check / typecheck   (parallel)
+#   3. arch_gates      file-sizes / imports / shared-state / tool-naming (parallel)
+#   4. security        npm audit / license-checker        (parallel)
+#   5. test            unit / integration / isolation     (sequential, fail-fast)
+#   6. build           tsup dist
+#   7. publish         npm publish (TAG only)
+#
+# The `test:isolation` job is a non-negotiable merge gate.
+# `setup` produces a `node_modules` artifact that downstream jobs reuse.
+
+default:
+  # Node 22 LTS — required by undici 8.x (which lots of tooling now
+  # pulls in transitively). Node 20 LTS support is extended until 2026
+  # but the npm dep tree drifts toward 22 quickly.
+  image: node:22-alpine
+  before_script:
+    # Pulled image is alpine (no git); shell-executor runners are
+    # debian/ubuntu (git already installed). Try `apk` then fall back
+    # silently so both executor types work.
+    - command -v apk >/dev/null 2>&1 && apk add --no-cache git || true
+    - corepack disable 2>/dev/null || true
+
+stages:
+  - setup
+  - quality
+  - arch_gates
+  - security
+  - test
+  - build
+  - publish
+
+variables:
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_UPDATE_NOTIFIER: "false"
+  NPM_CONFIG_AUDIT: "false"
+
+# ─────────────────────────────────────────────────────────────────────
+# 1. SETUP — npm ci, cache node_modules, emit lockfile-pinned artefact
+# ─────────────────────────────────────────────────────────────────────
+
+setup:
+  stage: setup
+  script:
+    # `--legacy-peer-deps` papers over peer-dep mismatches between
+    # eslint 9.x and eslint-plugin-vitest's vendored typescript-eslint
+    # (vitest plugin lags). Safe to drop once the plugin catches up to
+    # @typescript-eslint/utils >= 8.x.
+    - npm ci --ignore-scripts --legacy-peer-deps
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm-cache/
+    policy: pull-push
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - node_modules/
+
+# ─────────────────────────────────────────────────────────────────────
+# 2. QUALITY (parallel)
+# ─────────────────────────────────────────────────────────────────────
+
+lint:
+  stage: quality
+  needs: [setup]
+  script: npm run lint
+
+format-check:
+  stage: quality
+  needs: [setup]
+  script: npm run format:check
+
+typecheck:
+  stage: quality
+  needs: [setup]
+  script: npm run typecheck
+
+# ─────────────────────────────────────────────────────────────────────
+# 3. ARCH GATES (parallel) — all are merge blockers
+# ─────────────────────────────────────────────────────────────────────
+
+check:file-sizes:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:file-sizes
+
+check:imports:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:imports
+
+check:shared-state:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:shared-state
+
+check:tool-naming:
+  stage: arch_gates
+  needs: [setup]
+  script: npm run check:tool-naming
+
+# ─────────────────────────────────────────────────────────────────────
+# 4. SECURITY (parallel)
+# ─────────────────────────────────────────────────────────────────────
+
+audit:deps:
+  stage: security
+  needs: [setup]
+  script: npm run audit:deps
+  allow_failure: false
+
+audit:licenses:
+  stage: security
+  needs: [setup]
+  script: npm run audit:licenses
+
+# ─────────────────────────────────────────────────────────────────────
+# 5. TESTS
+# ─────────────────────────────────────────────────────────────────────
+
+test:unit:
+  stage: test
+  # `needs: setup` inherits the node_modules/ artifact; lint+typecheck
+  # are gates we want green BEFORE tests run but don't re-export deps.
+  needs: [setup, lint, typecheck]
+  script: npm run test:unit -- --coverage
+
+test:integration:
+  stage: test
+  needs: [setup, test:unit]
+  script: npm run test:integration
+
+# Tenant isolation suite — NON-NEGOTIABLE merge gate.
+# Runs as a separate, named job so its failure is immediately
+# attributable in the MR UI.
+test:isolation:
+  stage: test
+  needs: [setup, test:unit]
+  script: npm run test:isolation
+  artifacts:
+    when: always
+    paths:
+      - coverage/
+    reports:
+      junit: coverage/junit.xml
+
+# ─────────────────────────────────────────────────────────────────────
+# 6. BUILD
+# ─────────────────────────────────────────────────────────────────────
+
+build:
+  stage: build
+  needs:
+    - setup
+    - lint
+    - format-check
+    - typecheck
+    - check:file-sizes
+    - check:imports
+    - check:shared-state
+    - check:tool-naming
+    - audit:deps
+    - audit:licenses
+    - test:unit
+    - test:integration
+    - test:isolation
+  script:
+    - npm run build
+    - npm run check:bundle-size
+  artifacts:
+    expire_in: 7 days
+    paths:
+      - dist/
+
+# ─────────────────────────────────────────────────────────────────────
+# 7. PUBLISH — only on git tag matching vX.Y.Z
+# ─────────────────────────────────────────────────────────────────────
+
+publish:npm:
+  stage: publish
+  needs: [build]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/'
+  # `NPM_TOKEN` MUST be configured in GitLab as a `Protected` AND
+  # `Masked` CI/CD variable. Without `Masked`, an accidental
+  # `set -x` or `npm publish --dry-run` could leak the token into the
+  # job log. `Protected` keeps it scoped to protected tags only.
+  variables:
+    NPM_CONFIG_AUDIT: "false"
+    # Force `npm config set` (below) NOT to echo the token. Belt and
+    # suspenders alongside the GitLab masking.
+    NPM_CONFIG_LOGLEVEL: "warn"
+  script:
+    # Sync the package.json version with the git tag (strip the `v`
+    # prefix). package.json on the branch stays at `0.0.0-dev` —
+    # `npm version` writes the tagged version without committing.
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - 'echo "Publishing version: $VERSION"'
+    - npm version "$VERSION" --no-git-tag-version --allow-same-version
+    # Use `npm config set --location project` to write the token into
+    # a project-scoped `.npmrc` that is wiped with the job's working
+    # directory. Token never crosses stdout.
+    - npm config set --location project "//registry.npmjs.org/:_authToken=$NPM_TOKEN"
+    - npm publish --provenance --access public

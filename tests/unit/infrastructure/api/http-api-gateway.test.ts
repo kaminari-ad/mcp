@@ -1,0 +1,1142 @@
+import { MockAgent } from "undici";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { BearerToken } from "../../../../src/domain/value-objects/bearer-token.js";
+import { newRequestId } from "../../../../src/domain/value-objects/request-id.js";
+import { createHttpApiGateway } from "../../../../src/infrastructure/api/http-api-gateway.js";
+import { createFakeLogger } from "../../../fakes/fake-logger.js";
+
+const ORIGIN = "https://kaminari.test";
+
+function buildGateway(agent: MockAgent) {
+  return createHttpApiGateway({
+    baseUrl: ORIGIN,
+    bearer: BearerToken.fromString("kad_test_token_value")!,
+    requestId: newRequestId(),
+    logger: createFakeLogger(),
+    dispatcher: agent,
+  });
+}
+
+describe("HttpApiGateway", () => {
+  let agent: MockAgent;
+
+  beforeEach(() => {
+    agent = new MockAgent();
+    agent.disableNetConnect();
+  });
+
+  afterEach(async () => {
+    await agent.close();
+  });
+
+  describe("getAccount", () => {
+    const ORG = {
+      id: "o1",
+      name: "Test Org",
+      owner_id: "u1",
+      is_active: true,
+      created_at: "2026-01-01T00:00:00Z",
+    };
+
+    it("returns Ok on 200", async () => {
+      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(200, ORG);
+
+      const gw = buildGateway(agent);
+      const result = await gw.getAccount();
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toEqual(ORG);
+    });
+
+    it("forwards the Authorization header verbatim", async () => {
+      let received: string | undefined;
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/account",
+          method: "GET",
+        })
+        .reply(200, (opts) => {
+          received = (opts.headers as Record<string, string> | undefined)?.["authorization"];
+          return ORG;
+        });
+
+      await buildGateway(agent).getAccount();
+      expect(received).toBe("Bearer kad_test_token_value");
+    });
+
+    it("maps 401 to unauthorized", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(401, { detail: "Not authenticated" });
+
+      const result = await buildGateway(agent).getAccount();
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toEqual({
+        kind: "unauthorized",
+        detail: "Not authenticated",
+      });
+    });
+
+    it("maps 403 with code", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(403, { detail: "Suspended", code: "billing.suspended" });
+
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
+      expect(err).toEqual({
+        kind: "forbidden",
+        detail: "Suspended",
+        code: "billing.suspended",
+      });
+    });
+
+    it("maps 404", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(404, { detail: "x" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
+        kind: "not-found",
+        detail: "x",
+      });
+    });
+
+    it("maps 422 to invalid-input", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(422, { detail: "bad" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toMatchObject({
+        kind: "invalid-input",
+        detail: "bad",
+      });
+    });
+
+    it("maps 429 with Retry-After header", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(429, { detail: "Slow down" }, { headers: { "retry-after": "30" } });
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
+      expect(err).toEqual({
+        kind: "rate-limited",
+        detail: "Slow down",
+        retryAfterMs: 30_000,
+      });
+    });
+
+    it("maps 5xx to upstream with status", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(503, { detail: "down" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
+        kind: "upstream",
+        detail: "down",
+        status: 503,
+      });
+    });
+
+    it("returns upstream when the 200 body has the wrong shape", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(200, { unexpected: "shape" });
+      const result = await buildGateway(agent).getAccount();
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toMatchObject({ kind: "upstream" });
+    });
+
+    it("returns upstream when the 200 body is a plain string", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(200, "just a string");
+      const result = await buildGateway(agent).getAccount();
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("falls back to a generic detail when the error body is missing", async () => {
+      agent.get(ORIGIN).intercept({ path: "/api/v1/account", method: "GET" }).reply(401, {});
+      const err = (await buildGateway(agent).getAccount())._unsafeUnwrapErr();
+      expect(err).toEqual({ kind: "unauthorized", detail: "Upstream error" });
+    });
+
+    it("forbidden without a code drops the code field", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(403, { detail: "no" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
+        kind: "forbidden",
+        detail: "no",
+      });
+    });
+
+    it("429 without a Retry-After header omits retryAfterMs", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(429, { detail: "slow" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toEqual({
+        kind: "rate-limited",
+        detail: "slow",
+      });
+    });
+
+    it("400 maps to invalid-input", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .reply(400, { detail: "bad request" });
+      expect((await buildGateway(agent).getAccount())._unsafeUnwrapErr()).toMatchObject({
+        kind: "invalid-input",
+        detail: "bad request",
+      });
+    });
+
+    it("network failure (replyWithError) maps to upstream", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "GET" })
+        .replyWithError(new Error("ECONNRESET"));
+      const result = await buildGateway(agent).getAccount();
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toEqual({
+        kind: "upstream",
+        detail: "ECONNRESET",
+      });
+    });
+  });
+
+  describe("listScans", () => {
+    it("sends pagination + filter query params and parses the envelope", async () => {
+      let receivedPath: string | undefined;
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) => {
+            receivedPath = p;
+            return p.startsWith("/api/v1/scans?");
+          },
+          method: "GET",
+        })
+        .reply(200, {
+          items: [
+            {
+              id: "00000000-0000-0000-0000-000000000aaa",
+              url: "https://ad.example/a",
+              country_code: "US",
+              status: "done",
+              created_at: "2026-05-16T12:00:00Z",
+            },
+          ],
+          total: 1,
+          page: 2,
+          limit: 10,
+        });
+
+      const result = await buildGateway(agent).listScans({
+        page: 2,
+        limit: 10,
+        status: "done",
+        country_code: "US",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toEqual({
+        items: [
+          {
+            id: "00000000-0000-0000-0000-000000000aaa",
+            url: "https://ad.example/a",
+            country_code: "US",
+            status: "done",
+            offer_url: "",
+            screenshot_url: "",
+            labels: {},
+            elapsed_ms: 0,
+            campaign_id: null,
+            campaign_name: null,
+            is_ad_tag: false,
+            created_at: "2026-05-16T12:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 2,
+        limit: 10,
+      });
+      expect(receivedPath).toContain("page=2");
+      expect(receivedPath).toContain("limit=10");
+      expect(receivedPath).toContain("status=done");
+      expect(receivedPath).toContain("country_code=US");
+    });
+
+    it("returns upstream on malformed envelope", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/scans"), method: "GET" })
+        .reply(200, { wrong: "shape" });
+      const result = await buildGateway(agent).listScans({ page: 1, limit: 50 });
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("omits undefined optional filters from the query string (covers buildQuery `continue`)", async () => {
+      let receivedPath = "";
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) => {
+            receivedPath = p;
+            return p.startsWith("/api/v1/scans");
+          },
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+
+      // Construct an object with explicitly-undefined optional fields
+      // via `Object.assign` to keep `exactOptionalPropertyTypes` happy
+      // (the type only allows absence; the runtime check still has to
+      // tolerate `undefined` from JSON.parse outputs / dynamic input).
+      const filters = Object.assign(
+        { page: 1, limit: 50 },
+        {
+          status: undefined,
+          country_code: undefined,
+        }
+      ) as unknown as Parameters<ReturnType<typeof buildGateway>["listScans"]>[0];
+
+      await buildGateway(agent).listScans(filters);
+
+      expect(receivedPath).not.toContain("status=");
+      expect(receivedPath).not.toContain("country_code=");
+    });
+
+    it("returns upstream on malformed scan item", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/scans"), method: "GET" })
+        .reply(200, { items: [{ id: 42 }], total: 1, page: 1, limit: 50 });
+      const result = await buildGateway(agent).listScans({ page: 1, limit: 50 });
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("returns upstream when items is not an array", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/scans"), method: "GET" })
+        .reply(200, "string body");
+      const result = await buildGateway(agent).listScans({ page: 1, limit: 50 });
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("treats string-typed item field as malformed", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/scans"), method: "GET" })
+        .reply(200, {
+          items: ["not-an-object"],
+          total: 1,
+          page: 1,
+          limit: 50,
+        });
+      expect((await buildGateway(agent).listScans({ page: 1, limit: 50 })).isErr()).toBe(true);
+    });
+  });
+
+  describe("getScan", () => {
+    it("returns Ok on 200 with valid body", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/scans/00000000-0000-0000-0000-000000000aaa",
+          method: "GET",
+        })
+        .reply(200, {
+          id: "00000000-0000-0000-0000-000000000aaa",
+          url: "https://x",
+          country_code: "US",
+          emulator_id: "default",
+          status: "done",
+          offer_url: "https://o",
+          screenshot_url: "",
+          page_title: "T",
+          elapsed_ms: 100,
+          error: "",
+          labels: {},
+          campaign_id: null,
+          created_at: "2026-01-01T00:00:00Z",
+          completed_at: null,
+        });
+      const result = await buildGateway(agent).getScan("00000000-0000-0000-0000-000000000aaa");
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("maps 404 to not-found", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/scans/missing", method: "GET" })
+        .reply(404, { detail: "Scan not found" });
+      const result = await buildGateway(agent).getScan("missing");
+      expect(result._unsafeUnwrapErr().kind).toBe("not-found");
+    });
+  });
+
+  describe("createScan", () => {
+    it("POSTs body and returns the parsed scan on 201", async () => {
+      let receivedBody: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/scans", method: "POST" })
+        .reply(201, (opts) => {
+          receivedBody = JSON.parse(String(opts.body));
+          return {
+            id: "00000000-0000-0000-0000-000000000bbb",
+            url: "https://x",
+            country_code: "US",
+            emulator_id: "default",
+            status: "pending",
+            offer_url: "",
+            screenshot_url: "",
+            page_title: "",
+            elapsed_ms: 0,
+            error: "",
+            labels: {},
+            campaign_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            completed_at: null,
+          };
+        });
+      const result = await buildGateway(agent).createScan({
+        url: "https://x",
+        country_code: "US",
+        emulator_id: "default",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(receivedBody).toEqual({
+        url: "https://x",
+        country_code: "US",
+        emulator_id: "default",
+      });
+    });
+  });
+
+  describe("createBulkScans", () => {
+    it("POSTs and returns the array", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/scans/bulk", method: "POST" })
+        .reply(201, [
+          {
+            id: "00000000-0000-0000-0000-000000000ccc",
+            url: "https://x",
+            country_code: "US",
+            emulator_id: "default",
+            status: "pending",
+            offer_url: "",
+            screenshot_url: "",
+            page_title: "",
+            elapsed_ms: 0,
+            error: "",
+            labels: {},
+            campaign_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            completed_at: null,
+          },
+        ]);
+      const result = await buildGateway(agent).createBulkScans({
+        url: "https://x",
+        country_codes: ["US"],
+        emulator_id: "default",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toHaveLength(1);
+    });
+  });
+
+  describe("recheckScans", () => {
+    it("returns queued_count", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/scans/recheck", method: "POST" })
+        .reply(200, { queued_count: 10 });
+      const result = await buildGateway(agent).recheckScans({
+        scope_type: "hours",
+        scope_value: 4,
+      });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toEqual({ queued_count: 10 });
+    });
+  });
+
+  describe("cancelScan", () => {
+    it("returns cancelled_count", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/scans/00000000-0000-0000-0000-000000000aaa/cancel",
+          method: "POST",
+        })
+        .reply(200, { cancelled_count: 1 });
+      const result = await buildGateway(agent).cancelScan("00000000-0000-0000-0000-000000000aaa");
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toEqual({ cancelled_count: 1 });
+    });
+  });
+
+  describe("listGeos", () => {
+    it("returns the parsed array on 200", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/geos", method: "GET" })
+        .reply(200, [
+          { country_code: "US", name: "United States", region: "Americas", tier: "tier-1" },
+        ]);
+      const result = await buildGateway(agent).listGeos();
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toHaveLength(1);
+    });
+
+    it("returns upstream when the body is not an array", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/geos", method: "GET" })
+        .reply(200, { not: "array" });
+      expect((await buildGateway(agent).listGeos()).isErr()).toBe(true);
+    });
+
+    it("returns upstream when a geo item has wrong field types", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/geos", method: "GET" })
+        .reply(200, [{ code: 1, name: 2, continent: 3, emoji: 4 }]);
+      expect((await buildGateway(agent).listGeos()).isErr()).toBe(true);
+    });
+
+    it("returns upstream when a geo item is not an object", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/geos", method: "GET" })
+        .reply(200, ["just-a-string"]);
+      expect((await buildGateway(agent).listGeos()).isErr()).toBe(true);
+    });
+  });
+
+  describe("campaigns / runs / groups (smoke)", () => {
+    const CAMPAIGN = {
+      id: "00000000-0000-0000-0000-000000000ccc",
+      name: "X",
+      campaign_type: "url",
+      url: "https://x.com",
+      ad_tag: null,
+      country_codes: ["US"],
+      group_id: "00000000-0000-0000-0000-000000000111",
+      labels: {},
+      policy_set_id: null,
+      schedule_enabled: false,
+      is_archived: false,
+      created_at: "2026-01-01T00:00:00Z",
+      last_run_at: null,
+    };
+    const GROUP = {
+      id: "00000000-0000-0000-0000-000000000111",
+      name: "default",
+      is_default: true,
+      is_archived: false,
+      schedule_paused: false,
+      created_at: "2026-01-01T00:00:00Z",
+      campaign_count: 0,
+    };
+    const RUN = {
+      id: "00000000-0000-0000-0000-000000000222",
+      campaign_id: CAMPAIGN.id,
+      label: "r",
+      total: 1,
+      completed: 1,
+      failed: 0,
+      partial: 0,
+      cancelled: 0,
+      source: "manual",
+      created_at: "2026-01-01T00:00:00Z",
+    };
+
+    it("listCampaigns / getCampaign / createCampaign / updateCampaign / archiveCampaign", async () => {
+      const a = agent;
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/campaigns?"), method: "GET" })
+        .reply(200, { items: [CAMPAIGN], total: 1, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "GET" })
+        .reply(200, CAMPAIGN);
+      a.get(ORIGIN).intercept({ path: "/api/v1/campaigns", method: "POST" }).reply(201, CAMPAIGN);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "PATCH" })
+        .reply(200, CAMPAIGN);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}/archive`, method: "POST" })
+        .reply(200, { ...CAMPAIGN, is_archived: true });
+
+      const gw = buildGateway(agent);
+      expect((await gw.listCampaigns({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.getCampaign(CAMPAIGN.id)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createCampaign({
+            name: "X",
+            campaign_type: "url",
+            url: "https://x.com",
+            country_codes: ["US"],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.updateCampaign(CAMPAIGN.id, { name: "Y" })).isOk()).toBe(true);
+      const arch = await gw.archiveCampaign(CAMPAIGN.id);
+      expect(arch.isOk()).toBe(true);
+      expect(arch._unsafeUnwrap().is_archived).toBe(true);
+    });
+
+    it("getRun", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/runs/${RUN.id}`, method: "GET" })
+        .reply(200, RUN);
+
+      const gw = buildGateway(agent);
+      expect((await gw.getRun(RUN.id)).isOk()).toBe(true);
+    });
+
+    it("emulators / tags / custom-rules / policy-sets / alerts / webhooks / billing / api-keys", async () => {
+      const TAG = {
+        slug: "x",
+        category: "c",
+        source: "system",
+        display_name: "X",
+        description: "",
+        is_system: true,
+        organization_id: null,
+        show_in_public_report: false,
+        severity: "high",
+        scans_count: 0,
+        rules_count: 0,
+      };
+      const RULE = {
+        id: "00000000-0000-0000-0000-000000000bbb",
+        organization_id: "00000000-0000-0000-0000-000000000010",
+        name: "R",
+        tag_slug: "ml.spam",
+        rule_type: "regex",
+        config: { pattern: "x" },
+        target: "page",
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+      };
+      const POLICY = {
+        id: "00000000-0000-0000-0000-000000000eee",
+        organization_id: "00000000-0000-0000-0000-000000000010",
+        name: "ps",
+        description: "",
+        visibility: "private",
+        is_approved: true,
+        entries: [],
+        created_at: "2026-01-01T00:00:00Z",
+      };
+      const ALERT = {
+        id: "00000000-0000-0000-0000-000000000aaa",
+        scan_id: "00000000-0000-0000-0000-000000000bbb",
+        campaign_id: "00000000-0000-0000-0000-000000000ccc",
+        policy_set_id: null,
+        violation_rule_id: null,
+        tag_slug: "x",
+        tag_display_name: "X",
+        country_code: "US",
+        status: "open",
+        closed_by: null,
+        scan_url: "https://x",
+        offer_url: "https://o",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      };
+      const WH = {
+        id: "00000000-0000-0000-0000-000000000eee",
+        url: "https://x/wh",
+        description: "",
+        event_types: ["scan.done"],
+        campaign_ids: [],
+        is_active: true,
+        disabled_reason: null,
+        disabled_at: null,
+        health: {
+          consecutive_failures: 0,
+          last_delivery_at: null,
+          last_delivery_status: null,
+          success_rate_7d: 1,
+        },
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      };
+      const API_KEY = {
+        id: "00000000-0000-0000-0000-000000000fff",
+        key_prefix: "kad_abc1",
+        name: "ci",
+        expires_at: null,
+        created_at: "2026-01-01T00:00:00Z",
+      };
+
+      const a = agent;
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/emulators", method: "GET" })
+        .reply(200, [{ id: "default", display_name: "D", category: "desktop", browser: "chrome" }]);
+      a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions", method: "GET" }).reply(200, [TAG]);
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/custom-rules?"), method: "GET" })
+        .reply(200, [RULE]);
+      a.get(ORIGIN).intercept({ path: "/api/v1/custom-rules", method: "POST" }).reply(201, RULE);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-rules/${RULE.id}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN).intercept({ path: "/api/v1/policy-sets", method: "GET" }).reply(200, [POLICY]);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${POLICY.id}`, method: "GET" })
+        .reply(200, POLICY);
+      a.get(ORIGIN).intercept({ path: "/api/v1/policy-sets", method: "POST" }).reply(201, POLICY);
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/alerts?"), method: "GET" })
+        .reply(200, { items: [ALERT], total: 1, page: 1, limit: 50 });
+      a.get(ORIGIN).intercept({ path: "/api/v1/webhooks", method: "GET" }).reply(200, [WH]);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/webhooks", method: "POST" })
+        .reply(201, { webhook: WH, secret: "whsec_x" });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WH.id}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/billing", method: "GET" })
+        .reply(200, { balance_micros: 100, billing_mode: "prepaid" });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account/api-keys", method: "GET" })
+        .reply(200, [API_KEY]);
+
+      const gw = buildGateway(agent);
+      expect((await gw.listEmulators()).isOk()).toBe(true);
+      expect((await gw.listTags()).isOk()).toBe(true);
+      expect((await gw.listCustomRules({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createCustomRule({
+            name: "R",
+            rule_type: "regex",
+            config: { pattern: "x" },
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.deleteCustomRule(RULE.id)).isOk()).toBe(true);
+      expect((await gw.listPolicySets()).isOk()).toBe(true);
+      expect((await gw.getPolicySet(POLICY.id)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createPolicySet({
+            name: "x",
+            description: "d",
+            entries: [{ tag_slug: "y", country_codes: [] }],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.listAlerts({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listWebhooks()).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createWebhook({
+            url: "https://x/wh",
+            description: "",
+            event_types: ["scan.done"],
+            campaign_ids: [],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.deleteWebhook(WH.id)).isOk()).toBe(true);
+      expect((await gw.getBillingSummary()).isOk()).toBe(true);
+      expect((await gw.listApiKeys()).isOk()).toBe(true);
+    });
+
+    it("all v1 extensions (account + lifecycle + billing + invoicing + alert-notifications + webhooks-extras + tag-CRUD + custom-rule extras + policy extras + run extras)", async () => {
+      const CID = "00000000-0000-0000-0000-000000000ccc";
+      const GID = "00000000-0000-0000-0000-000000000111";
+      const RID = "00000000-0000-0000-0000-000000000222";
+      const UID = "00000000-0000-0000-0000-000000000001";
+      const KID = "00000000-0000-0000-0000-000000000fff";
+      const WID = "00000000-0000-0000-0000-000000000eee";
+      const AID = "00000000-0000-0000-0000-000000000aaa";
+      const PID = "00000000-0000-0000-0000-000000000ddd";
+      const TR = "00000000-0000-0000-0000-000000000bbb";
+      const DID = "00000000-0000-0000-0000-000000000789";
+      const a = agent;
+      // ── account ────────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account", method: "PATCH" })
+        .reply(200, { id: "o1", name: "X", owner_id: UID, is_active: true, created_at: "t" });
+      a.get(ORIGIN).intercept({ path: "/api/v1/account/users", method: "GET" }).reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account/users/invite", method: "POST" })
+        .reply(201, { id: UID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}/role`, method: "PATCH" })
+        .reply(200, { id: UID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/users/${UID}/transfer-ownership`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN).intercept({ path: "/api/v1/account/roles", method: "GET" }).reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/account/api-keys", method: "POST" })
+        .reply(201, { id: KID, full_key: "secret", key_prefix: "p", name: "n" });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/account/api-keys/${KID}`, method: "DELETE" })
+        .reply(204, "");
+      // ── scans / runs / tags ────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith(`/api/v1/runs/${RID}/scans?`), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${AID}/tags`, method: "GET" })
+        .reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "GET" })
+        .reply(200, { slug: "malware" });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "PATCH" })
+        .reply(200, { slug: "malware" });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/tag-definitions/malware", method: "DELETE" })
+        .reply(204, "");
+      // ── custom rules ───────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-rules/${TR}`, method: "GET" })
+        .reply(200, {
+          id: TR,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "r",
+          tag_slug: "x",
+          rule_type: "regex",
+          config: {},
+          target: "page",
+          is_active: true,
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-rules/${TR}`, method: "PUT" })
+        .reply(200, {
+          id: TR,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "r",
+          tag_slug: "x",
+          rule_type: "regex",
+          config: {},
+          target: "page",
+          is_active: true,
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-rules/test", method: "POST" })
+        .reply(200, { matched: true, elapsed_ms: 1, tags: [] });
+      // ── policy sets ────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}`, method: "PUT" })
+        .reply(200, {
+          id: PID,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "x",
+          description: "",
+          visibility: "private",
+          is_approved: false,
+          entries: [],
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/request-approval`, method: "POST" })
+        .reply(200, {
+          id: PID,
+          organization_id: "00000000-0000-0000-0000-000000000010",
+          name: "x",
+          description: "",
+          visibility: "private",
+          is_approved: false,
+          entries: [],
+          created_at: "t",
+        });
+      // ── alerts ─────────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/alerts/${AID}/status`, method: "PATCH" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/alerts/stats", method: "GET" })
+        .reply(200, { open: 0, acknowledged: 0, resolved: 0, dismissed: 0 });
+      // ── campaign lifecycle ─────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/run`, method: "POST" })
+        .reply(202, {
+          id: RID,
+          campaign_id: CID,
+          label: "L",
+          total: 1,
+          completed: 0,
+          failed: 0,
+          partial: 0,
+          cancelled: 0,
+          source: "api",
+          created_at: "t",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/cancel`, method: "POST" })
+        .reply(200, { cancelled_count: 1 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CID}/unarchive`, method: "POST" })
+        .reply(200, { id: CID, group_id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith(`/api/v1/campaigns/${CID}/runs?`), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      // ── group lifecycle ────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/run`, method: "POST" })
+        .reply(202, {
+          group_id: GID,
+          affected_campaigns: 1,
+          cancelled_count: 0,
+          run_ids: [RID],
+          failures: [],
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/cancel`, method: "POST" })
+        .reply(200, {
+          group_id: GID,
+          affected_campaigns: 1,
+          cancelled_count: 1,
+          run_ids: [],
+          failures: [],
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/archive`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/unarchive`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/pause-schedule`, method: "POST" })
+        .reply(200, { id: GID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GID}/resume-schedule`, method: "POST" })
+        .reply(200, { id: GID });
+      // ── runs ───────────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/runs/${RID}/cancel`, method: "POST" })
+        .reply(200, { cancelled_count: 0 });
+      // ── billing ────────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/billing/usage?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/billing/usage/summary", method: "GET" })
+        .reply(200, {});
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/billing/history?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      // ── invoicing ──────────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/invoices?"), method: "GET" })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      // ── webhooks extras ────────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}`, method: "GET" })
+        .reply(200, { id: WID });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}`, method: "PATCH" })
+        .reply(200, { id: WID });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/webhooks/event-types", method: "GET" })
+        .reply(200, { entries: [] });
+      a.get(ORIGIN)
+        .intercept({
+          path: (p) => p.startsWith(`/api/v1/webhooks/${WID}/deliveries?`),
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/test`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/rotate-secret`, method: "POST" })
+        .reply(200, {
+          webhook: {
+            id: WID,
+            url: "https://x/wh",
+            description: "",
+            event_types: [],
+            campaign_ids: [],
+            is_active: true,
+            disabled_reason: null,
+            disabled_at: null,
+            health: {
+              consecutive_failures: 0,
+              last_delivery_at: null,
+              last_delivery_status: null,
+              success_rate_7d: 1,
+            },
+            created_at: "t",
+            updated_at: "t",
+          },
+          secret: "new",
+        });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/deliveries/${AID}/replay`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/webhooks/${WID}/replay`, method: "POST" })
+        .reply(200, { replayed: 0, skipped: 0 });
+      // ── alert notifications ────────────────────────────────
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/alert-notifications/destinations", method: "GET" })
+        .reply(200, []);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/alert-notifications/destinations/${DID}`, method: "DELETE" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/destinations/${DID}/version`,
+          method: "PATCH",
+        })
+        .reply(200, {
+          id: DID,
+          channel: "slack",
+          name: "x",
+          is_active: true,
+          is_default_target: false,
+          version: "public",
+          consecutive_failures: 0,
+          last_delivery_at: null,
+          last_delivery_status: null,
+          slack_workspace_id: null,
+          slack_channel_id: null,
+          slack_channel_name: null,
+          telegram_chat_id: null,
+          telegram_chat_title: null,
+          telegram_chat_type: null,
+          email_address: null,
+          included_label_keys: [],
+          created_at: "t",
+          updated_at: "t",
+          organization_id: "o",
+        });
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
+          method: "GET",
+        })
+        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
+          method: "PUT",
+        })
+        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
+
+      const gw = buildGateway(agent);
+      expect((await gw.updateOrg({})).isOk()).toBe(true);
+      expect((await gw.listOrgUsers()).isOk()).toBe(true);
+      expect((await gw.inviteUser({ email: "x@y.com", role_id: UID })).isOk()).toBe(true);
+      expect((await gw.updateUserRole(UID, { role_id: UID })).isOk()).toBe(true);
+      expect((await gw.removeUser(UID)).isOk()).toBe(true);
+      expect((await gw.transferOwnership(UID)).isOk()).toBe(true);
+      expect((await gw.listOrgRoles()).isOk()).toBe(true);
+      expect((await gw.createApiKey({ name: "n" })).isOk()).toBe(true);
+      expect((await gw.revokeApiKey(KID)).isOk()).toBe(true);
+      expect((await gw.listRunScans(RID, { page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listScanTags(AID)).isOk()).toBe(true);
+      expect((await gw.getTagDefinition("malware")).isOk()).toBe(true);
+      expect((await gw.updateTagDefinition("malware", {})).isOk()).toBe(true);
+      expect((await gw.deleteTagDefinition("malware")).isOk()).toBe(true);
+      expect((await gw.getCustomRule(TR)).isOk()).toBe(true);
+      expect((await gw.updateCustomRule(TR, {})).isOk()).toBe(true);
+      expect(
+        (
+          await gw.testCustomRule({ rule_type: "regex", config: {}, target: "page", scan_id: AID })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (await gw.updatePolicySet(PID, { name: "x", description: "", entries: [] })).isOk()
+      ).toBe(true);
+      expect((await gw.deletePolicySet(PID)).isOk()).toBe(true);
+      expect((await gw.requestPolicySetApproval(PID)).isOk()).toBe(true);
+      expect((await gw.updateAlertStatus(AID, { status: "acknowledged" })).isOk()).toBe(true);
+      expect((await gw.getAlertStats()).isOk()).toBe(true);
+      expect((await gw.runCampaign(CID)).isOk()).toBe(true);
+      expect((await gw.cancelCampaign(CID)).isOk()).toBe(true);
+      expect((await gw.unarchiveCampaign(CID)).isOk()).toBe(true);
+      expect((await gw.listCampaignRuns(CID, { page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.runCampaignGroup(GID)).isOk()).toBe(true);
+      expect((await gw.cancelCampaignGroup(GID)).isOk()).toBe(true);
+      expect((await gw.archiveCampaignGroup(GID)).isOk()).toBe(true);
+      expect((await gw.unarchiveCampaignGroup(GID)).isOk()).toBe(true);
+      expect((await gw.pauseCampaignGroupSchedule(GID)).isOk()).toBe(true);
+      expect((await gw.resumeCampaignGroupSchedule(GID)).isOk()).toBe(true);
+      expect((await gw.cancelRun(RID)).isOk()).toBe(true);
+      expect((await gw.listUsage({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.getUsageSummary()).isOk()).toBe(true);
+      expect((await gw.listBalanceHistory({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listInvoices({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.getWebhook(WID)).isOk()).toBe(true);
+      expect((await gw.updateWebhook(WID, {})).isOk()).toBe(true);
+      expect((await gw.listWebhookEventTypes()).isOk()).toBe(true);
+      expect((await gw.listWebhookDeliveries(WID, { page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.testWebhook(WID)).isOk()).toBe(true);
+      expect((await gw.rotateWebhookSecret(WID)).isOk()).toBe(true);
+      expect((await gw.replayWebhookDelivery(AID)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.bulkReplayWebhook(WID, {
+            from_ts: "2026-01-01T00:00:00Z",
+            to_ts: "2026-01-02T00:00:00Z",
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.listAlertDestinations()).isOk()).toBe(true);
+      expect((await gw.deleteAlertDestination(DID)).isOk()).toBe(true);
+      expect((await gw.setAlertDestinationVersion(DID, { version: "public" })).isOk()).toBe(true);
+      expect((await gw.getCampaignAlertOverrides(CID)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.setCampaignAlertOverrides(CID, {
+            mode: "inherit",
+            destination_ids: [],
+          })
+        ).isOk()
+      ).toBe(true);
+    });
+
+    it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {
+      const a = agent;
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/campaign-groups?"), method: "GET" })
+        .reply(200, { items: [GROUP], total: 1, page: 1, limit: 50 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GROUP.id}`, method: "GET" })
+        .reply(200, GROUP);
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/campaign-groups", method: "POST" })
+        .reply(201, GROUP);
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/campaign-groups/${GROUP.id}`, method: "PATCH" })
+        .reply(200, GROUP);
+
+      const gw = buildGateway(agent);
+      expect((await gw.listCampaignGroups({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.getCampaignGroup(GROUP.id)).isOk()).toBe(true);
+      expect((await gw.createCampaignGroup({ name: "x" })).isOk()).toBe(true);
+      expect((await gw.updateCampaignGroup(GROUP.id, { name: "y" })).isOk()).toBe(true);
+    });
+  });
+});
