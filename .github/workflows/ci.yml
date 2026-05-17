@@ -25,9 +25,13 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      # Action versions pinned at major. Bumped from v4 → v6 in 2026-05
+      # because GitHub deprecated Node 20 runtimes inside JS actions
+      # (forced default Node 24 from 2026-06-02, Node 20 removed from
+      # runner on 2026-09-16). v6 lines of both ship Node 24 natively.
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
           cache: npm

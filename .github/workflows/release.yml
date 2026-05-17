@@ -29,7 +29,12 @@ jobs:
       url: https://www.npmjs.com/package/@kaminari-ad/mcp
 
     steps:
-      - uses: actions/checkout@v4
+      # Action versions pinned at major. Bumped from v4/v2 → v6/v3 in
+      # 2026-05 because GitHub deprecated Node 20 runtimes inside JS
+      # actions (forced default Node 24 from 2026-06-02, Node 20 removed
+      # from runner on 2026-09-16). v6 lines of checkout / setup-node
+      # and v3 of action-gh-release all ship Node 24 natively.
+      - uses: actions/checkout@v6
         with:
           # Full history so action-gh-release can derive release notes
           # from commits since the previous tag.
@@ -48,7 +53,7 @@ jobs:
       # prepare npm@^11 --activate` left bundled npm 10.x active because
       # Corepack shims weren't first in PATH). Using a newer Node is the
       # least-magic path.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: npm
@@ -139,7 +144,7 @@ jobs:
         run: npm publish --access public --provenance
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
