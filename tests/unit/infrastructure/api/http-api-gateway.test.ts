@@ -781,7 +781,7 @@ describe("HttpApiGateway", () => {
         .reply(201, { id: UID });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/account/users/${UID}/role`, method: "PATCH" })
-        .reply(200, { id: UID });
+        .reply(204, "");
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/account/users/${UID}`, method: "DELETE" })
         .reply(204, "");
@@ -807,7 +807,7 @@ describe("HttpApiGateway", () => {
         .reply(200, { slug: "malware" });
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/tag-definitions/malware", method: "PATCH" })
-        .reply(200, { slug: "malware" });
+        .reply(204, "");
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/tag-definitions/malware", method: "DELETE" })
         .reply(204, "");
@@ -859,16 +859,7 @@ describe("HttpApiGateway", () => {
         .reply(204, "");
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/policy-sets/${PID}/request-approval`, method: "POST" })
-        .reply(200, {
-          id: PID,
-          organization_id: "00000000-0000-0000-0000-000000000010",
-          name: "x",
-          description: "",
-          visibility: "private",
-          is_approved: false,
-          entries: [],
-          created_at: "t",
-        });
+        .reply(204, "");
       // ── alerts ─────────────────────────────────────────────
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/alerts/${AID}/status`, method: "PATCH" })
@@ -919,12 +910,26 @@ describe("HttpApiGateway", () => {
           run_ids: [],
           failures: [],
         });
+      // Archive / unarchive return a GroupActionResponse summary,
+      // NOT the group entity (run/cancel-style envelope).
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaign-groups/${GID}/archive`, method: "POST" })
-        .reply(200, { id: GID });
+        .reply(200, {
+          group_id: GID,
+          affected_campaigns: 1,
+          cancelled_count: 0,
+          run_ids: [],
+          failures: [],
+        });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaign-groups/${GID}/unarchive`, method: "POST" })
-        .reply(200, { id: GID });
+        .reply(200, {
+          group_id: GID,
+          affected_campaigns: 0,
+          cancelled_count: 0,
+          run_ids: [],
+          failures: [],
+        });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaign-groups/${GID}/pause-schedule`, method: "POST" })
         .reply(200, { id: GID });
@@ -967,7 +972,13 @@ describe("HttpApiGateway", () => {
         .reply(200, { items: [], total: 0, page: 1, limit: 50 });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/webhooks/${WID}/test`, method: "POST" })
-        .reply(204, "");
+        .reply(200, {
+          success: true,
+          response_status: 200,
+          elapsed_ms: 12,
+          error_code: null,
+          response_body: "",
+        });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/webhooks/${WID}/rotate-secret`, method: "POST" })
         .reply(200, {
@@ -1042,7 +1053,7 @@ describe("HttpApiGateway", () => {
           path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
           method: "PUT",
         })
-        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
+        .reply(204, "");
 
       const gw = buildGateway(agent);
       expect((await gw.updateOrg({})).isOk()).toBe(true);
@@ -1092,7 +1103,9 @@ describe("HttpApiGateway", () => {
       expect((await gw.updateWebhook(WID, {})).isOk()).toBe(true);
       expect((await gw.listWebhookEventTypes()).isOk()).toBe(true);
       expect((await gw.listWebhookDeliveries(WID, { page: 1, limit: 50 })).isOk()).toBe(true);
-      expect((await gw.testWebhook(WID)).isOk()).toBe(true);
+      expect((await gw.testWebhook(WID, { event_type: "scanning.scan.completed" })).isOk()).toBe(
+        true
+      );
       expect((await gw.rotateWebhookSecret(WID)).isOk()).toBe(true);
       expect((await gw.replayWebhookDelivery(AID)).isOk()).toBe(true);
       expect(
@@ -1119,9 +1132,10 @@ describe("HttpApiGateway", () => {
 
     it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {
       const a = agent;
+      // List returns a BARE ARRAY per OpenAPI — no envelope.
       a.get(ORIGIN)
-        .intercept({ path: (p) => p.startsWith("/api/v1/campaign-groups?"), method: "GET" })
-        .reply(200, { items: [GROUP], total: 1, page: 1, limit: 50 });
+        .intercept({ path: "/api/v1/campaign-groups", method: "GET" })
+        .reply(200, [GROUP]);
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaign-groups/${GROUP.id}`, method: "GET" })
         .reply(200, GROUP);
@@ -1133,7 +1147,7 @@ describe("HttpApiGateway", () => {
         .reply(200, GROUP);
 
       const gw = buildGateway(agent);
-      expect((await gw.listCampaignGroups({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listCampaignGroups()).isOk()).toBe(true);
       expect((await gw.getCampaignGroup(GROUP.id)).isOk()).toBe(true);
       expect((await gw.createCampaignGroup({ name: "x" })).isOk()).toBe(true);
       expect((await gw.updateCampaignGroup(GROUP.id, { name: "y" })).isOk()).toBe(true);

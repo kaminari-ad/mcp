@@ -550,6 +550,15 @@ export type CampaignOverridesResponse = Pick<
   "campaign_id" | "mode" | "destination_ids"
 >;
 
+// ── Webhook test ───────────────────────────────────────────────────
+
+export type TestWebhookRequest = Pick<S["TestWebhookRequest"], "event_type">;
+
+export type TestWebhookResponse = Pick<
+  S["TestWebhookResponse"],
+  "success" | "response_status" | "elapsed_ms" | "error_code" | "response_body"
+>;
+
 export type SetDestinationVersionRequest = Pick<S["SetDestinationVersionRequest"], "version">;
 
 export type SetCampaignOverridesRequest = Pick<
@@ -612,10 +621,8 @@ export interface ApiGateway {
   updateOrg(body: UpdateOrgRequest): Promise<Result<OrgResponse, ApiError>>;
   listOrgUsers(): Promise<Result<readonly UserResponse[], ApiError>>;
   inviteUser(body: InviteUserRequest): Promise<Result<UserResponse, ApiError>>;
-  updateUserRole(
-    userId: string,
-    body: UpdateUserRoleRequest
-  ): Promise<Result<UserResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  updateUserRole(userId: string, body: UpdateUserRoleRequest): Promise<Result<null, ApiError>>;
   removeUser(userId: string): Promise<Result<null, ApiError>>;
   transferOwnership(userId: string): Promise<Result<null, ApiError>>;
   listOrgRoles(): Promise<Result<readonly RoleResponse[], ApiError>>;
@@ -666,9 +673,13 @@ export interface ApiGateway {
   ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
 
   // Campaign groups
-  listCampaignGroups(
-    filters: PageFilters
-  ): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>>;
+  /**
+   * API returns a bare `CampaignGroupResponse[]` (not paginated).
+   * Documented query param is only `archived?: boolean` — no `page` / `limit`.
+   */
+  listCampaignGroups(filters?: {
+    readonly archived?: boolean;
+  }): Promise<Result<readonly CampaignGroupResponse[], ApiError>>;
   getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
   createCampaignGroup(
     body: CreateCampaignGroupRequest
@@ -679,18 +690,21 @@ export interface ApiGateway {
   ): Promise<Result<CampaignGroupResponse, ApiError>>;
   runCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
   cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
-  archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
-  unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
+  /** Returns `GroupActionResponse` (action summary), NOT the group entity. */
+  archiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
+  /** Returns `GroupActionResponse` (action summary), NOT the group entity. */
+  unarchiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
   pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
   resumeCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
 
   // Tag definitions
   listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
   getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
   updateTagDefinition(
     slug: string,
     body: UpdateTagDefinitionRequest
-  ): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
   deleteTagDefinition(slug: string): Promise<Result<null, ApiError>>;
 
   // Custom rules
@@ -713,7 +727,8 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
-  requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
 
   // Alerts
   listAlerts(
@@ -731,7 +746,10 @@ export interface ApiGateway {
   createWebhook(body: CreateWebhookRequest): Promise<Result<WebhookCreatedResponse, ApiError>>;
   updateWebhook(id: string, body: UpdateWebhookRequest): Promise<Result<WebhookResponse, ApiError>>;
   deleteWebhook(id: string): Promise<Result<null, ApiError>>;
-  testWebhook(endpointId: string): Promise<Result<null, ApiError>>;
+  testWebhook(
+    endpointId: string,
+    body: TestWebhookRequest
+  ): Promise<Result<TestWebhookResponse, ApiError>>;
   rotateWebhookSecret(endpointId: string): Promise<Result<WebhookCreatedResponse, ApiError>>;
   listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>>;
   listWebhookDeliveries(
@@ -767,8 +785,9 @@ export interface ApiGateway {
   getCampaignAlertOverrides(
     campaignId: string
   ): Promise<Result<CampaignOverridesResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
   setCampaignAlertOverrides(
     campaignId: string,
     body: SetCampaignOverridesRequest
-  ): Promise<Result<CampaignOverridesResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
 }

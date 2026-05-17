@@ -5,7 +5,6 @@
 
 import { z } from "zod";
 
-import type { CampaignOverridesResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -28,7 +27,9 @@ const SetCampaignAlertOverridesInputShape = {
 } as const;
 type SetCampaignAlertOverridesInputShape = typeof SetCampaignAlertOverridesInputShape;
 
-export type SetCampaignAlertOverridesOutput = CampaignOverridesResponse;
+export interface SetCampaignAlertOverridesOutput {
+  readonly updated: true;
+}
 
 export const setCampaignAlertOverridesTool: Tool<
   SetCampaignAlertOverridesInputShape,
@@ -36,7 +37,7 @@ export const setCampaignAlertOverridesTool: Tool<
 > = {
   name: "set_campaign_alert_overrides",
   description:
-    "REPLACE the per-campaign alert-routing override. `mode=inherit` falls back to org defaults; `mode=include` routes ONLY to the listed destinations; `mode=exclude` routes everywhere EXCEPT the listed destinations.",
+    "REPLACE the per-campaign alert-routing override. `mode=inherit` falls back to org defaults; `mode=include` routes ONLY to the listed destinations; `mode=exclude` routes everywhere EXCEPT the listed destinations. To read the new state, follow up with `get_campaign_alert_overrides`.",
   annotations: {
     title: "Set Campaign Alert Overrides",
     readOnlyHint: false,
@@ -46,11 +47,12 @@ export const setCampaignAlertOverridesTool: Tool<
   },
   inputSchema: z.object(SetCampaignAlertOverridesInputShape),
   handler: async (input, ctx): Promise<Result<SetCampaignAlertOverridesOutput, ToolError>> => {
+    // API returns 204 No Content on success.
     const result = await ctx.api.setCampaignAlertOverrides(input.campaign_id, {
       mode: input.mode,
       destination_ids: input.destination_ids,
     });
     if (result.isErr()) return err(mapApiError(result.error));
-    return ok(result.value);
+    return ok({ updated: true });
   },
 };

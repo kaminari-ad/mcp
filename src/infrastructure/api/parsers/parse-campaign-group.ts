@@ -2,11 +2,7 @@
  * Parsers for the `/api/v1/campaign-groups` family.
  */
 
-import type {
-  ApiError,
-  CampaignGroupResponse,
-  PaginatedResponse,
-} from "../../../domain/ports/api-gateway.js";
+import type { ApiError, CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { isStringRecord } from "./shared.js";
 
@@ -46,31 +42,35 @@ export function parseCampaignGroup(raw: unknown): Result<CampaignGroupResponse, 
 }
 
 /**
+ * Parse the response of `GET /api/v1/campaign-groups`.
  *
+ * Per OpenAPI this endpoint returns a **bare array** of
+ * `CampaignGroupResponse`, NOT the standard FastAPI paginated envelope.
+ * We accept the envelope shape defensively in case the API later wraps
+ * it; production currently returns the bare form (verified via
+ * prod-smoke 2026-05-17).
  */
-export function parseCampaignGroupPage(
+export function parseCampaignGroupArray(
   raw: unknown
-): Result<PaginatedResponse<CampaignGroupResponse>, ApiError> {
-  if (!isStringRecord(raw)) {
-    return err({ kind: "upstream", detail: "malformed campaign-group page" });
+): Result<readonly CampaignGroupResponse[], ApiError> {
+  const items = unwrapItems(raw);
+  if (items === undefined) {
+    return err({ kind: "upstream", detail: "expected array (or {items:[]}) of campaign-groups" });
   }
-  const items = raw["items"];
-  const total = raw["total"];
-  const page = raw["page"];
-  const limit = raw["limit"];
-  if (
-    !Array.isArray(items) ||
-    typeof total !== "number" ||
-    typeof page !== "number" ||
-    typeof limit !== "number"
-  ) {
-    return err({ kind: "upstream", detail: "malformed campaign-group envelope" });
-  }
-  const parsed: CampaignGroupResponse[] = [];
+  const out: CampaignGroupResponse[] = [];
   for (const item of items) {
     const r = parseCampaignGroup(item);
     if (r.isErr()) return err(r.error);
-    parsed.push(r.value);
+    out.push(r.value);
   }
-  return ok({ items: parsed, total, page, limit });
+  return ok(out);
+}
+
+function unwrapItems(raw: unknown): readonly unknown[] | undefined {
+  if (Array.isArray(raw)) return raw as readonly unknown[];
+  if (isStringRecord(raw)) {
+    const items = raw["items"];
+    if (Array.isArray(items)) return items as readonly unknown[];
+  }
+  return undefined;
 }

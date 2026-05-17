@@ -9,11 +9,20 @@
 
 import type {
   ApiError,
+  TestWebhookResponse,
   WebhookCreatedResponse,
   WebhookResponse,
 } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { isStringRecord } from "./shared.js";
+
+function n(v: unknown, fallback: number): number {
+  return typeof v === "number" ? v : fallback;
+}
+function nOrNull(v: unknown): number | null {
+  if (v === null) return null;
+  return typeof v === "number" ? v : null;
+}
 
 function s(v: unknown, fallback: string): string {
   return typeof v === "string" ? v : fallback;
@@ -96,4 +105,28 @@ export function parseWebhookCreated(raw: unknown): Result<WebhookCreatedResponse
   }
   const result: WebhookCreatedResponse = { webhook: buildWebhook(wh, id), secret };
   return ok(result);
+}
+
+/**
+ * Parse `POST /api/v1/webhooks/{id}/test` 200 response.
+ *
+ * Body shape from OpenAPI:
+ *   { success, response_status, elapsed_ms, error_code, response_body }
+ *
+ * `response_status` and `error_code` are nullable on the wire — the
+ * synthetic event is delivered over the network, so connect/timeout
+ * failures produce a 200 with `success: false` and `error_code` set
+ * but `response_status: null`.
+ */
+export function parseTestWebhookResponse(raw: unknown): Result<TestWebhookResponse, ApiError> {
+  if (!isStringRecord(raw)) {
+    return err({ kind: "upstream", detail: "malformed test-webhook response" });
+  }
+  return ok({
+    success: b(raw["success"], false),
+    response_status: nOrNull(raw["response_status"]),
+    elapsed_ms: n(raw["elapsed_ms"], 0),
+    error_code: sOrNull(raw["error_code"]),
+    response_body: s(raw["response_body"], ""),
+  });
 }

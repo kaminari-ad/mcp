@@ -25,6 +25,7 @@ import {
   parseTagDefinitionArray,
 } from "../../../../../src/infrastructure/api/parsers/parse-tag.js";
 import {
+  parseTestWebhookResponse,
   parseWebhook,
   parseWebhookCreated,
   parseWebhookList,
@@ -245,6 +246,57 @@ describe("parseWebhook / parseWebhookList / parseWebhookCreated", () => {
     expect(parseWebhookCreated({ webhook: VALID, secret: 5 }).isErr()).toBe(true);
     const { id: _omit, ...webhookWithoutId } = VALID;
     expect(parseWebhookCreated({ webhook: webhookWithoutId, secret: "whsec" }).isErr()).toBe(true);
+  });
+});
+
+describe("parseTestWebhookResponse", () => {
+  it("Ok valid success", () => {
+    const r = parseTestWebhookResponse({
+      success: true,
+      response_status: 200,
+      elapsed_ms: 12,
+      error_code: null,
+      response_body: "OK",
+    });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({
+      success: true,
+      response_status: 200,
+      elapsed_ms: 12,
+      error_code: null,
+      response_body: "OK",
+    });
+  });
+
+  it("Ok valid failure (null status + non-null error_code)", () => {
+    const r = parseTestWebhookResponse({
+      success: false,
+      response_status: null,
+      elapsed_ms: 5000,
+      error_code: "connect",
+      response_body: "",
+    });
+    expect(r._unsafeUnwrap().error_code).toBe("connect");
+    expect(r._unsafeUnwrap().response_status).toBeNull();
+  });
+
+  it("defaults missing fields", () => {
+    // Defensive — the API always populates every field, but if it
+    // ever omits one we don't want to surface a misleading parse error.
+    const r = parseTestWebhookResponse({});
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({
+      success: false,
+      response_status: null,
+      elapsed_ms: 0,
+      error_code: null,
+      response_body: "",
+    });
+  });
+
+  it("rejects non-object body", () => {
+    expect(parseTestWebhookResponse("nope").isErr()).toBe(true);
+    expect(parseTestWebhookResponse(null).isErr()).toBe(true);
   });
 });
 

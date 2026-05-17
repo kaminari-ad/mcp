@@ -72,6 +72,8 @@ import type {
   SetDestinationVersionRequest,
   TagDefinitionDetailResponse,
   TagDefinitionResponse,
+  TestWebhookRequest,
+  TestWebhookResponse,
   UpdateAlertStatusRequest,
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
@@ -96,7 +98,7 @@ import { parseAlertPage } from "./parsers/parse-alert.js";
 import { parseApiKeyList } from "./parsers/parse-api-key.js";
 import { parseBillingSummary } from "./parsers/parse-billing-summary.js";
 import { parseCampaign, parseCampaignPage } from "./parsers/parse-campaign.js";
-import { parseCampaignGroup, parseCampaignGroupPage } from "./parsers/parse-campaign-group.js";
+import { parseCampaignGroup, parseCampaignGroupArray } from "./parsers/parse-campaign-group.js";
 import { parseIntField } from "./parsers/parse-count-envelope.js";
 import { parseCustomRule, parseCustomRuleArray } from "./parsers/parse-custom-rule.js";
 import { parseEmpty } from "./parsers/parse-empty.js";
@@ -129,7 +131,12 @@ import { parseRun } from "./parsers/parse-run.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
 import { parseScanPage } from "./parsers/parse-scan-page.js";
 import { parseTagDefinitionArray } from "./parsers/parse-tag.js";
-import { parseWebhook, parseWebhookCreated, parseWebhookList } from "./parsers/parse-webhook.js";
+import {
+  parseTestWebhookResponse,
+  parseWebhook,
+  parseWebhookCreated,
+  parseWebhookList,
+} from "./parsers/parse-webhook.js";
 
 export interface HttpApiGatewayConfig {
   readonly baseUrl: string;
@@ -218,8 +225,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async updateUserRole(
       userId: string,
       body: UpdateUserRoleRequest
-    ): Promise<Result<UserResponse, ApiError>> {
-      return call("PATCH", `/api/v1/account/users/${enc(userId)}/role`, body, parseUser);
+    ): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content; do not attempt to parse the body.
+      return call("PATCH", `/api/v1/account/users/${enc(userId)}/role`, body, parseEmpty);
     },
     async removeUser(userId: string): Promise<Result<null, ApiError>> {
       return call("DELETE", `/api/v1/account/users/${enc(userId)}`, undefined, parseEmpty);
@@ -357,15 +365,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Campaign groups ───────────────────────────────────────────
-    async listCampaignGroups(
-      filters: PageFilters
-    ): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>> {
-      return call(
-        "GET",
-        `/api/v1/campaign-groups?${buildQuery(filters)}`,
-        undefined,
-        parseCampaignGroupPage
-      );
+    async listCampaignGroups(filters?: {
+      readonly archived?: boolean;
+    }): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
+      // Per OpenAPI the only query param this endpoint supports is
+      // `archived?: boolean`; the response is a bare array (no envelope).
+      const qs = buildQuery(filters ?? {});
+      const path = qs === "" ? "/api/v1/campaign-groups" : `/api/v1/campaign-groups?${qs}`;
+      return call("GET", path, undefined, parseCampaignGroupArray);
     },
     async getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
       return call("GET", `/api/v1/campaign-groups/${enc(id)}`, undefined, parseCampaignGroup);
@@ -387,20 +394,24 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
       return call("POST", `/api/v1/campaign-groups/${enc(id)}/cancel`, undefined, parseGroupAction);
     },
-    async archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+    async archiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      // API returns `GroupActionResponse` (action summary), NOT the
+      // group entity. Mirrors `runCampaignGroup` / `cancelCampaignGroup`.
       return call(
         "POST",
         `/api/v1/campaign-groups/${enc(id)}/archive`,
         undefined,
-        parseCampaignGroup
+        parseGroupAction
       );
     },
-    async unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+    async unarchiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      // API returns `GroupActionResponse`; for unarchive the
+      // `cancelled_count` is typically 0 (nothing to cancel).
       return call(
         "POST",
         `/api/v1/campaign-groups/${enc(id)}/unarchive`,
         undefined,
-        parseCampaignGroup
+        parseGroupAction
       );
     },
     async pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
@@ -432,8 +443,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async updateTagDefinition(
       slug: string,
       body: UpdateTagDefinitionRequest
-    ): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
-      return call("PATCH", `/api/v1/tag-definitions/${enc(slug)}`, body, parseTagDetail);
+    ): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content. If a caller needs the updated
+      // entity back, follow up with `getTagDefinition(slug)`.
+      return call("PATCH", `/api/v1/tag-definitions/${enc(slug)}`, body, parseEmpty);
     },
     async deleteTagDefinition(slug: string): Promise<Result<null, ApiError>> {
       return call("DELETE", `/api/v1/tag-definitions/${enc(slug)}`, undefined, parseEmpty);
@@ -492,13 +505,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async deletePolicySet(id: string): Promise<Result<null, ApiError>> {
       return call("DELETE", `/api/v1/policy-sets/${enc(id)}`, undefined, parseEmpty);
     },
-    async requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>> {
-      return call(
-        "POST",
-        `/api/v1/policy-sets/${enc(id)}/request-approval`,
-        undefined,
-        parsePolicySet
-      );
+    async requestPolicySetApproval(id: string): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content; approval is a side-effect signal
+      // (admin review triggered), no entity to echo back.
+      return call("POST", `/api/v1/policy-sets/${enc(id)}/request-approval`, undefined, parseEmpty);
     },
 
     // ── Alerts ────────────────────────────────────────────────────
@@ -538,8 +548,20 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async deleteWebhook(id: string): Promise<Result<null, ApiError>> {
       return call("DELETE", `/api/v1/webhooks/${enc(id)}`, undefined, parseEmpty);
     },
-    async testWebhook(endpointId: string): Promise<Result<null, ApiError>> {
-      return call("POST", `/api/v1/webhooks/${enc(endpointId)}/test`, undefined, parseEmpty);
+    async testWebhook(
+      endpointId: string,
+      body: TestWebhookRequest
+    ): Promise<Result<TestWebhookResponse, ApiError>> {
+      // API REQUIRES `{event_type}` body (422 without). 200 returns
+      // `TestWebhookResponse { success, response_status, elapsed_ms,
+      // error_code, response_body }` — useful for the operator to see
+      // exactly what their receiver responded.
+      return call(
+        "POST",
+        `/api/v1/webhooks/${enc(endpointId)}/test`,
+        body,
+        parseTestWebhookResponse
+      );
     },
     async rotateWebhookSecret(
       endpointId: string
@@ -663,12 +685,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async setCampaignAlertOverrides(
       campaignId: string,
       body: SetCampaignOverridesRequest
-    ): Promise<Result<CampaignOverridesResponse, ApiError>> {
+    ): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content. Use `getCampaignAlertOverrides`
+      // for the new state if you need it.
       return call(
         "PUT",
         `/api/v1/alert-notifications/campaigns/${enc(campaignId)}/overrides`,
         body,
-        parseCampaignAlertOverrides
+        parseEmpty
       );
     },
   };

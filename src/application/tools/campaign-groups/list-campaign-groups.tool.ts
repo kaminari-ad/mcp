@@ -1,31 +1,36 @@
 /**
- * Tool: `list_campaign_groups` — paginated list of campaign groups.
+ * Tool: `list_campaign_groups` — list campaign groups (not paginated).
+ *
+ * The `/api/v1/campaign-groups` endpoint returns a bare array. The
+ * only documented filter is `archived` (default false). To agents we
+ * expose just that.
  */
 
 import { z } from "zod";
 
-import type {
-  CampaignGroupResponse,
-  PaginatedResponse,
-} from "../../../domain/ports/api-gateway.js";
+import type { CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListCampaignGroupsInputShape = {
-  page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
-  limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
+  archived: z
+    .boolean()
+    .optional()
+    .describe("If true, list ONLY archived groups. Default: only active groups."),
 } as const;
 type ListCampaignGroupsInputShape = typeof ListCampaignGroupsInputShape;
 
-export type ListCampaignGroupsOutput = PaginatedResponse<CampaignGroupResponse>;
+export interface ListCampaignGroupsOutput {
+  readonly items: readonly CampaignGroupResponse[];
+}
 
 export const listCampaignGroupsTool: Tool<ListCampaignGroupsInputShape, ListCampaignGroupsOutput> =
   {
     name: "list_campaign_groups",
     description:
-      "List campaign groups — folders that group related campaigns. Includes per-group campaign count.",
+      "List campaign groups — folders that group related campaigns. Includes per-group campaign count. Not paginated; the org-scoped list is typically small (a few dozen groups max).",
     annotations: {
       title: "List Campaign Groups",
       readOnlyHint: true,
@@ -35,8 +40,11 @@ export const listCampaignGroupsTool: Tool<ListCampaignGroupsInputShape, ListCamp
     },
     inputSchema: z.object(ListCampaignGroupsInputShape),
     handler: async (input, ctx): Promise<Result<ListCampaignGroupsOutput, ToolError>> => {
-      const result = await ctx.api.listCampaignGroups({ page: input.page, limit: input.limit });
+      const filters = input.archived === undefined ? {} : { archived: input.archived };
+      const result = await ctx.api.listCampaignGroups(filters);
       if (result.isErr()) return err(mapApiError(result.error));
-      return ok(result.value);
+      // Wrap the bare array in `{ items }` so tool output is a JSON
+      // object — consistent with every other `list_*` tool's shape.
+      return ok({ items: result.value });
     },
   };

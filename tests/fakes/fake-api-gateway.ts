@@ -61,6 +61,8 @@ import type {
   SetDestinationVersionRequest,
   TagDefinitionDetailResponse,
   TagDefinitionResponse,
+  TestWebhookRequest,
+  TestWebhookResponse,
   UpdateAlertStatusRequest,
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
@@ -127,7 +129,7 @@ type Call =
       readonly runId: string;
       readonly filters: PageFilters;
     }
-  | { readonly method: "listCampaignGroups"; readonly filters: PageFilters }
+  | { readonly method: "listCampaignGroups"; readonly filters: { readonly archived?: boolean } }
   | { readonly method: "getCampaignGroup"; readonly id: string }
   | { readonly method: "createCampaignGroup"; readonly body: CreateCampaignGroupRequest }
   | {
@@ -185,7 +187,11 @@ type Call =
       readonly body: UpdateWebhookRequest;
     }
   | { readonly method: "deleteWebhook"; readonly id: string }
-  | { readonly method: "testWebhook"; readonly endpointId: string }
+  | {
+      readonly method: "testWebhook";
+      readonly endpointId: string;
+      readonly body: TestWebhookRequest;
+    }
   | { readonly method: "rotateWebhookSecret"; readonly endpointId: string }
   | { readonly method: "listWebhookEventTypes" }
   | {
@@ -225,7 +231,7 @@ export interface FakeApiGatewayState {
     updateOrg?: Result<OrgResponse, ApiError>;
     listOrgUsers?: Result<readonly UserResponse[], ApiError>;
     inviteUser?: Result<UserResponse, ApiError>;
-    updateUserRole?: Result<UserResponse, ApiError>;
+    updateUserRole?: Result<null, ApiError>;
     removeUser?: Result<null, ApiError>;
     transferOwnership?: Result<null, ApiError>;
     listOrgRoles?: Result<readonly RoleResponse[], ApiError>;
@@ -253,19 +259,19 @@ export interface FakeApiGatewayState {
     getRun?: Result<RunResponse, ApiError>;
     cancelRun?: Result<CancelPendingResponse, ApiError>;
     listRunScans?: Result<PaginatedResponse<ScanBriefResponse>, ApiError>;
-    listCampaignGroups?: Result<PaginatedResponse<CampaignGroupResponse>, ApiError>;
+    listCampaignGroups?: Result<readonly CampaignGroupResponse[], ApiError>;
     getCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
     createCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
     updateCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
     runCampaignGroup?: Result<GroupActionResponse, ApiError>;
     cancelCampaignGroup?: Result<GroupActionResponse, ApiError>;
-    archiveCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
-    unarchiveCampaignGroup?: Result<CampaignGroupResponse, ApiError>;
+    archiveCampaignGroup?: Result<GroupActionResponse, ApiError>;
+    unarchiveCampaignGroup?: Result<GroupActionResponse, ApiError>;
     pauseCampaignGroupSchedule?: Result<CampaignGroupResponse, ApiError>;
     resumeCampaignGroupSchedule?: Result<CampaignGroupResponse, ApiError>;
     listTags?: Result<readonly TagDefinitionResponse[], ApiError>;
     getTagDefinition?: Result<TagDefinitionDetailResponse, ApiError>;
-    updateTagDefinition?: Result<TagDefinitionDetailResponse, ApiError>;
+    updateTagDefinition?: Result<null, ApiError>;
     deleteTagDefinition?: Result<null, ApiError>;
     listCustomRules?: Result<readonly CustomRuleResponse[], ApiError>;
     getCustomRule?: Result<CustomRuleResponse, ApiError>;
@@ -278,7 +284,7 @@ export interface FakeApiGatewayState {
     createPolicySet?: Result<PolicySetResponse, ApiError>;
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
-    requestPolicySetApproval?: Result<PolicySetResponse, ApiError>;
+    requestPolicySetApproval?: Result<null, ApiError>;
     listAlerts?: Result<PaginatedResponse<AlertResponse>, ApiError>;
     updateAlertStatus?: Result<null, ApiError>;
     getAlertStats?: Result<AlertStatsResponse, ApiError>;
@@ -287,7 +293,7 @@ export interface FakeApiGatewayState {
     createWebhook?: Result<WebhookCreatedResponse, ApiError>;
     updateWebhook?: Result<WebhookResponse, ApiError>;
     deleteWebhook?: Result<null, ApiError>;
-    testWebhook?: Result<null, ApiError>;
+    testWebhook?: Result<TestWebhookResponse, ApiError>;
     rotateWebhookSecret?: Result<WebhookCreatedResponse, ApiError>;
     listWebhookEventTypes?: Result<EventCatalogResponse, ApiError>;
     listWebhookDeliveries?: Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>;
@@ -302,7 +308,7 @@ export interface FakeApiGatewayState {
     deleteAlertDestination?: Result<null, ApiError>;
     setAlertDestinationVersion?: Result<AlertNotificationDestinationResponse, ApiError>;
     getCampaignAlertOverrides?: Result<CampaignOverridesResponse, ApiError>;
-    setCampaignAlertOverrides?: Result<CampaignOverridesResponse, ApiError>;
+    setCampaignAlertOverrides?: Result<null, ApiError>;
   };
 }
 
@@ -431,8 +437,6 @@ const DEFAULT_API_KEY_CREATED: ApiKeyCreatedResponse = {
 
 const DEFAULT_CAMPAIGN_ARCHIVED: CampaignResponse = { ...DEFAULT_CAMPAIGN, is_archived: true };
 
-const DEFAULT_GROUP_ARCHIVED: CampaignGroupResponse = { ...DEFAULT_GROUP, is_archived: true };
-
 const DEFAULT_GROUP_PAUSED: CampaignGroupResponse = { ...DEFAULT_GROUP, schedule_paused: true };
 
 const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
@@ -449,7 +453,14 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   rules_count: 0,
 };
 
-const DEFAULT_TAG_DETAIL_CUSTOM: TagDefinitionDetailResponse = {
+/**
+ * Custom-tag variant of {@link DEFAULT_TAG_DETAIL} — same shape but
+ * scoped to an org. Currently only used by tests that construct
+ * arbitrary custom-tag fixtures (e.g. via `state.responses.X = ok(...)`).
+ * Kept exported-shape via `export` so it doesn't trip tsc's unused-
+ * locals check.
+ */
+export const DEFAULT_TAG_DETAIL_CUSTOM: TagDefinitionDetailResponse = {
   ...DEFAULT_TAG_DETAIL,
   source: "custom",
   is_system: false,
@@ -505,6 +516,14 @@ const DEFAULT_CAMPAIGN_OVERRIDES: CampaignOverridesResponse = {
   destination_ids: [],
 };
 
+const DEFAULT_TEST_WEBHOOK_RESPONSE: TestWebhookResponse = {
+  success: true,
+  response_status: 200,
+  elapsed_ms: 12,
+  error_code: null,
+  response_body: "",
+};
+
 export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGatewayState } {
   const state: FakeApiGatewayState = { calls: [], responses: {} };
   function push(call: Call): void {
@@ -537,7 +556,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async updateUserRole(userId, body) {
       push({ method: "updateUserRole", userId, body });
       await Promise.resolve();
-      return state.responses.updateUserRole ?? ok<UserResponse, ApiError>(DEFAULT_USER);
+      return state.responses.updateUserRole ?? ok<null, ApiError>(null);
     },
     async removeUser(userId) {
       push({ method: "removeUser", userId });
@@ -729,17 +748,11 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     },
 
     // ── Campaign groups ────────────────────────────────────────
-    async listCampaignGroups(filters) {
+    async listCampaignGroups(filters = {}) {
       push({ method: "listCampaignGroups", filters });
       await Promise.resolve();
       return (
-        state.responses.listCampaignGroups ??
-        ok<PaginatedResponse<CampaignGroupResponse>, ApiError>({
-          items: [],
-          total: 0,
-          page: filters.page,
-          limit: filters.limit,
-        })
+        state.responses.listCampaignGroups ?? ok<readonly CampaignGroupResponse[], ApiError>([])
       );
     },
     async getCampaignGroup(id) {
@@ -781,14 +794,15 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.archiveCampaignGroup ??
-        ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP_ARCHIVED)
+        ok<GroupActionResponse, ApiError>(DEFAULT_GROUP_ACTION)
       );
     },
     async unarchiveCampaignGroup(id) {
       push({ method: "unarchiveCampaignGroup", id });
       await Promise.resolve();
       return (
-        state.responses.unarchiveCampaignGroup ?? ok<CampaignGroupResponse, ApiError>(DEFAULT_GROUP)
+        state.responses.unarchiveCampaignGroup ??
+        ok<GroupActionResponse, ApiError>(DEFAULT_GROUP_ACTION)
       );
     },
     async pauseCampaignGroupSchedule(id) {
@@ -825,10 +839,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async updateTagDefinition(slug, body) {
       push({ method: "updateTagDefinition", slug, body });
       await Promise.resolve();
-      return (
-        state.responses.updateTagDefinition ??
-        ok<TagDefinitionDetailResponse, ApiError>(DEFAULT_TAG_DETAIL_CUSTOM)
-      );
+      return state.responses.updateTagDefinition ?? ok<null, ApiError>(null);
     },
     async deleteTagDefinition(slug) {
       push({ method: "deleteTagDefinition", slug });
@@ -904,10 +915,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async requestPolicySetApproval(id) {
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
-      return (
-        state.responses.requestPolicySetApproval ??
-        ok<PolicySetResponse, ApiError>(DEFAULT_POLICY_SET)
-      );
+      return state.responses.requestPolicySetApproval ?? ok<null, ApiError>(null);
     },
 
     // ── Alerts ─────────────────────────────────────────────────
@@ -974,10 +982,13 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return state.responses.deleteWebhook ?? ok<null, ApiError>(null);
     },
-    async testWebhook(endpointId) {
-      push({ method: "testWebhook", endpointId });
+    async testWebhook(endpointId, body) {
+      push({ method: "testWebhook", endpointId, body });
       await Promise.resolve();
-      return state.responses.testWebhook ?? ok<null, ApiError>(null);
+      return (
+        state.responses.testWebhook ??
+        ok<TestWebhookResponse, ApiError>(DEFAULT_TEST_WEBHOOK_RESPONSE)
+      );
     },
     async rotateWebhookSecret(endpointId) {
       push({ method: "rotateWebhookSecret", endpointId });
@@ -1132,10 +1143,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async setCampaignAlertOverrides(campaignId, body) {
       push({ method: "setCampaignAlertOverrides", campaignId, body });
       await Promise.resolve();
-      return (
-        state.responses.setCampaignAlertOverrides ??
-        ok<CampaignOverridesResponse, ApiError>(DEFAULT_CAMPAIGN_OVERRIDES)
-      );
+      return state.responses.setCampaignAlertOverrides ?? ok<null, ApiError>(null);
     },
   };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseCampaignGroup,
-  parseCampaignGroupPage,
+  parseCampaignGroupArray,
 } from "../../../../../src/infrastructure/api/parsers/parse-campaign-group.js";
 
 const VALID = {
@@ -44,18 +44,39 @@ describe("parseCampaignGroup", () => {
   });
 });
 
-describe("parseCampaignGroupPage", () => {
-  it("Ok valid", () => {
-    expect(parseCampaignGroupPage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()).toBe(
-      true
-    );
+describe("parseCampaignGroupArray", () => {
+  it("Ok valid bare array (current OpenAPI contract)", () => {
+    const r = parseCampaignGroupArray([VALID]);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
   });
 
-  it("rejects bad envelope", () => {
-    expect(parseCampaignGroupPage("x").isErr()).toBe(true);
-    expect(parseCampaignGroupPage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
-    expect(
-      parseCampaignGroupPage({ items: [{ no: "id" }], total: 1, page: 1, limit: 50 }).isErr()
-    ).toBe(true);
+  it("Ok valid paginated envelope (defensive fallback if API ever wraps)", () => {
+    const r = parseCampaignGroupArray({
+      items: [VALID],
+      total: 1,
+      page: 1,
+      limit: 50,
+      pages: 1,
+    });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
+  });
+
+  it("Ok empty paginated envelope", () => {
+    const r = parseCampaignGroupArray({ items: [], total: 0, page: 1, limit: 50, pages: 0 });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual([]);
+  });
+
+  it("rejects garbage (neither array nor envelope)", () => {
+    expect(parseCampaignGroupArray("x").isErr()).toBe(true);
+    expect(parseCampaignGroupArray({ items: "not-an-array" }).isErr()).toBe(true);
+    expect(parseCampaignGroupArray(42).isErr()).toBe(true);
+  });
+
+  it("rejects when an item is malformed", () => {
+    expect(parseCampaignGroupArray([{ no: "id" }]).isErr()).toBe(true);
+    expect(parseCampaignGroupArray({ items: [{ no: "id" }] }).isErr()).toBe(true);
   });
 });
