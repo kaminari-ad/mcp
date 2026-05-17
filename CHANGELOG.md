@@ -60,6 +60,17 @@ tool surface change.
   call into the top-level bundle, eagerly importing undici/MCP SDK/
   pino at startup. With splitting on, transport bootstraps stay as
   separate chunks loaded only after `main()` runs the Node check.
+- `scripts/check-bundle-size.ts` rewritten to aggregate every
+  runtime `.js` chunk under `dist/` instead of just `dist/bin.js`.
+  With splitting on, `bin.js` is a thin ~5 KB preflight + dispatch
+  shim and the actual shipping cost lives in the transport / vendor
+  chunks. Total artifact: 173 KB across 5 chunks (smaller than
+  v0.2.0's 218 KB monolithic bundle thanks to tree-shaking now seeing
+  each chunk in isolation). Limit unchanged at 500 KB.
+- `src/shared/check-node-version.ts` — pure function extracted from
+  `bin.ts` so the version preflight can be unit-tested without
+  `process.exit` side effects. Test pins all boundary cases (22.18 /
+  22.19 / 22.20 / 23.x / 20.x / prerelease tags / garbage input).
 
 ## [0.2.0] - 2026-05-17
 
@@ -625,7 +636,9 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/kaminari-ad/mcp/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/kaminari-ad/mcp/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.5
 [0.1.4]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.4
 [0.1.3]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.3

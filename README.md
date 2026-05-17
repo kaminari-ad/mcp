@@ -121,7 +121,7 @@ make test-unit       # unit only
 make test-isolation  # tenant-isolation suite
 ```
 
-Or directly with `npm` if you have Node 22 LTS on the host (matches `.nvmrc` / `engines.node`):
+Or directly with `npm` if you have Node `>=22.19.0` on the host (matches `engines.node`; `.nvmrc` pins the minor for dev parity with CI). The package gates strictly at `22.19.0` because `undici@8.x` requires `markAsUncloneable` from `node:worker_threads` (Node 22.19+).
 
 ```bash
 npm ci --legacy-peer-deps
