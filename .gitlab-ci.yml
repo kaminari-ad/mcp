@@ -227,10 +227,13 @@ docker:build:
     - mkdir -p image-extracted
     - tar -xf image.tar -C image-extracted
     # kaniko's OCI tarball stores layer blobs as `blobs/sha256/<hash>`
-    # (no extension), not `*.tar`. Iterate every regular file and let
-    # `tar -tf` quietly skip non-tar blobs (config JSON, manifest).
-    - find image-extracted -type f | while read f; do tar -tf "$f" 2>/dev/null; done | sort -u > files.txt
-    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt summary (first 50 of $(wc -l < files.txt)) ===="; head -50 files.txt; exit 1; }; done'
+    # (no extension), not `*.tar`. Iterate every regular file; the
+    # inner `|| true` swallows `tar -tf` failures on non-tar blobs
+    # (config JSON, manifest) so GitLab's set -e pipefail does not
+    # abort the pipeline before sort runs.
+    - find image-extracted -type f -exec sh -c 'tar -tf "$1" 2>/dev/null || true' _ {} \; | sort -u > files.txt
+    - 'echo "files.txt has $(wc -l < files.txt) entries"'
+    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt sample (first 50) ===="; head -50 files.txt; exit 1; }; done'
     - echo "image contains all expected runtime files"
 
 # ─────────────────────────────────────────────────────────────────────
