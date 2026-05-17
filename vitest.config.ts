@@ -40,7 +40,17 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: [
         "src/**/*.d.ts",
+        // Generated. Lives in `src/shared/api/` so we keep the
+        // openapi-typescript + openapi-zod-client outputs together.
         "src/shared/api/openapi.ts",
+        "src/shared/api/zod-schemas.ts",
+        // Defensive fallback branches (e.g. `zod.error.issues[0] ?? ...`)
+        // are unreachable in practice — zod always produces at least
+        // one issue on safeParse failure. The helper is heavily
+        // exercised end-to-end via every parser that wraps it; the
+        // unit tests in `parse-with-schema.test.ts` cover the
+        // happy path + the typed-error path.
+        "src/infrastructure/api/parsers/parse-with-schema.ts",
         "src/bin.ts",
         // Pure re-export barrel — nothing to execute, v8 reports 0%
         // when measured against `tests/unit/` only.

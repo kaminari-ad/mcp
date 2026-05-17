@@ -1,10 +1,9 @@
 /**
  * GENERATED FILE — do not edit by hand.
  *
- * Source : https://kaminari.ad/openapi.json (cached locally during
- *          generation; the live URL is the canonical source).
+ * Source : https://app.kaminari.ad/openapi.json (the live URL is the canonical source;
+ *          regen happens via `npm run gen:api-types`).
  * Tool   : openapi-typescript
- * Refresh: `npm run gen:api-types`
  *
  * CI diffs this file against the committed copy; mismatches fail the
  * build, forcing the API-changing MR to bring this file along.
@@ -3452,9 +3451,7 @@ export interface components {
      * @description Body of ``POST /api/v1/demo-inquiries``.
      *
      *     Sibling of :class:`SubmitContactInquiryRequest` with the
-     *     sales-qualified field set per
-     *     `https://kaminari.click/request <https://kaminari.click/request>`_
-     *     convention. Pydantic enforces:
+     *     sales-qualified field set. Pydantic enforces:
      *
      *     * Length caps on every text field (megabyte-spam guard).
      *     * ``EmailStr`` on ``company_email`` (RFC-5322-ish + DNS-free
@@ -3462,7 +3459,16 @@ export interface components {
      *     * ``PreferredContactChannel`` membership on ``preferred_channel``
      *       (invalid value → 422 automatically; no manual coercion needed).
      *     * ``privacy_accepted=True`` is hard-required by a validator —
-     *       a ``False`` value returns 422 with a clear message, never a 500.
+     *       a ``False`` value returns 422 with a clear message.
+     *     * ``contact_handle`` format is channel-aware:
+     *       - ``telegram`` → ``@`` + 5..32 word chars (``@alex_reyes``)
+     *       - ``whatsapp`` → ``+`` + 8..15 digits (``+14155551234``)
+     *       - ``email``   → MUST be empty (visitor's ``company_email``
+     *         is the routing address; a separate handle would be
+     *         misleading)
+     *
+     *     The channel + handle validation lives in a single
+     *     :func:`model_validator` so the rule reads as one block.
      */
     SubmitDemoInquiryRequest: {
       /** First Name */
@@ -3477,6 +3483,11 @@ export interface components {
       /** Company Name */
       company_name: string;
       preferred_channel: components["schemas"]["PreferredContactChannel"];
+      /**
+       * Contact Handle
+       * @default
+       */
+      contact_handle: string;
       /**
        * Comment
        * @default
