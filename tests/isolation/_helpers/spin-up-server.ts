@@ -14,7 +14,13 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Writable } from "node:stream";
 
-import { MockAgent, request as undiciRequest, setGlobalDispatcher } from "undici";
+import {
+  type Dispatcher,
+  getGlobalDispatcher,
+  MockAgent,
+  request as undiciRequest,
+  setGlobalDispatcher,
+} from "undici";
 
 import { createSystemClock } from "../../../src/infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../../src/infrastructure/logging/pino-logger.js";
@@ -72,6 +78,10 @@ export async function spinUpServer(
   const rateLimiter = createLeakyBucketRateLimiter(clock, config.rateLimitRpm);
 
   // Intercept Kaminari API requests via undici MockAgent globally.
+  // Save the previous dispatcher so `close()` can restore it — leaving
+  // a `MockAgent` installed globally would leak into any later test
+  // that runs in the same Vitest worker.
+  const previousDispatcher: Dispatcher = getGlobalDispatcher();
   const mockApi = new MockAgent();
   mockApi.disableNetConnect();
   // Allow localhost so our tests can hit the spun-up server.
@@ -104,6 +114,7 @@ export async function spinUpServer(
     logs: () => sink.toString(),
     close: async () => {
       await mockApi.close();
+      setGlobalDispatcher(previousDispatcher);
       await new Promise<void>((resolve) =>
         server.close(() => {
           resolve();

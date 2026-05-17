@@ -188,5 +188,11 @@ publish:npm:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/'
   script:
+    # Sync the package.json version with the git tag (strip the `v`
+    # prefix). package.json on the branch stays at `0.0.0-dev` —
+    # `npm version` writes the tagged version without committing.
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - 'echo "Publishing version: $VERSION"'
+    - npm version "$VERSION" --no-git-tag-version --allow-same-version
     - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
     - npm publish --provenance --access public

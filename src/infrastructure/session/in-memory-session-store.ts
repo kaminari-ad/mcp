@@ -9,10 +9,12 @@
  * State characteristics:
  *   - Per-process, in-memory only. Not durable; restart wipes sessions.
  *   - Idle TTL: the entry is refreshed on every successful checkAndTouch.
- *   - No background cleanup task — entries die lazily on access. Old
- *     entries linger until the next request inquires about them OR a
- *     fresh `bind` overwrites the slot. Memory grows at O(active
- *     bearers within TTL window), which is acceptable at MCP scale.
+ *   - Opportunistic sweep on `bind`: every {@link SWEEP_EVERY_N_BINDS}
+ *     binds we walk the map and evict every expired entry. Prevents
+ *     unbounded growth when sessions are created but never re-visited
+ *     (a common pattern when clients reconnect with a fresh session id
+ *     instead of resuming the old one). Lazy in steady state, bounded
+ *     in worst case by `2 * SWEEP_EVERY_N_BINDS` extra map entries.
  *
  * No tenant data ever lives in this store — only short hex hashes.
  */
@@ -27,6 +29,13 @@ interface Entry {
 }
 
 /**
+ * How often (in `bind()` calls) the store walks its own map to evict
+ * expired entries. Picked low enough that a one-shot client storm of
+ * never-revisited sessions cannot grow the map past ~2x this value.
+ */
+const SWEEP_EVERY_N_BINDS = 128;
+
+/**
  * Build an in-memory session store.
  *
  * @param clock   - Clock used to compute expiry. Injected for tests.
@@ -36,13 +45,24 @@ interface Entry {
  */
 export function createInMemorySessionStore(clock: Clock, ttlMs: number): SessionStore {
   const entries = new Map<SessionId, Entry>();
+  let bindCount = 0;
 
   function isExpired(entry: Entry): boolean {
     return entry.expiresAtMs < clock.nowMs();
   }
 
+  function sweepIfDue(): void {
+    bindCount += 1;
+    if (bindCount % SWEEP_EVERY_N_BINDS !== 0) return;
+    const now = clock.nowMs();
+    for (const [id, entry] of entries) {
+      if (entry.expiresAtMs < now) entries.delete(id);
+    }
+  }
+
   return {
     bind(sessionId: SessionId, bearerHash: string): SessionCheck {
+      sweepIfDue();
       const existing = entries.get(sessionId);
       if (existing !== undefined && !isExpired(existing)) {
         if (existing.bearerHash !== bearerHash) {

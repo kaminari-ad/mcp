@@ -79,4 +79,29 @@ describe("InMemorySessionStore", () => {
     store.destroy(id);
     expect(store.checkAndTouch(id, "h1")).toEqual({ kind: "unknown" });
   });
+
+  it("opportunistic sweep evicts expired entries on the Nth bind", () => {
+    // SWEEP_EVERY_N_BINDS in the store is 128. We bind 130 fresh ids,
+    // all under the same expired clock window, and then prove that on
+    // the 128th bind the early entries no longer match (because they
+    // were swept away rather than accumulating forever).
+    const clock = createFakeClock();
+    const store = createInMemorySessionStore(clock, TTL);
+
+    // Step 1: create 5 sessions that will be expired by sweep time.
+    const earlyIds = Array.from({ length: 5 }, () => newSessionId());
+    for (const id of earlyIds) store.bind(id, "h1");
+
+    // Step 2: advance past TTL so the 5 early entries are stale.
+    clock.advance(TTL + 1);
+
+    // Step 3: trigger the sweep by issuing many fresh binds.
+    for (let i = 0; i < 130; i += 1) store.bind(newSessionId(), "h2");
+
+    // Step 4: each early id should now be unknown — the sweep ran,
+    // dropped the expired slot, and `checkAndTouch` confirms.
+    for (const id of earlyIds) {
+      expect(store.checkAndTouch(id, "h1")).toEqual({ kind: "unknown" });
+    }
+  });
 });

@@ -50,4 +50,26 @@ describe("BearerToken", () => {
     expect(inspect(t)).not.toContain(secret);
     expect(`${t}`).not.toContain(secret);
   });
+
+  it("rejects an Authorization header larger than the cap (DoS guard)", () => {
+    // The cap is 4096 bytes. A 5 KiB header is rejected before the
+    // regex even runs.
+    const tooLong = "Bearer " + "a".repeat(5000);
+    expect(BearerToken.fromAuthorizationHeader(tooLong)).toBeUndefined();
+  });
+
+  it("preserves the raw token byte-for-byte regardless of inbound `Bearer` casing", () => {
+    // Per RFC 6750 the scheme word is case-insensitive; the secret
+    // itself is preserved exactly and the outbound header is
+    // re-emitted with the canonical capitalization.
+    const canonical = BearerToken.fromAuthorizationHeader("Bearer kad_xyz")!;
+    const lower = BearerToken.fromAuthorizationHeader("bearer kad_xyz")!;
+    const mixed = BearerToken.fromAuthorizationHeader("BeArEr kad_xyz")!;
+    expect(canonical.toAuthorizationHeader()).toBe("Bearer kad_xyz");
+    expect(lower.toAuthorizationHeader()).toBe("Bearer kad_xyz");
+    expect(mixed.toAuthorizationHeader()).toBe("Bearer kad_xyz");
+    // Same secret -> same hash.
+    expect(canonical.fullHash()).toBe(lower.fullHash());
+    expect(canonical.fullHash()).toBe(mixed.fullHash());
+  });
 });

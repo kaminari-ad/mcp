@@ -27,7 +27,19 @@ const REDACTED = "[BearerToken redacted]";
 export const BEARER_HASH_PREFIX_LEN = 8;
 
 /**
- *
+ * Hard cap on the inbound `Authorization` header length. Real Kaminari
+ * Ad API keys are ~40 chars; padding generously for JWT-style tokens
+ * (which the API doesn't issue today but may in the future) and the
+ * `Bearer ` prefix. Anything beyond this is rejected as malformed —
+ * stops a pathological client from forcing the server to hash multi-MB
+ * blobs.
+ */
+const MAX_HEADER_LEN = 4096;
+
+/**
+ * Opaque, self-redacting wrapper around a Kaminari Ad API key. Use
+ * {@link BearerToken.fromAuthorizationHeader} on the wire-side and
+ * {@link BearerToken.fromString} for stdio (`KAMINARI_AD_API_KEY`).
  */
 export class BearerToken {
   readonly #raw: string;
@@ -50,9 +62,28 @@ export class BearerToken {
   /**
    * Parse from a raw `Authorization` header value. Returns `undefined`
    * for missing / malformed input (anything not `Bearer <token>`).
+   *
+   * **Normalization policy.** The regex is case-insensitive on the
+   * `Bearer` scheme (per RFC 6750 §2.1, the scheme name is
+   * case-insensitive) but the outbound header is always re-emitted
+   * with the canonical capitalization (`Bearer <token>`) by
+   * {@link toAuthorizationHeader}. We intentionally do NOT preserve
+   * the inbound casing byte-for-byte:
+   *
+   *   - The Kaminari Ad API accepts the canonical form.
+   *   - Outbound canonicalization simplifies any future signature /
+   *     proxy that re-hashes the header.
+   *   - The TOKEN value itself is preserved exactly (the capture
+   *     group's `\S+` keeps the secret intact); only the SCHEME word
+   *     is normalized.
+   *
+   * Token length is capped at {@link MAX_TOKEN_LEN} bytes to keep a
+   * pathological client from blowing the heap; longer headers are
+   * rejected as malformed.
    */
   static fromAuthorizationHeader(headerValue: string | undefined): BearerToken | undefined {
     if (headerValue === undefined) return undefined;
+    if (headerValue.length > MAX_HEADER_LEN) return undefined;
     const match = /^Bearer\s+(\S+)\s*$/i.exec(headerValue);
     if (match?.[1] === undefined) return undefined;
     return BearerToken.fromString(match[1]);

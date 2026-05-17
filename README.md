@@ -36,7 +36,7 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
 }
 ```
 
-Restart your client. You should see `kaminari-ad` in the MCP servers list with ~40 tools exposed.
+Restart your client. You should see `kaminari-ad` in the MCP servers list with 82 tools exposed.
 
 ### 2b. Hosted HTTP transport (no install)
 
@@ -59,28 +59,30 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
 
 ## Tools
 
-83 tools mirroring the full public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) so MCP clients can warn before destructive actions. Highlights:
+82 tools mirroring most of the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. Highlights:
 
-- **Account** (11) — `get_me`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `list_api_keys`, `create_api_key`, `revoke_api_key`
-- **Scans** (6) — `list_scans`, `get_scan`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`
+- **Account** (11) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `list_api_keys`, `create_api_key`, `revoke_api_key`
+- **Scans** (7) — `list_scans`, `get_scan`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `list_scan_tags`
 - **Campaigns** (9) — `list_campaigns`, `get_campaign`, `create_campaign`, `update_campaign`, `archive_campaign`, `unarchive_campaign`, `cancel_campaign`, `run_campaign`, `list_campaign_runs`
 - **Campaign groups** (10) — list/get/create/update/run/cancel/archive/unarchive + `pause_campaign_group_schedule`, `resume_campaign_group_schedule`
-- **Runs** (4) — `list_runs`, `get_run`, `list_run_scans`, `cancel_run`
-- **Tags** (5) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`, `list_scan_tags`
-- **Custom rules** (6) — `list`, `get`, `create`, `update`, `delete`, `test_custom_rule`
-- **Policy sets** (6) — `list`, `get`, `create`, `update`, `delete`, `request_policy_set_approval`
+- **Runs** (3) — `get_run`, `list_run_scans`, `cancel_run` (use `list_campaign_runs` to enumerate runs of a campaign — the API has no standalone `/runs` index)
+- **Tags** (4) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`
+- **Custom rules** (6) — `list_custom_rules`, `get_custom_rule`, `create_custom_rule`, `update_custom_rule`, `delete_custom_rule`, `test_custom_rule`
+- **Policy sets** (6) — `list_policy_sets`, `get_policy_set`, `create_policy_set`, `update_policy_set`, `delete_policy_set`, `request_policy_set_approval`
 - **Alerts** (3) — `list_alerts`, `update_alert_status`, `get_alert_stats`
-- **Webhooks** (11) — `list`, `get`, `create`, `update`, `delete`, `list_webhook_event_types`, `list_webhook_deliveries`, `test_webhook`, `rotate_webhook_secret`, `replay_webhook_delivery`, `bulk_replay_webhook`
+- **Webhooks** (11) — `list_webhooks`, `get_webhook`, `create_webhook`, `update_webhook`, `delete_webhook`, `list_webhook_event_types`, `list_webhook_deliveries`, `test_webhook`, `rotate_webhook_secret`, `replay_webhook_delivery`, `bulk_replay_webhook`
 - **Billing** (4) — `get_billing_summary`, `list_usage`, `get_usage_summary`, `list_balance_history`
 - **Invoicing** (1) — `list_invoices`
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
 - **Reference data** (2) — `list_geos`, `list_emulators`
 
+Not exposed (intentionally): binary scan-screenshot fetchers, invoice PDF, the UI-only campaign picker, and the public marketing forms (`/contact`, `/demo-inquiries`). Open an issue if you need one of those.
+
 ## Example agent prompts
 
 These three prompts each exercise a different cross-section of tools and demonstrate the typical agent workflow:
 
-1. **"Scan https://news.example.com/article-promo across US, UK, DE on mobile profiles, flag anything that redirects to a paywall."** Touches `list_emulators` → `create_bulk_scans` → wait → `list_scans` (status=done) → `get_scan` → `list_scan_tags`.
+1. **"Scan https://news.example.com/article-promo across US, UK, DE on mobile profiles, flag anything that redirects to a paywall."** Touches `list_emulators` → `create_bulk_scans` → wait → `list_scans` (status=completed) → `get_scan` → `list_scan_tags`.
 2. **"Create a campaign that re-checks the homepage of brand-x.com every hour from JP and US; alert me on Slack if it ever shows a malware tag."** Touches `list_emulators` → `list_policy_sets` (find one with `malware`) → `create_campaign` (schedule_enabled=true) → `list_alert_destinations` → `set_campaign_alert_overrides`.
 3. **"What did I spend on ad verification last month, and which campaigns drove the cost?"** Touches `get_usage_summary` → `list_usage` (with date_from/date_to) → group by `scan_id` → `get_scan` → `get_campaign` for attribution.
 
@@ -105,7 +107,7 @@ To report a security issue, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
-Requires Docker. All commands run in a pinned `node:20-alpine` container:
+Requires Docker. All commands run in a pinned `node:22-alpine` container so your host Node version does not matter (Node 22 LTS is required by the dep tree — see `.nvmrc` / `engines.node`):
 
 ```bash
 make check           # lint + format-check + typecheck + arch-gates + test-cov
@@ -115,6 +117,8 @@ make test-isolation  # tenant-isolation suite
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and how to add a tool.
+
+CI runs on GitLab at <https://gitlab.sdev.pw/adverif/mcp/-/pipelines>. The `.github/` directory only carries issue/PR templates — there are no GitHub Actions; pull requests opened on the GitHub mirror need to be re-applied to the GitLab repo for the pipeline to run.
 
 ---
 

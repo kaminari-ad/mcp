@@ -28,7 +28,7 @@ import * as process from "node:process";
 import openapiTS, { astToString } from "openapi-typescript";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const OUTPUT = path.join(REPO_ROOT, "src", "infrastructure", "api", "openapi.ts");
+const OUTPUT = path.join(REPO_ROOT, "src", "shared", "api", "openapi.ts");
 const DEFAULT_URL = "https://kaminari.ad/openapi.json";
 
 const HEADER = `/**
