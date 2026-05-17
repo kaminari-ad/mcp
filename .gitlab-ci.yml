@@ -212,28 +212,23 @@ docker:build:
     # layers.
     #
     # `--tar-path` exports the image as an OCI tarball so the next
-    # step can load it with `node` and actually boot it. Without this
-    # sanity check, kaniko silently skips files excluded by
-    # .dockerignore even when a COPY instruction references them —
-    # a runtime image without LICENSE / README.md / SECURITY.md
-    # would build "successfully" but explode at production
-    # `docker compose build` (BuildKit is strict).
+    # step can inspect its contents. Without this sanity check
+    # kaniko silently skips files excluded by .dockerignore even
+    # when a COPY instruction references them — a runtime image
+    # without LICENSE / README.md / SECURITY.md would build
+    # "successfully" but explode at production `docker compose build`
+    # (BuildKit is strict).
     - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci" --tar-path image.tar
     # Verify every file referenced by COPY in the Dockerfile actually
-    # made it into the image. Kaniko silently passes a build where
-    # .dockerignore excluded a COPY target, so we have to check the
-    # OCI tarball ourselves. Fails the job if any of the listed
-    # files is missing — surfaces .dockerignore bugs in CI instead
-    # of at `docker compose build` time on the production server.
-    - apk add --no-cache jq tar
+    # made it into the image. Uses busybox `tar` and `find` only —
+    # the kaniko-debug image is based on busybox/musl, so no apk /
+    # jq / python is available. We list every `*.tar` blob inside
+    # the OCI tarball and grep the union for required runtime files.
     - mkdir -p image-extracted
     - tar -xf image.tar -C image-extracted
-    - jq -r '.[0].Layers[]' image-extracted/manifest.json > layers.txt
-    - 'for layer in $(cat layers.txt); do tar -tf image-extracted/$layer 2>/dev/null; done | sort -u > files.txt'
-    - 'for f in package.json LICENSE README.md SECURITY.md dist/bin.js node_modules/@modelcontextprotocol/sdk/package.json; do
-        grep -q "^app/${f}\$" files.txt || { echo "missing in image: ${f}"; exit 1; };
-      done'
-    - 'echo "image contains all expected runtime files"'
+    - find image-extracted -name '*.tar' -exec tar -tf {} \; 2>/dev/null | sort -u > files.txt
+    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; exit 1; }; done'
+    - echo "image contains all expected runtime files"
 
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
