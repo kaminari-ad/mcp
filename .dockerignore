@@ -1,0 +1,38 @@
+# Files NEVER copied into the build context. Keeps the kaniko / buildkit
+# layer cache small and prevents host-only artefacts from leaking into
+# the production image.
+node_modules
+dist
+coverage
+.git
+.github
+.cursor
+.vscode
+.idea
+*.log
+.env
+.env.*
+!.env.example
+tests
+scripts
+docs
+README.md
+CHANGELOG.md
+SECURITY.md
+LICENSE
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+.gitlab-ci.yml
+.gitignore
+.gitattributes
+.eslintrc*
+eslint.config.*
+.prettierrc*
+.prettierignore
+lefthook.yml
+commitlint.config.*
+renovate.json
+.dependency-cruiser.cjs
+.nvmrc
+docker-compose.dev.yml
+Makefile

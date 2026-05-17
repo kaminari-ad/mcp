@@ -40,7 +40,7 @@ COPY package.json package-lock.json ./
 COPY .npmrc ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts --legacy-peer-deps
-COPY tsconfig.json tsconfig.build.json ./
+COPY tsconfig.json tsconfig.build.json tsup.config.ts ./
 COPY src ./src
 RUN npx tsup --config tsup.config.ts
 
