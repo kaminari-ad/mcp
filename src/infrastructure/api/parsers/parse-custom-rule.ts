@@ -76,7 +76,10 @@ export function parseCustomRuleArray(
  * upstream error.
  */
 function unwrapItems(raw: unknown): readonly unknown[] | undefined {
-  if (Array.isArray(raw)) return raw;
-  if (isStringRecord(raw) && Array.isArray(raw["items"])) return raw["items"];
+  if (Array.isArray(raw)) return raw as readonly unknown[];
+  if (isStringRecord(raw)) {
+    const items = raw["items"];
+    if (Array.isArray(items)) return items as readonly unknown[];
+  }
   return undefined;
 }
