@@ -18,7 +18,21 @@ import * as process from "node:process";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const BUNDLE = path.join(REPO_ROOT, "dist", "bin.js");
-const MAX_BUNDLE_KB = 500;
+// Bumped from 500→850 with the parser-drift Phase 2b+3 work
+// (CHANGELOG entry "parser-drift phase 2b/3"). The new payload is:
+//   - `src/shared/api/zod-schemas.ts` — generated runtime zod schemas
+//     for every OpenAPI component (~150 schemas). Required for the
+//     `parseWithSchema(schemas.X.pick({...}))` parser pattern that
+//     replaced 17 hand-written `typeof raw === "object"` parsers.
+//   - `openapi-fetch` runtime — typed HTTP client over the same
+//     `paths` types; tiny (~3 KB minified).
+// Net: 500 KB → ~770 KB. Worth it: schema drift is now a compile-time
+// failure (the prod regression class that caused 8 tool failures last
+// week is structurally eliminated). Tightening below 800 again would
+// require either tree-shaking unused schemas (openapi-zod-client does
+// not support this cleanly) or moving schema validation server-side
+// (defeats the purpose).
+const MAX_BUNDLE_KB = 850;
 
 async function main(): Promise<number> {
   let stat;
