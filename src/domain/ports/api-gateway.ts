@@ -208,13 +208,16 @@ export type RunResponse = Pick<
   | "created_at"
 >;
 
+/**
+ * Both `run_ids` and `failures` default to empty arrays in the API
+ * — they're declared optional in the spec and present only when
+ * action produced runs or per-campaign failures. The schema-based
+ * parser emits the keys when populated, omits them when empty.
+ */
 export type GroupActionResponse = Pick<
   S["GroupActionResponse"],
-  "group_id" | "affected_campaigns" | "cancelled_count" | "run_ids"
-> & {
-  /** Surfaced loosely — API has `{ campaign_id, error_code, detail }`. */
-  readonly failures: readonly unknown[];
-};
+  "group_id" | "affected_campaigns" | "cancelled_count" | "run_ids" | "failures"
+>;
 
 export type CreateCampaignRequest = Pick<
   S["CreateCampaignRequest"],

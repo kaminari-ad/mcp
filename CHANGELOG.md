@@ -81,17 +81,71 @@ masking bug that hid the real failure mode is fixed too.
   Manual trigger by default; flip to a daily schedule once the
   sandbox org + token are provisioned.
 
-### Deferred — followup MR
+### Added (parser-drift phase 2b — full conversion)
 
-- **Phase 2b: parser conversion.** Each `parse-*.ts` to be rewritten
-  as `parseWithSchema(schemas.X.pick({...}).strip(), raw, label)`.
-  Tried in this MR; cascades into ~20 test-fixture failures because
-  the old hand-parsers tolerated loose stubs (`id: "u1"`, `created_at:
-  "t"`) which strict zod (`z.string().uuid()`,
-  `z.string().datetime({offset:true})`) rejects. Better as a sweeping
-  parser-by-parser MR with matching fixture upgrades.
-- **Phase 3: replace hand-written http-api-gateway with openapi-fetch.**
-  Same fixture-migration scope as Phase 2b; defer until 2b is in.
+- **Every `parse-*.ts` rewritten as a `parseWithSchema(schemas.X.pick
+  ({...}).strip())` one-liner.** All 17 hand-written parsers now
+  delegate to zod schemas generated from the live OpenAPI spec. A
+  field rename / removal upstream surfaces as a `tsc` error on the
+  `.pick({…})` mask (drift fails at compile time, not at the first
+  production request). A wrong-shape runtime payload degrades to a
+  typed `upstream` MCP error with the zod issue chain — never to an
+  `undefined.x` crash.
+- **Test fixtures hardened.** ~30 fixtures across
+  `tests/unit/infrastructure/api/**` migrated from the old loose
+  hand-parser stubs (`id: "u1"`, `created_at: "t"`,
+  `status: "done"`) to schema-valid values
+  (`id: "00000000-0000-0000-0000-…"`, ISO datetimes, enum members
+  from the OpenAPI source like `"completed"` / `"api"`). Tests now
+  assert the same contract the production API enforces.
+- **Two exempt files**, both documented in
+  `scripts/check-no-handwritten-parsers.ts`:
+  - `parse-empty.ts` — `204 No Content`, no body to validate.
+  - `parse-count-envelope.ts::parseIntField(raw, "x")` — generic
+    one-field-int extractor used by ad-hoc envelopes like
+    `{queued_count}` / `{cancelled_count}` that have no dedicated DTO
+    in the spec.
+
+### Added (parser-drift phase 3 — typed HTTP client)
+
+- **`src/infrastructure/api/http-api-gateway.ts` ported to
+  `openapi-fetch`.** Every endpoint path is now a literal type
+  constrained by `paths` from `src/shared/api/openapi.ts`; path /
+  query / body shapes are validated by the same generated types,
+  with the agent-facing `Pick<S[K], …>` projections in
+  `domain/ports/api-gateway.ts` narrowing the surface. Renaming or
+  removing an endpoint on the API side fails the gateway at
+  `tsc --noEmit` immediately — no runtime drift.
+- **Tenant-isolation contract preserved.** Pinned 5-key outbound
+  header allowlist (authorization / content-type / accept /
+  user-agent / x-request-id) — same shape the existing
+  `tests/isolation/header-injection-e2e.test.ts` AST gate already
+  enforces. Per-request `Dispatcher` injection (used by tests with
+  `MockAgent`; production uses the global agent) is forwarded through
+  a thin `fetchImpl` wrapper that splices `input.headers` /
+  `input.body` from openapi-fetch's `Request` onto the undici init
+  bag — without this the auth header silently vanishes (because
+  undici.fetch ignores `Request` and reads only `init`).
+- **Removed `buildQuery` and the manual `${enc(id)}` interpolation.**
+  Query / path params now go through openapi-fetch's typed
+  `params.query` / `params.path` — typed key names per endpoint,
+  enforced at compile time (`scan_id` for `/scans/{scan_id}`,
+  `endpoint_id` for `/webhooks/{endpoint_id}`, etc.). A key typo
+  fails `tsc` rather than producing a silently-wrong URL.
+
+### Added (parser-drift phase 4 — production observability)
+
+- **`scripts/prod-smoke.ts`** + **`npm run prod:smoke`** + a manual
+  `prod:smoke` GitLab CI job (description retained from phase 2a).
+- **`npm run check:no-handwritten-parsers`** + new
+  `check:no-handwritten-parsers` GitLab CI job in `arch_gates`.
+  Belt-and-suspenders gate: parses every `src/infrastructure/api/
+  parsers/*.ts` and fails if a parser does NOT import `{ schemas }
+  from "../../shared/api/zod-schemas"` (or one of the two documented
+  exemptions). A future contributor who adds a hand-rolled
+  `typeof raw === "object" && "field" in raw` parser hits this gate
+  immediately, with a pointer to `parse-org` / `parse-scan` as the
+  canonical schema-backed shape.
 
 ### Changed (breaking — pre-release, no API consumers yet)
 

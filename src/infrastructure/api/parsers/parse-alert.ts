@@ -1,5 +1,5 @@
 /**
- * Parser for `GET /api/v1/alerts` — paginated alert list.
+ * Parsers for `/api/v1/alerts` — single + paginated page envelope.
  */
 
 import type {
@@ -7,64 +7,32 @@ import type {
   ApiError,
   PaginatedResponse,
 } from "../../../domain/ports/api-gateway.js";
-import { err, ok, type Result } from "../../../shared/result.js";
-import { isStringRecord } from "./shared.js";
+import { schemas } from "../../../shared/api/zod-schemas.js";
+import type { Result } from "../../../shared/result.js";
+import { parsePagedWithItemSchema, parseWithSchema } from "./parse-with-schema.js";
 
-function s(v: unknown, fallback: string): string {
-  return typeof v === "string" ? v : fallback;
-}
-function sOrNull(v: unknown): string | null {
-  if (v === null) return null;
-  return typeof v === "string" ? v : null;
-}
+const AlertSchema = schemas.AlertResponse.pick({
+  id: true,
+  scan_id: true,
+  campaign_id: true,
+  policy_set_id: true,
+  violation_rule_id: true,
+  tag_slug: true,
+  tag_display_name: true,
+  country_code: true,
+  status: true,
+  closed_by: true,
+  scan_url: true,
+  offer_url: true,
+  created_at: true,
+  updated_at: true,
+}).strip();
 
-/**
- *
- */
-export function parseAlert(raw: unknown): Result<AlertResponse, ApiError> {
-  if (!isStringRecord(raw)) return err({ kind: "upstream", detail: "malformed alert" });
-  const id = raw["id"];
-  if (typeof id !== "string") return err({ kind: "upstream", detail: "alert: id required" });
-  return ok({
-    id,
-    scan_id: s(raw["scan_id"], ""),
-    campaign_id: s(raw["campaign_id"], ""),
-    policy_set_id: sOrNull(raw["policy_set_id"]),
-    violation_rule_id: sOrNull(raw["violation_rule_id"]),
-    tag_slug: s(raw["tag_slug"], ""),
-    tag_display_name: s(raw["tag_display_name"], ""),
-    country_code: s(raw["country_code"], ""),
-    status: s(raw["status"], ""),
-    closed_by: sOrNull(raw["closed_by"]),
-    scan_url: s(raw["scan_url"], ""),
-    offer_url: s(raw["offer_url"], ""),
-    created_at: s(raw["created_at"], ""),
-    updated_at: s(raw["updated_at"], ""),
-  });
-}
+export const parseAlert = (raw: unknown): Result<AlertResponse, ApiError> =>
+  parseWithSchema(AlertSchema, raw, "alert") as Result<AlertResponse, ApiError>;
 
-/**
- *
- */
-export function parseAlertPage(raw: unknown): Result<PaginatedResponse<AlertResponse>, ApiError> {
-  if (!isStringRecord(raw)) return err({ kind: "upstream", detail: "malformed alert page" });
-  const items = raw["items"];
-  const total = raw["total"];
-  const page = raw["page"];
-  const limit = raw["limit"];
-  if (
-    !Array.isArray(items) ||
-    typeof total !== "number" ||
-    typeof page !== "number" ||
-    typeof limit !== "number"
-  ) {
-    return err({ kind: "upstream", detail: "malformed alert envelope" });
-  }
-  const out: AlertResponse[] = [];
-  for (const item of items) {
-    const r = parseAlert(item);
-    if (r.isErr()) return err(r.error);
-    out.push(r.value);
-  }
-  return ok({ items: out, total, page, limit });
-}
+export const parseAlertPage = (raw: unknown): Result<PaginatedResponse<AlertResponse>, ApiError> =>
+  parsePagedWithItemSchema(AlertSchema, raw, "alerts") as Result<
+    PaginatedResponse<AlertResponse>,
+    ApiError
+  >;

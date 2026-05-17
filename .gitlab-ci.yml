@@ -105,6 +105,16 @@ check:tool-naming:
   needs: [setup]
   script: npm run check:tool-naming
 
+check:no-handwritten-parsers:
+  stage: arch_gates
+  needs: [setup]
+  # Belt-and-suspenders gate against hand-written parser drift (see
+  # CHANGELOG Phase 1 — 8 prod tool failures caused by parsers that
+  # diverged from the API's actual response shapes). Forces every
+  # `src/infrastructure/api/parsers/*.ts` to be backed by a generated
+  # zod schema from `src/shared/api/zod-schemas.ts`.
+  script: npm run check:no-handwritten-parsers
+
 # ─────────────────────────────────────────────────────────────────────
 # 4. SECURITY (parallel)
 # ─────────────────────────────────────────────────────────────────────
@@ -165,6 +175,7 @@ build:
     - check:imports
     - check:shared-state
     - check:tool-naming
+    - check:no-handwritten-parsers
     - audit:deps
     - audit:licenses
     - test:unit

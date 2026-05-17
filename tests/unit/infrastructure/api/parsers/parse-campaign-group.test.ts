@@ -26,20 +26,13 @@ describe("parseCampaignGroup", () => {
     expect(parseCampaignGroup(withoutId).isErr()).toBe(true);
   });
 
-  it("defaults non-bool flags", () => {
-    const r = parseCampaignGroup({ ...VALID, is_default: "x", schedule_paused: "y" });
-    expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().is_default).toBe(false);
-    expect(r._unsafeUnwrap().schedule_paused).toBe(false);
+  it("rejects non-bool flag (strict schema)", () => {
+    expect(parseCampaignGroup({ ...VALID, is_default: "x" }).isErr()).toBe(true);
   });
 
-  it("treats null campaign_count as null", () => {
+  it("Ok with null campaign_count (nullable optional field)", () => {
     const r = parseCampaignGroup({ ...VALID, campaign_count: null });
-    expect(r._unsafeUnwrap().campaign_count).toBeNull();
-  });
-
-  it("treats non-number non-null campaign_count as null", () => {
-    const r = parseCampaignGroup({ ...VALID, campaign_count: "x" });
+    expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().campaign_count).toBeNull();
   });
 });

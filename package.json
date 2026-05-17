@@ -66,6 +66,7 @@
     "check:bundle-size": "tsx scripts/check-bundle-size.ts",
     "check:shared-state": "tsx scripts/check-no-shared-state.ts",
     "check:tool-naming": "tsx scripts/check-tool-naming.ts",
+    "check:no-handwritten-parsers": "tsx scripts/check-no-handwritten-parsers.ts",
     "audit:deps": "npm audit --audit-level=moderate",
     "audit:licenses": "license-checker --production --onlyAllow \"MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC-BY-4.0\" --excludePrivatePackages",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test:cov && npm run build"
@@ -73,6 +74,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "neverthrow": "8.1.1",
+    "openapi-fetch": "0.17.0",
     "pino": "9.5.0",
     "pino-pretty": "13.0.0",
     "undici": "8.3.0",

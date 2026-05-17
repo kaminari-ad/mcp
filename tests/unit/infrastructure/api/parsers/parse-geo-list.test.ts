@@ -25,14 +25,7 @@ describe("parseGeoList", () => {
   it("rejects items missing country_code", () => {
     expect(parseGeoList([{ name: "Anonymous" }]).isErr()).toBe(true);
   });
-  it("defaults non-string optional fields to empty", () => {
-    const r = parseGeoList([{ country_code: "US", name: 1, region: 2, tier: 3 }]);
-    expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap()[0]).toEqual({
-      country_code: "US",
-      name: "",
-      region: "",
-      tier: "",
-    });
+  it("rejects items with non-string fields (strict schema)", () => {
+    expect(parseGeoList([{ country_code: "US", name: 1, region: 2, tier: 3 }]).isErr()).toBe(true);
   });
 });
