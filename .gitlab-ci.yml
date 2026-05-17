@@ -183,35 +183,34 @@ build:
 # (e.g. `NODE_ENV=production` on the base stage silently omitting
 # devDependencies and tsup failing at `Cannot find module typescript`;
 # or `npm ci` peer-dep conflicts that don't appear in the host
-# `npm ci --legacy-peer-deps` flow). Runs in DOCKER-IN-DOCKER on a
-# shell runner with the docker socket mounted; the GitLab project
-# already has a `docker` tag for runners that support this.
+# `npm ci --legacy-peer-deps` flow).
 #
-# Image is built but NOT pushed — production deploy still pulls the
-# source on the rnd server and rebuilds there. The job only proves the
-# image WOULD build cleanly. Once we publish to a registry, change
-# `--load` to `--push` and add the registry login here.
+# Uses kaniko (no docker daemon) so it works on every GitLab runner
+# type, including the docker-executor ones in this project where
+# Docker-in-Docker service networking is not enabled. The image is
+# built into the kaniko cache and discarded — production deploy still
+# rebuilds on rnd. When we move to registry-pulled deploys, drop
+# `--no-push` and add a `--destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA`
+# plus a registry-login step here.
+#
+# Runtime sanity (does the bundle resolve all deps?) is covered by
+# `tests/integration/cli-smoke.test.ts` against the host-built
+# `dist/bin.js`, so this job only has to prove the Dockerfile builds.
 docker:build:
   stage: build
   needs:
     - setup
-  image: docker:27-cli
-  services:
-    - docker:27-dind
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
   before_script: []
-  variables:
-    DOCKER_HOST: "tcp://docker:2375"
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: "overlay2"
-    DOCKER_BUILDKIT: "1"
   script:
-    - docker version
-    - docker build -t kaminari-ad-mcp:ci .
-    # Sanity-check the artifact actually runs — `--version` exits 0
-    # if the bundled entrypoint resolves all runtime deps. Past
-    # regressions (missing `pino-pretty` in dependencies, `zod/v3`
-    # resolve failures) would have surfaced here.
-    - docker run --rm kaminari-ad-mcp:ci --version
+    - /kaniko/executor
+        --context "$CI_PROJECT_DIR"
+        --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+        --no-push
+        --destination "kaminari-ad-mcp:ci"
+        --single-snapshot
 
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
