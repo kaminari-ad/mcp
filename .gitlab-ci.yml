@@ -178,6 +178,41 @@ build:
     paths:
       - dist/
 
+# Docker image build — exercises the SAME Dockerfile the production
+# server runs. Catches Dockerfile regressions before they hit prod
+# (e.g. `NODE_ENV=production` on the base stage silently omitting
+# devDependencies and tsup failing at `Cannot find module typescript`;
+# or `npm ci` peer-dep conflicts that don't appear in the host
+# `npm ci --legacy-peer-deps` flow). Runs in DOCKER-IN-DOCKER on a
+# shell runner with the docker socket mounted; the GitLab project
+# already has a `docker` tag for runners that support this.
+#
+# Image is built but NOT pushed — production deploy still pulls the
+# source on the rnd server and rebuilds there. The job only proves the
+# image WOULD build cleanly. Once we publish to a registry, change
+# `--load` to `--push` and add the registry login here.
+docker:build:
+  stage: build
+  needs:
+    - setup
+  image: docker:27-cli
+  services:
+    - docker:27-dind
+  before_script: []
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: "overlay2"
+    DOCKER_BUILDKIT: "1"
+  script:
+    - docker version
+    - docker build -t kaminari-ad-mcp:ci .
+    # Sanity-check the artifact actually runs — `--version` exits 0
+    # if the bundled entrypoint resolves all runtime deps. Past
+    # regressions (missing `pino-pretty` in dependencies, `zod/v3`
+    # resolve failures) would have surfaced here.
+    - docker run --rm kaminari-ad-mcp:ci --version
+
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
 # ─────────────────────────────────────────────────────────────────────
