@@ -41,6 +41,16 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
+      # Node 22 LTS ships with npm 10.x; npm Trusted Publisher OIDC
+      # publishing was added in npm 11.5.1 (August 2025). Without
+      # this upgrade `--provenance` signs the sigstore attestation
+      # but the publish itself goes out unauthenticated and the
+      # registry replies HTTP 404 (security obscurity hiding "no
+      # auth"). Pin to the latest 11.x line to keep the upgrade
+      # bounded (npm 12 may land breaking changes).
+      - name: Upgrade npm to OIDC-publish-capable version
+        run: npm install -g npm@^11
+
       - name: Install
         run: npm ci --legacy-peer-deps --ignore-scripts
 
