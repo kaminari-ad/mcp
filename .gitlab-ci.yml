@@ -226,8 +226,11 @@ docker:build:
     # the OCI tarball and grep the union for required runtime files.
     - mkdir -p image-extracted
     - tar -xf image.tar -C image-extracted
-    - find image-extracted -name '*.tar' -exec tar -tf {} \; 2>/dev/null | sort -u > files.txt
-    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; exit 1; }; done'
+    # kaniko's OCI tarball stores layer blobs as `blobs/sha256/<hash>`
+    # (no extension), not `*.tar`. Iterate every regular file and let
+    # `tar -tf` quietly skip non-tar blobs (config JSON, manifest).
+    - find image-extracted -type f | while read f; do tar -tf "$f" 2>/dev/null; done | sort -u > files.txt
+    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt summary (first 50 of $(wc -l < files.txt)) ===="; head -50 files.txt; exit 1; }; done'
     - echo "image contains all expected runtime files"
 
 # ─────────────────────────────────────────────────────────────────────
