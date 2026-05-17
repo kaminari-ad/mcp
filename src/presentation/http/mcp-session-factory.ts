@@ -23,7 +23,7 @@ import type { ApiGateway } from "../../domain/ports/api-gateway.js";
 import type { Logger } from "../../domain/ports/logger.js";
 import type { SessionStore } from "../../domain/ports/session-store.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
-import { type RequestId } from "../../domain/value-objects/request-id.js";
+import type { RequestId } from "../../domain/value-objects/request-id.js";
 import { parseSessionId, type SessionId } from "../../domain/value-objects/session-id.js";
 import { NAME, VERSION } from "../../shared/version.js";
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
