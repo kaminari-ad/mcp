@@ -1,6 +1,6 @@
 {
   "name": "@kaminari-ad/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official Model Context Protocol (MCP) server for the Kaminari Ad ad-verification platform.",
   "keywords": [
     "mcp",
@@ -34,7 +34,8 @@
     "SECURITY.md"
   ],
   "bin": {
-    "kaminari-ad-mcp": "./dist/bin.js"
+    "kaminari-ad-mcp": "./dist/bin.js",
+    "mcp": "./dist/bin.js"
   },
   "main": "./dist/bin.js",
   "types": "./dist/bin.d.ts",
@@ -115,6 +116,7 @@
   },
   "publishConfig": {
     "access": "public",
+    "provenance": true,
     "registry": "https://registry.npmjs.org"
   }
 }

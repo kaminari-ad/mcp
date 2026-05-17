@@ -75,19 +75,16 @@ jobs:
       - name: Bundle size gate
         run: npm run check:bundle-size
 
-      # First release (v0.1.0) uses a classic NPM_TOKEN: npm requires
-      # a package to EXIST before a Trusted Publisher can be registered
-      # to it (org-level UI has no pre-registration flow). After the
-      # 0.1.0 publish lands, register the Trusted Publisher on the
-      # package settings page and the next release switches to OIDC
-      # (drop `NODE_AUTH_TOKEN`, set `--provenance`).
-      #
-      # `--access public` because the @kaminari-ad scope on npm is
-      # configured Public by default — explicit is better than silent.
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+      # OIDC publish with provenance attestation. v0.1.0 used a
+      # classic NPM_TOKEN (npm requires an existing package to register
+      # a Trusted Publisher); v0.1.1+ ships with full provenance:
+      #   - permissions.id-token: write (declared above)
+      #   - Trusted Publisher registered on the package settings page
+      #     pointing at this workflow + the `npm-publish` environment
+      #   - publishConfig.provenance: true in package.json
+      #   - explicit --provenance flag below for defense-in-depth
+      - name: Publish to npm with provenance (OIDC)
+        run: npm publish --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
