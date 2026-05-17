@@ -1,10 +1,15 @@
 /**
- * Tool: `list_run_scans` — paginated brief-scan list for ONE run.
+ * Tool: `list_run_scans` — paginated tile-scan list for ONE run.
+ *
+ * The API exposes a slim `ScanTileResponse` for this endpoint (no
+ * input URL, no labels, no campaign linkage — the caller already
+ * knows the run's campaign). For full scan details (input URL,
+ * labels, classification, redirect chain) call `get_scan` per tile.
  */
 
 import { z } from "zod";
 
-import type { PaginatedResponse, ScanBriefResponse } from "../../../domain/ports/api-gateway.js";
+import type { PaginatedResponse, ScanTileResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -17,11 +22,12 @@ const ListRunScansInputShape = {
 } as const;
 type ListRunScansInputShape = typeof ListRunScansInputShape;
 
-export type ListRunScansOutput = PaginatedResponse<ScanBriefResponse>;
+export type ListRunScansOutput = PaginatedResponse<ScanTileResponse>;
 
 export const listRunScansTool: Tool<ListRunScansInputShape, ListRunScansOutput> = {
   name: "list_run_scans",
-  description: "List the brief-scan items produced by one run (status, country, URL, timestamps).",
+  description:
+    "List the tile-scan items produced by one run (status, country, offer URL, screenshot, elapsed ms, error). For full scan details (input URL, labels, classification, redirect chain) fetch a specific scan via `get_scan`.",
   annotations: {
     title: "List Run Scans",
     readOnlyHint: true,

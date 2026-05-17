@@ -42,6 +42,15 @@ export type ApiError =
       readonly kind: "invalid-input";
       readonly detail: string;
       readonly fieldErrors?: Readonly<Record<string, readonly string[]>>;
+      /**
+       * Optional machine-readable code (e.g. `policies.in_use`).
+       * Forward-compat: today the API rarely sets `code` on 400/422,
+       * but `delete_policy_set` is a known candidate to grow one in a
+       * future API release. The MCP preserves any `code` it sees so
+       * agents can branch programmatically without us cutting another
+       * release.
+       */
+      readonly code?: string;
     }
   | { readonly kind: "upstream"; readonly detail: string; readonly status?: number };
 
@@ -104,6 +113,18 @@ export type ScanBriefResponse = Pick<
   | "campaign_name"
   | "is_ad_tag"
   | "created_at"
+>;
+
+/**
+ * `GET /api/v1/runs/{run_id}/scans` returns a deliberately slim
+ * per-tile shape (NOT `ScanBriefResponse`). Fields are tailored for
+ * the run-detail UI's tile grid — no input `url`, no labels, no
+ * campaign linkage (the caller already knows the run's campaign).
+ * Use `getScan(id)` to fetch the full scan details for any tile.
+ */
+export type ScanTileResponse = Pick<
+  S["ScanTileResponse"],
+  "id" | "country_code" | "status" | "offer_url" | "screenshot_url" | "elapsed_ms" | "error"
 >;
 
 /**
@@ -194,6 +215,19 @@ export type CampaignGroupResponse = Pick<
   "id" | "name" | "is_default" | "is_archived" | "schedule_paused" | "campaign_count" | "created_at"
 >;
 
+/**
+ * Slim per-row campaign shape for selection UIs
+ * (`GET /api/v1/campaigns/picker`). Intentionally omits heavy fields
+ * (schedule, proxy, country_codes, labels, policy_set_id, …) so the
+ * picker stays cheap for orgs with thousands of campaigns. Agents
+ * that need full details should call `get_campaign(id)` after a
+ * selection.
+ */
+export type CampaignPickerItem = Pick<
+  S["CampaignPickerItem"],
+  "id" | "name" | "group_id" | "is_archived"
+>;
+
 export type RunResponse = Pick<
   S["RunResponse"],
   | "id"
@@ -258,7 +292,32 @@ export type TagDefinitionResponse = Pick<
   | "rules_count"
 >;
 
-export type TagDefinitionDetailResponse = TagDefinitionResponse;
+/**
+ * Minimal info about a custom rule that produces a given tag — used
+ * inside the `TagDefinitionDetailResponse` `linked_rules` array. Slim
+ * by design: agents that want full rule details can call
+ * `get_custom_rule(id)`. Kept narrow so the tag detail payload stays
+ * token-cheap for orgs with hundreds of rules per tag.
+ */
+export type LinkedRule = Pick<S["LinkedRuleResponse"], "id" | "name" | "is_active">;
+
+/**
+ * Detail view for a single tag definition (`GET /api/v1/tag-definitions/{slug}`).
+ *
+ * The detail endpoint returns the full `TagDefinitionDetailResponse`
+ * which extends the per-row `TagDefinitionWithStatsResponse` with
+ * the `linked_rules` array — agents using `get_tag_definition` see
+ * which custom rules currently produce this tag without having to
+ * grep `list_custom_rules` by `tag_slug` themselves.
+ *
+ * The array MAY be absent (older API versions return the field only
+ * when the tag has linked rules); both `linked_rules: []` and the
+ * key being absent are valid — agents should treat both as "no
+ * rules currently linked".
+ */
+export interface TagDefinitionDetailResponse extends TagDefinitionResponse {
+  readonly linked_rules?: readonly LinkedRule[];
+}
 
 export type UpdateTagDefinitionRequest = Pick<
   S["UpdateTagDefinitionRequest"],
@@ -679,6 +738,12 @@ export interface ApiGateway {
     campaignId: string,
     filters: PageFilters
   ): Promise<Result<PaginatedResponse<RunResponse>, ApiError>>;
+  /**
+   * `GET /api/v1/campaigns/picker` — slim per-row list for
+   * autocomplete / combobox UIs. Returns a bare array (not paginated)
+   * — the API treats picker as a non-paginated lookup table.
+   */
+  listCampaignsPicker(): Promise<Result<readonly CampaignPickerItem[], ApiError>>;
 
   // Runs
   getRun(id: string): Promise<Result<RunResponse, ApiError>>;
@@ -686,7 +751,7 @@ export interface ApiGateway {
   listRunScans(
     runId: string,
     filters: PageFilters
-  ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
+  ): Promise<Result<PaginatedResponse<ScanTileResponse>, ApiError>>;
 
   // Campaign groups
   /**
@@ -724,7 +789,9 @@ export interface ApiGateway {
   deleteTagDefinition(slug: string): Promise<Result<null, ApiError>>;
 
   // Custom rules
-  listCustomRules(filters: PageFilters): Promise<Result<readonly CustomRuleResponse[], ApiError>>;
+  listCustomRules(
+    filters: PageFilters
+  ): Promise<Result<PaginatedResponse<CustomRuleResponse>, ApiError>>;
   getCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>>;
   createCustomRule(body: CreateCustomRuleRequest): Promise<Result<CustomRuleResponse, ApiError>>;
   updateCustomRule(
@@ -735,7 +802,9 @@ export interface ApiGateway {
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
 
   // Policy sets
-  listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>>;
+  listPolicySets(
+    filters: PageFilters
+  ): Promise<Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>>;
   getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>>;
   createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>>;
   updatePolicySet(

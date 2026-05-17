@@ -44,7 +44,6 @@ import type {
   RoleResponse,
   RuleTestResponse,
   ScanTagResponse,
-  TagDefinitionDetailResponse,
   UsagePeriodSummaryResponse,
   UsageResponse,
   UserResponse,
@@ -174,26 +173,6 @@ const ScanTagSchema = schemas.ScanTagResponse.pick({
 
 export const parseScanTag = (raw: unknown): Result<ScanTagResponse, ApiError> =>
   parseWithSchema(ScanTagSchema, raw, "scan-tag") as Result<ScanTagResponse, ApiError>;
-
-const TagDetailSchema = schemas.TagDefinitionWithStatsResponse.pick({
-  slug: true,
-  category: true,
-  source: true,
-  display_name: true,
-  description: true,
-  severity: true,
-  is_system: true,
-  organization_id: true,
-  show_in_public_report: true,
-  scans_count: true,
-  rules_count: true,
-}).strip();
-
-export const parseTagDetail = (raw: unknown): Result<TagDefinitionDetailResponse, ApiError> =>
-  parseWithSchema(TagDetailSchema, raw, "tag-definition") as Result<
-    TagDefinitionDetailResponse,
-    ApiError
-  >;
 
 const RuleTestSchema = schemas.RuleTestResponse.pick({
   matched: true,

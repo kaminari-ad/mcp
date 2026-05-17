@@ -45,6 +45,7 @@ import type {
   BulkScanRequest,
   CampaignGroupResponse,
   CampaignOverridesResponse,
+  CampaignPickerItem,
   CampaignResponse,
   CancelPendingResponse,
   CreateApiKeyRequest,
@@ -81,6 +82,7 @@ import type {
   ScanBriefResponse,
   ScanResponse,
   ScanTagResponse,
+  ScanTileResponse,
   SetCampaignOverridesRequest,
   SetDestinationVersionRequest,
   TagDefinitionDetailResponse,
@@ -113,8 +115,10 @@ import { parseApiKeyList } from "./parsers/parse-api-key.js";
 import { parseBillingSummary } from "./parsers/parse-billing-summary.js";
 import { parseCampaign, parseCampaignPage } from "./parsers/parse-campaign.js";
 import { parseCampaignGroup, parseCampaignGroupArray } from "./parsers/parse-campaign-group.js";
+import { parseCampaignPickerArray } from "./parsers/parse-campaign-picker.js";
 import { parseIntField } from "./parsers/parse-count-envelope.js";
-import { parseCustomRule, parseCustomRuleArray } from "./parsers/parse-custom-rule.js";
+import { parseCustomRule } from "./parsers/parse-custom-rule.js";
+import { parseCustomRulePage } from "./parsers/parse-custom-rule-page.js";
 import { parseEmpty } from "./parsers/parse-empty.js";
 import { parseEmulatorList } from "./parsers/parse-emulator.js";
 import {
@@ -133,18 +137,19 @@ import {
   parseRole,
   parseRuleTest,
   parseScanTag,
-  parseTagDetail,
   parseUsage,
   parseUsageSummary,
   parseUser,
   parseWebhookDelivery,
 } from "./parsers/parse-generic.js";
 import { parseGeoList } from "./parsers/parse-geo-list.js";
-import { parsePolicySet, parsePolicySetList } from "./parsers/parse-policy-set.js";
+import { parsePolicySet } from "./parsers/parse-policy-set.js";
+import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
 import { parseRun } from "./parsers/parse-run.js";
+import { parseRunScanPage } from "./parsers/parse-run-scan-page.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
 import { parseScanPage } from "./parsers/parse-scan-page.js";
-import { parseTagDefinitionArray } from "./parsers/parse-tag.js";
+import { parseTagDefinitionArray, parseTagDetail } from "./parsers/parse-tag.js";
 import {
   parseTestWebhookResponse,
   parseWebhook,
@@ -510,6 +515,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parsePageOf(parseRun)
       );
     },
+    async listCampaignsPicker(): Promise<Result<readonly CampaignPickerItem[], ApiError>> {
+      return call("GET", "/api/v1/campaigns/picker", {}, parseCampaignPickerArray);
+    },
 
     // ── Runs ──────────────────────────────────────────────────────
     async getRun(id: string): Promise<Result<RunResponse, ApiError>> {
@@ -526,12 +534,12 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async listRunScans(
       runId: string,
       filters: PageFilters
-    ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
+    ): Promise<Result<PaginatedResponse<ScanTileResponse>, ApiError>> {
       return call(
         "GET",
         "/api/v1/runs/{run_id}/scans",
         { params: { path: { run_id: runId }, query: filters } },
-        parseScanPage
+        parseRunScanPage
       );
     },
 
@@ -656,12 +664,12 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     // ── Custom rules ──────────────────────────────────────────────
     async listCustomRules(
       filters: PageFilters
-    ): Promise<Result<readonly CustomRuleResponse[], ApiError>> {
+    ): Promise<Result<PaginatedResponse<CustomRuleResponse>, ApiError>> {
       return call(
         "GET",
         "/api/v1/custom-rules",
         { params: { query: filters } },
-        parseCustomRuleArray
+        parseCustomRulePage
       );
     },
     async getCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
@@ -701,8 +709,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Policy sets ───────────────────────────────────────────────
-    async listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>> {
-      return call("GET", "/api/v1/policy-sets", {}, parsePolicySetList);
+    async listPolicySets(
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>> {
+      return call("GET", "/api/v1/policy-sets", { params: { query: filters } }, parsePolicySetPage);
     },
     async getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>> {
       return call(

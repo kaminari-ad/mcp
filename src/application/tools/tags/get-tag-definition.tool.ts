@@ -24,7 +24,7 @@ export type GetTagDefinitionOutput = TagDefinitionDetailResponse;
 export const getTagDefinitionTool: Tool<GetTagDefinitionInputShape, GetTagDefinitionOutput> = {
   name: "get_tag_definition",
   description:
-    "Get full definition of one tag: display name, description, severity, category, source (system vs custom), public-report visibility, usage counts.",
+    "Get full definition of one tag: display name, description, severity, category, source (system vs custom), public-report visibility, usage counts, plus `linked_rules` — the custom rules currently producing this tag (id, name, active flag). Fetch a specific rule's full config via `get_custom_rule`.",
   annotations: {
     title: "Get Tag Definition",
     readOnlyHint: true,

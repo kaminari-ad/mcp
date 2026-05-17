@@ -52,6 +52,7 @@ import { createCampaignTool } from "./tools/campaigns/create-campaign.tool.js";
 import { getCampaignTool } from "./tools/campaigns/get-campaign.tool.js";
 import { listCampaignRunsTool } from "./tools/campaigns/list-campaign-runs.tool.js";
 import { listCampaignsTool } from "./tools/campaigns/list-campaigns.tool.js";
+import { listCampaignsPickerTool } from "./tools/campaigns/list-campaigns-picker.tool.js";
 import { runCampaignTool } from "./tools/campaigns/run-campaign.tool.js";
 import { unarchiveCampaignTool } from "./tools/campaigns/unarchive-campaign.tool.js";
 import { updateCampaignTool } from "./tools/campaigns/update-campaign.tool.js";
@@ -133,6 +134,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(createCampaignTool);
   register(updateCampaignTool);
   register(listCampaignRunsTool);
+  register(listCampaignsPickerTool);
   // runs
   register(getRunTool);
   register(listRunScansTool);

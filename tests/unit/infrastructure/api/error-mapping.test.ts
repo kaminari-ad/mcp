@@ -44,6 +44,27 @@ describe("toApiError", () => {
     });
   });
 
+  it("400 with code -> invalid-input preserves code (forward-compat for `policies.in_use`)", () => {
+    // The API does not emit `code` on 400 today, but `delete_policy_set`
+    // is a known candidate to grow `code: "policies.in_use"`. When that
+    // ships, the MCP must surface the code to agents without a release.
+    expect(
+      toApiError(400, { detail: "Policy set is in use", code: "policies.in_use" }, undefined)
+    ).toEqual({
+      kind: "invalid-input",
+      detail: "Policy set is in use",
+      code: "policies.in_use",
+    });
+  });
+
+  it("422 with code -> invalid-input preserves code", () => {
+    expect(toApiError(422, { detail: "x", code: "some.code" }, undefined)).toEqual({
+      kind: "invalid-input",
+      detail: "x",
+      code: "some.code",
+    });
+  });
+
   it("429 with numeric Retry-After", () => {
     expect(toApiError(429, { detail: "slow" }, "30")).toEqual({
       kind: "rate-limited",

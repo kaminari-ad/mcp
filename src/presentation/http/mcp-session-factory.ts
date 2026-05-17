@@ -26,6 +26,7 @@ import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import { parseSessionId, type SessionId } from "../../domain/value-objects/session-id.js";
 import { NAME, VERSION } from "../../shared/version.js";
+import { declareEmptyResourcesAndPrompts } from "../shared/declare-empty-caps.js";
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
 
 /**
@@ -75,6 +76,7 @@ export async function initNewSession(args: InitNewSessionArgs): Promise<SessionE
     current: { api: seedApi, logger: reqLogger, requestId: args.requestId },
   };
   wireToolsIntoMcpServer(server, () => ctxRef.current);
+  declareEmptyResourcesAndPrompts(server);
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: (): string => randomUUID(),

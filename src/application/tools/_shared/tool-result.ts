@@ -24,6 +24,12 @@ export type ToolError =
       readonly kind: "invalid-input";
       readonly message: string;
       readonly fieldErrors?: Readonly<Record<string, readonly string[]>>;
+      /**
+       * Optional machine-readable code propagated from the API
+       * (e.g. `policies.in_use`). Agents can branch on this when the
+       * API exposes it; mapper passes it through unmodified.
+       */
+      readonly code?: string;
     }
   | { readonly kind: "upstream"; readonly message: string; readonly status?: number }
   | { readonly kind: "internal"; readonly message: string };

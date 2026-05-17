@@ -1,6 +1,6 @@
 {
   "name": "@kaminari-ad/mcp",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Official Model Context Protocol (MCP) server for the Kaminari Ad ad-verification platform.",
   "keywords": [
     "mcp",
@@ -31,7 +31,8 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "MIGRATION_0_2.md"
   ],
   "bin": {
     "kaminari-ad-mcp": "./dist/bin.js",

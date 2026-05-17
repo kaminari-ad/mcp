@@ -1,16 +1,13 @@
 /**
- * Schema-based tests for `parsePolicySet` / `parsePolicySetList`.
- * The list parser unwraps both bare-array and `{ items: [...] }`
- * envelope shapes (same `parseArrayOrItemsWithSchema` pattern as
- * `parseCustomRuleArray` / `parseCampaignGroupArray`).
+ * Schema-based tests for `parsePolicySet` (single-entity detail).
+ * List endpoint coverage lives in `parse-policy-set-page.test.ts` —
+ * the per-page parser replaced the legacy bare-or-envelope
+ * `parsePolicySetList` helper in v0.2.0.
  */
 
 import { describe, expect, it } from "vitest";
 
-import {
-  parsePolicySet,
-  parsePolicySetList,
-} from "../../../../../src/infrastructure/api/parsers/parse-policy-set.js";
+import { parsePolicySet } from "../../../../../src/infrastructure/api/parsers/parse-policy-set.js";
 
 const VALID = {
   id: "00000000-0000-0000-0000-000000000eee",
@@ -40,28 +37,9 @@ describe("parsePolicySet", () => {
   it("rejects non-object", () => {
     expect(parsePolicySet("x").isErr()).toBe(true);
   });
-});
-
-describe("parsePolicySetList", () => {
-  it("Ok bare array", () => {
-    expect(parsePolicySetList([VALID]).isOk()).toBe(true);
-  });
-  it("Ok paginated envelope", () => {
-    expect(
-      parsePolicySetList({ items: [VALID], total: 1, page: 1, limit: 50, pages: 1 }).isOk()
-    ).toBe(true);
-  });
-  it("Ok empty envelope", () => {
-    expect(parsePolicySetList({ items: [], total: 0, page: 1, limit: 50, pages: 0 }).isOk()).toBe(
-      true
-    );
-  });
-  it("rejects garbage shape", () => {
-    expect(parsePolicySetList({}).isErr()).toBe(true);
-    expect(parsePolicySetList(42).isErr()).toBe(true);
-    expect(parsePolicySetList({ items: "not-array" }).isErr()).toBe(true);
-  });
-  it("rejects when an item is malformed", () => {
-    expect(parsePolicySetList([{ id: "not-uuid" }]).isErr()).toBe(true);
+  it("preserves entries in the detail payload (unlike the slim list item)", () => {
+    const r = parsePolicySet(VALID);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap().entries).toHaveLength(1);
   });
 });

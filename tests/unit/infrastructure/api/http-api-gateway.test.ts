@@ -677,14 +677,37 @@ describe("HttpApiGateway", () => {
         .intercept({ path: "/api/v1/emulators", method: "GET" })
         .reply(200, [{ id: "default", display_name: "D", category: "desktop", browser: "chrome" }]);
       a.get(ORIGIN).intercept({ path: "/api/v1/tag-definitions", method: "GET" }).reply(200, [TAG]);
+      // `/custom-rules` and `/policy-sets` both return the standard
+      // FastAPI paginated envelope (since v0.2.0 the MCP surfaces
+      // `total` / `page` / `limit` instead of dropping them).
+      // `/campaigns/picker` returns a bare slim array (no envelope) —
+      // intentionally not paginated, used by selection UIs.
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/campaigns/picker", method: "GET" })
+        .reply(200, [
+          {
+            id: "00000000-0000-0000-0000-000000000ccc",
+            name: "picker-camp",
+            group_id: "00000000-0000-0000-0000-000000000111",
+            is_archived: false,
+          },
+        ]);
       a.get(ORIGIN)
         .intercept({ path: (p) => p.startsWith("/api/v1/custom-rules?"), method: "GET" })
-        .reply(200, [RULE]);
+        .reply(200, { items: [RULE], total: 1, page: 1, limit: 50, pages: 1 });
       a.get(ORIGIN).intercept({ path: "/api/v1/custom-rules", method: "POST" }).reply(201, RULE);
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/custom-rules/${RULE.id}`, method: "DELETE" })
         .reply(204, "");
-      a.get(ORIGIN).intercept({ path: "/api/v1/policy-sets", method: "GET" }).reply(200, [POLICY]);
+      // `GET /policy-sets` returns the SLIM `PolicySetListItem` per row
+      // (no `entries` — those load on demand via `getPolicySet`). The
+      // parser strips `entries` if accidentally present, but the smoke
+      // fixture mirrors real prod shape so the assertion exercises the
+      // same wire format agents see.
+      const { entries: _omit, ...POLICY_LIST_ROW } = POLICY;
+      a.get(ORIGIN)
+        .intercept({ path: (p) => p.startsWith("/api/v1/policy-sets?"), method: "GET" })
+        .reply(200, { items: [POLICY_LIST_ROW], total: 1, page: 1, limit: 50, pages: 1 });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/policy-sets/${POLICY.id}`, method: "GET" })
         .reply(200, POLICY);
@@ -721,6 +744,7 @@ describe("HttpApiGateway", () => {
       expect((await gw.listEmulators()).isOk()).toBe(true);
       expect((await gw.listTags()).isOk()).toBe(true);
       expect((await gw.listCustomRules({ page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.listCampaignsPicker()).isOk()).toBe(true);
       expect(
         (
           await gw.createCustomRule({
@@ -731,7 +755,7 @@ describe("HttpApiGateway", () => {
         ).isOk()
       ).toBe(true);
       expect((await gw.deleteCustomRule(RULE.id)).isOk()).toBe(true);
-      expect((await gw.listPolicySets()).isOk()).toBe(true);
+      expect((await gw.listPolicySets({ page: 1, limit: 50 })).isOk()).toBe(true);
       expect((await gw.getPolicySet(POLICY.id)).isOk()).toBe(true);
       expect(
         (
@@ -810,9 +834,28 @@ describe("HttpApiGateway", () => {
         .intercept({ path: `/api/v1/account/api-keys/${KID}`, method: "DELETE" })
         .reply(204, "");
       // ── scans / runs / tags ────────────────────────────────
+      // `/runs/{run_id}/scans` returns the slim `ScanTileResponse` per
+      // item — NOT the full `ScanBriefResponse` (no input `url`, no
+      // labels, no campaign linkage). Driven by `parseRunScanPage`.
       a.get(ORIGIN)
         .intercept({ path: (p) => p.startsWith(`/api/v1/runs/${RID}/scans?`), method: "GET" })
-        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+        .reply(200, {
+          items: [
+            {
+              id: "00000000-0000-0000-0000-000000000bbb",
+              country_code: "US",
+              status: "completed",
+              offer_url: "https://o.example",
+              screenshot_url: "",
+              elapsed_ms: 1234,
+              error: "",
+            },
+          ],
+          total: 1,
+          page: 1,
+          limit: 50,
+          pages: 1,
+        });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/scans/${AID}/tags`, method: "GET" })
         .reply(200, []);
@@ -828,6 +871,12 @@ describe("HttpApiGateway", () => {
           is_system: true,
           organization_id: null,
           show_in_public_report: true,
+          // Detail endpoint includes `linked_rules` (custom rules
+          // currently producing this tag). The MCP `getTagDefinition`
+          // surfaces them in the tool output since v0.2.0.
+          linked_rules: [
+            { id: "00000000-0000-0000-0000-000000000abc", name: "ad-detector", is_active: true },
+          ],
           scans_count: 0,
           rules_count: 0,
         });
