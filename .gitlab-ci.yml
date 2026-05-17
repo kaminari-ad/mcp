@@ -205,12 +205,12 @@ docker:build:
     entrypoint: [""]
   before_script: []
   script:
-    - /kaniko/executor
-        --context "$CI_PROJECT_DIR"
-        --dockerfile "$CI_PROJECT_DIR/Dockerfile"
-        --no-push
-        --destination "kaminari-ad-mcp:ci"
-        --single-snapshot
+    # `--single-snapshot` is intentionally NOT used — multi-stage
+    # builds need a snapshot per RUN/COPY layer so files copied into
+    # the build stage survive until `tsup` runs. Otherwise tsup
+    # fails with "No input files" because src/ was reverted between
+    # layers.
+    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci"
 
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
