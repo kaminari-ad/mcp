@@ -1,30 +1,45 @@
 # Files NEVER copied into the build context. Keeps the kaniko / buildkit
 # layer cache small and prevents host-only artefacts from leaking into
 # the production image.
+#
+# IMPORTANT: files referenced by COPY instructions in Dockerfile MUST
+# NOT be excluded here. The runtime stage COPYs `package.json`,
+# `LICENSE`, `README.md`, `SECURITY.md` for npm-publish parity — those
+# four MUST stay in the build context. Anything else that doesn't end
+# up in `dist/` or `node_modules/` is fair game.
+
+# Build artefacts and caches.
 node_modules
 dist
 coverage
 .git
+.gitlab-ci.yml
+.gitignore
+.gitattributes
+.dockerignore
+.nvmrc
+
+# Editors / IDE.
 .github
 .cursor
 .vscode
 .idea
+
+# Secrets / logs (defense in depth — they should never be committed,
+# but if a contributor accidentally checked one in, this stops it
+# from landing in the production image).
 *.log
 .env
 .env.*
 !.env.example
+
+# Test / docs / tooling that's never needed at runtime.
 tests
 scripts
 docs
-README.md
 CHANGELOG.md
-SECURITY.md
-LICENSE
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
-.gitlab-ci.yml
-.gitignore
-.gitattributes
 .eslintrc*
 eslint.config.*
 .prettierrc*
@@ -33,6 +48,5 @@ lefthook.yml
 commitlint.config.*
 renovate.json
 .dependency-cruiser.cjs
-.nvmrc
 docker-compose.dev.yml
 Makefile

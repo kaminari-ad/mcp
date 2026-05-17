@@ -210,7 +210,31 @@ docker:build:
     # the build stage survive until `tsup` runs. Otherwise tsup
     # fails with "No input files" because src/ was reverted between
     # layers.
-    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci"
+    #
+    # `--tar-path` exports the image as an OCI tarball so the next
+    # step can inspect its contents. Without this sanity check
+    # kaniko silently skips files excluded by .dockerignore even
+    # when a COPY instruction references them — a runtime image
+    # without LICENSE / README.md / SECURITY.md would build
+    # "successfully" but explode at production `docker compose build`
+    # (BuildKit is strict).
+    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci" --tar-path image.tar
+    # Verify every file referenced by COPY in the Dockerfile actually
+    # made it into the image. Uses busybox `tar` and `find` only —
+    # the kaniko-debug image is based on busybox/musl, so no apk /
+    # jq / python is available. We list every `*.tar` blob inside
+    # the OCI tarball and grep the union for required runtime files.
+    - mkdir -p image-extracted
+    - tar -xf image.tar -C image-extracted
+    # kaniko's OCI tarball stores layer blobs as `blobs/sha256/<hash>`
+    # (no extension), not `*.tar`. Iterate every regular file; the
+    # inner `|| true` swallows `tar -tf` failures on non-tar blobs
+    # (config JSON, manifest) so GitLab's set -e pipefail does not
+    # abort the pipeline before sort runs.
+    - find image-extracted -type f -exec sh -c 'tar -tf "$1" 2>/dev/null || true' _ {} \; | sort -u > files.txt
+    - 'echo "files.txt has $(wc -l < files.txt) entries"'
+    - 'for f in app/package.json app/LICENSE app/README.md app/SECURITY.md app/dist/bin.js app/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt sample (first 50) ===="; head -50 files.txt; exit 1; }; done'
+    - echo "image contains all expected runtime files"
 
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
