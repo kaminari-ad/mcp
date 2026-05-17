@@ -47,6 +47,7 @@ result.items.length` to know if you need to call the tool again with
 ```jsonc
 { "page": 1, "limit": 50 }
 
+
 // defaults; both optional
 ```
 
