@@ -111,29 +111,50 @@ async function writeZodSchemas(spec: unknown): Promise<void> {
   //   - an `export const schemas = { X, Y, ... }` re-export bag,
   //   - a `Zodios` `endpoints` array + `api` client.
   //
-  // We use the schemas bag for response validation; the endpoints
-  // array is consumed by the type-safe HTTP client refactor in
-  // Phase 3 of the parser-drift elimination plan.
-  const body = await generateZodClientFromOpenAPI({
-    // openapi-zod-client expects a Schema interface from openapi3-ts;
-    // we hand it a parsed JSON object directly (same shape it would
-    // parse itself).
+  // We use ONLY the `schemas` bag for response validation. The
+  // Zodios runtime is dropped (see below) — the MCP gateway uses
+  // `openapi-fetch`, so pulling Zodios + transitive axios + form-data
+  // would bloat the published bundle by ~100 KB AND break execution
+  // (axios's `form-data` uses CJS `require("util")`, which tsup's
+  // ESM bundle cannot resolve at runtime → "Dynamic require of util
+  // is not supported" crash on first run).
+  const raw = await generateZodClientFromOpenAPI({
     openApiDoc: spec as Parameters<typeof generateZodClientFromOpenAPI>[0]["openApiDoc"],
     disableWriteToFile: true,
     options: {
       withImplicitRequiredProps: false,
       withDeprecatedEndpoints: false,
-      // `passthrough()` instead of `strict()` so a NEW optional
-      // field added by the API never breaks an MCP tool — we just
-      // ignore unknown fields. Drift is detected via gen-script
-      // regeneration, not at runtime.
       additionalPropertiesDefaultValue: true,
       shouldExportAllSchemas: true,
       shouldExportAllTypes: false,
     },
   });
+  const body = stripZodiosRuntime(raw);
   await fs.writeFile(ZOD_OUTPUT, zodHeader() + body, "utf8");
   process.stderr.write(`gen-api-types: wrote ${ZOD_OUTPUT} (${String(body.length)} bytes)\n`);
+}
+
+/**
+ * Strip the Zodios runtime surface (`makeApi` import, `endpoints`
+ * array, `api` instance, `createApiClient` helper) from the
+ * generated body. Leaves all `const X = z.object(...)` declarations
+ * and the `schemas` bag intact — that's the only surface the MCP
+ * runtime needs. See {@link writeZodSchemas} for the why.
+ */
+function stripZodiosRuntime(source: string): string {
+  // 1. Replace the Zodios import line with a zod-only import.
+  let out = source.replace(
+    /import\s*\{\s*makeApi,\s*Zodios,\s*type\s+ZodiosOptions\s*\}\s*from\s*"@zodios\/core";\s*\n/,
+    ""
+  );
+  // 2. Drop everything from the `endpoints` declaration onwards
+  //    (endpoints array + api instance + createApiClient export).
+  //    These are the only references to Zodios in the generated file.
+  const endpointsIdx = out.indexOf("const endpoints = makeApi(");
+  if (endpointsIdx !== -1) {
+    out = out.slice(0, endpointsIdx).replace(/\n+$/, "\n");
+  }
+  return out;
 }
 
 async function main(): Promise<number> {

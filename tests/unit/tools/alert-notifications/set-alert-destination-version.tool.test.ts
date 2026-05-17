@@ -11,12 +11,14 @@ describe("setAlertDestinationVersionTool", () => {
     expect(setAlertDestinationVersionTool.name).toBe("set_alert_destination_version");
     expect(setAlertDestinationVersionTool.annotations.idempotentHint).toBe(true);
   });
-  it("forwards version on the call body", async () => {
+  it("forwards version on the call body and returns { updated: true } on 204", async () => {
     const api = createFakeApiGateway();
-    await setAlertDestinationVersionTool.handler(
+    const r = await setAlertDestinationVersionTool.handler(
       { destination_id: DID, version: "internal" },
       makeToolContext({ api })
     );
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({ updated: true });
     const call = api.state.calls[0];
     if (call?.method !== "setAlertDestinationVersion") throw new Error("wrong");
     expect(call.id).toBe(DID);

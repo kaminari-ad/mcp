@@ -70,6 +70,7 @@ import type {
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
   RecheckResponse,
@@ -244,8 +245,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   };
 
   // Pinned outbound header allowlist — must match the 5-key contract
-  // documented in `CONTRIBUTING.md` "Tenant isolation" §8. Enforced by
-  // `tests/isolation/header-injection-e2e.test.ts` as an AST gate.
+  // documented in `CONTRIBUTING.md` "Tenant isolation" §9. Enforced by
+  // `tests/isolation/header-injection-e2e.test.ts` (source-text regex
+  // gate) and `tests/isolation/header-injection.test.ts` (behavioural
+  // assertion that the same five keys reach the wire).
   const client = createClient<paths>({
     baseUrl,
     fetch: fetchImpl,
@@ -698,14 +701,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Policy sets ───────────────────────────────────────────────
-    async listPolicySets(): Promise<Result<readonly PolicySetResponse[], ApiError>> {
+    async listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>> {
       return call("GET", "/api/v1/policy-sets", {}, parsePolicySetList);
     },
     async getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>> {
       return call(
         "GET",
-        "/api/v1/policy-sets/{set_id}",
-        { params: { path: { set_id: id } } },
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } } },
         parsePolicySet
       );
     },
@@ -720,24 +723,24 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<PolicySetResponse, ApiError>> {
       return call(
         "PUT",
-        "/api/v1/policy-sets/{set_id}",
-        { params: { path: { set_id: id } }, body },
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } }, body },
         parsePolicySet
       );
     },
     async deletePolicySet(id: string): Promise<Result<null, ApiError>> {
       return call(
         "DELETE",
-        "/api/v1/policy-sets/{set_id}",
-        { params: { path: { set_id: id } } },
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } } },
         parseEmpty
       );
     },
     async requestPolicySetApproval(id: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
-        "/api/v1/policy-sets/{set_id}/request-approval",
-        { params: { path: { set_id: id } } },
+        "/api/v1/policy-sets/{policy_set_id}/request-approval",
+        { params: { path: { policy_set_id: id } } },
         parseEmpty
       );
     },
@@ -916,12 +919,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async setAlertDestinationVersion(
       id: string,
       body: SetDestinationVersionRequest
-    ): Promise<Result<AlertNotificationDestinationResponse, ApiError>> {
+    ): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content. Use `listAlertDestinations` for
+      // the new state if you need it.
       return call(
         "PATCH",
         "/api/v1/alert-notifications/destinations/{destination_id}/version",
         { params: { path: { destination_id: id } }, body },
-        parseAlertDestination
+        parseEmpty
       );
     },
     async getCampaignAlertOverrides(

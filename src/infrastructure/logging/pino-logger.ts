@@ -1,7 +1,7 @@
 /**
  * Production {@link Logger} adapter, backed by pino.
  *
- * Tenant-isolation contract (CONTRIBUTING.md §11):
+ * Tenant-isolation contract (CONTRIBUTING.md §8 — Bearers never log):
  *
  *   - Bearers never appear in logs. pino's redact paths cover the
  *     known fields (`Authorization`, `bearer`, `headers.authorization`).

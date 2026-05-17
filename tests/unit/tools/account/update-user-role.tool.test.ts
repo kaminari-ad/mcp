@@ -13,9 +13,14 @@ describe("updateUserRoleTool", () => {
     expect(updateUserRoleTool.annotations.idempotentHint).toBe(true);
     expect(() => updateUserRoleTool.inputSchema.parse({ user_id: "x", role_id: "y" })).toThrow();
   });
-  it("forwards role change", async () => {
+  it("forwards role change and returns { updated: true } on 204", async () => {
     const api = createFakeApiGateway();
-    await updateUserRoleTool.handler({ user_id: UID, role_id: ROLE_ID }, makeToolContext({ api }));
+    const r = await updateUserRoleTool.handler(
+      { user_id: UID, role_id: ROLE_ID },
+      makeToolContext({ api })
+    );
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({ updated: true });
     const call = api.state.calls[0];
     if (call?.method !== "updateUserRole") throw new Error("wrong");
     expect(call.userId).toBe(UID);

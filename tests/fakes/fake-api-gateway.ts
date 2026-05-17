@@ -47,6 +47,7 @@ import type {
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
   RecheckResponse,
@@ -279,7 +280,7 @@ export interface FakeApiGatewayState {
     updateCustomRule?: Result<CustomRuleResponse, ApiError>;
     deleteCustomRule?: Result<null, ApiError>;
     testCustomRule?: Result<RuleTestResponse, ApiError>;
-    listPolicySets?: Result<readonly PolicySetResponse[], ApiError>;
+    listPolicySets?: Result<readonly PolicySetListItemResponse[], ApiError>;
     getPolicySet?: Result<PolicySetResponse, ApiError>;
     createPolicySet?: Result<PolicySetResponse, ApiError>;
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
@@ -306,7 +307,7 @@ export interface FakeApiGatewayState {
     listInvoices?: Result<PaginatedResponse<InvoiceResponse>, ApiError>;
     listAlertDestinations?: Result<readonly AlertNotificationDestinationResponse[], ApiError>;
     deleteAlertDestination?: Result<null, ApiError>;
-    setAlertDestinationVersion?: Result<AlertNotificationDestinationResponse, ApiError>;
+    setAlertDestinationVersion?: Result<null, ApiError>;
     getCampaignAlertOverrides?: Result<CampaignOverridesResponse, ApiError>;
     setCampaignAlertOverrides?: Result<null, ApiError>;
   };
@@ -487,6 +488,18 @@ const DEFAULT_POLICY_SET: PolicySetResponse = {
   visibility: "private",
   is_approved: true,
   entries: [],
+  created_at: "2026-05-16T00:00:00Z",
+};
+
+// `GET /policy-sets` returns slim items WITHOUT `entries` — see
+// `PolicySetListItemResponse` in `domain/ports/api-gateway.ts`.
+const DEFAULT_POLICY_SET_LIST_ITEM: PolicySetListItemResponse = {
+  id: "00000000-0000-0000-0000-000000000ddd",
+  name: "Default",
+  description: "",
+  organization_id: "00000000-0000-0000-0000-000000000010",
+  visibility: "private",
+  is_approved: true,
   created_at: "2026-05-16T00:00:00Z",
 };
 
@@ -890,7 +903,10 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async listPolicySets() {
       push({ method: "listPolicySets" });
       await Promise.resolve();
-      return state.responses.listPolicySets ?? ok<readonly PolicySetResponse[], ApiError>([]);
+      return (
+        state.responses.listPolicySets ??
+        ok<readonly PolicySetListItemResponse[], ApiError>([DEFAULT_POLICY_SET_LIST_ITEM])
+      );
     },
     async getPolicySet(id) {
       push({ method: "getPolicySet", id });
@@ -1116,7 +1132,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.listAlertDestinations ??
-        ok<readonly AlertNotificationDestinationResponse[], ApiError>([])
+        ok<readonly AlertNotificationDestinationResponse[], ApiError>([DEFAULT_ALERT_DESTINATION])
       );
     },
     async deleteAlertDestination(id) {
@@ -1127,10 +1143,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async setAlertDestinationVersion(id, body) {
       push({ method: "setAlertDestinationVersion", id, body });
       await Promise.resolve();
-      return (
-        state.responses.setAlertDestinationVersion ??
-        ok<AlertNotificationDestinationResponse, ApiError>(DEFAULT_ALERT_DESTINATION)
-      );
+      return state.responses.setAlertDestinationVersion ?? ok<null, ApiError>(null);
     },
     async getCampaignAlertOverrides(campaignId) {
       push({ method: "getCampaignAlertOverrides", campaignId });

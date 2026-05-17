@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (parser-drift phase 5 — post-review hardening)
+
+- **`list_policy_sets` regression introduced by phase 2b.** The
+  schema-strict parser required `entries`, but `GET /api/v1/policy-sets`
+  returns `PolicySetListItem` (a slim per-item shape WITHOUT entries —
+  entries are loaded on demand via `get_policy_set(id)`). Every real
+  list call after the phase 2b roll-out returned
+  `"malformed policy-sets: 0.entries: Required"`. Now:
+  - New port DTO `PolicySetListItemResponse` (no `entries`).
+  - New `PolicySetListItemSchema` in `parse-policy-set.ts` backed by
+    the generated `schemas.PolicySetListItem`.
+  - `list_policy_sets` tool now exposes the slim shape and its
+    description tells the agent to follow up with `get_policy_set`
+    when it needs the entries.
+  - HTTP gateway test stub + fake fixture updated to the slim shape.
+  - Verified against prod API via end-to-end smoke against a sandbox
+    org: parser now accepts the real response.
+- **`set_alert_destination_version` was parsing a 204 No Content as
+  JSON.** Pre-existing on `main` but surfaced more loudly under strict
+  zod. Now uses `parseEmpty`; port returns `Result<null>`; tool emits
+  `{ updated: true }` like the other 204 mutators. HTTP gateway test
+  updated to a 204 stub (the previous 200-with-body fixture masked
+  the real contract).
+- **`create_api_key` rejected `expires_at: null`.** Common JSON-client
+  convention is to send `null` explicitly for "no expiry". Input
+  schema now accepts both `null` and omit; the gateway sees them as
+  equivalent (no `expires_at` field on the request body).
+- **Dist bundle ~770 KB → ~210 KB.** The `openapi-zod-client`
+  generator emits a Zodios endpoints catalogue + `axios` client at
+  the tail of `zod-schemas.ts`. We use only the `schemas` bag for
+  runtime validation; the MCP gateway is `openapi-fetch`-based, not
+  Zodios. `scripts/gen-api-types.ts` now post-processes the generated
+  output to strip the Zodios runtime (imports, `endpoints` array,
+  `api` instance, `createApiClient` helper). Axios + `form-data` (which
+  use CJS `require("util")`) no longer reach the bundle — this also
+  fixes a `"Dynamic require of util is not supported"` crash on
+  `node dist/bin.js` startup that the integration smoke test caught.
+  `check:bundle-size` reverted to the original 500 KB ceiling.
+- **`{set_id}` path templates corrected to `{policy_set_id}`** in
+  `http-api-gateway.ts` to match the OpenAPI spec. Runtime URLs are
+  identical (openapi-fetch substitutes by key name), but the literal
+  now lines up with the spec for future-readers.
+- **CONTRIBUTING.md "Tenant isolation" §9** added — the pinned 5-key
+  outbound header allowlist (authorization / content-type / accept /
+  user-agent / x-request-id) is now an explicit numbered rule, not
+  an implicit one referenced from inline comments. Stale §8/§11
+  references in `http-api-gateway.ts`, `pino-logger.ts`, and the
+  isolation test headers updated to point at the correct sections.
+- **Empty-body JSDocs filled in.** `parse-empty.ts::parseEmpty` and
+  `parse-count-envelope.ts::parseIntField` now document the contract
+  (204 No Content vs single-int envelope) instead of shipping
+  placeholder `/** * */` stubs.
+- **Tool-test success-payload assertions.** Several 204-mutator tool
+  tests (`set_alert_destination_version`, `set_campaign_alert_overrides`,
+  `request_policy_set_approval`, `update_user_role`) only asserted
+  `isOk()` and never checked the synthetic `{ updated: true }` /
+  `{ requested: true }` payload — a regression that silently changed
+  the success shape would have slipped through. Each now asserts
+  both the call body AND the success payload.
+- **Per-DTO parser error coverage gaps closed.** `parseScanTag`,
+  `parseUsage`, `parseUsageSummary`, `parseBalanceTx`, `parseInvoice`,
+  `parseAlertDestination`, `parseBulkReplay` were happy-path only.
+  Added missing-required + wrong-type cases to each. Coverage stays
+  100% lines + 100% statements + 98.48% branches.
+
 ### Fixed (parser-drift phase 1)
 
 Production smoke against a fresh test org found 8 of the 82 tools

@@ -321,6 +321,19 @@ export type PolicySetResponse = Pick<
   | "created_at"
 >;
 
+/**
+ * `GET /api/v1/policy-sets` returns a slim per-item shape that
+ * intentionally OMITS `entries` (the API exposes `PolicySetListItem`
+ * for paginated list views — entries are loaded on demand via
+ * `getPolicySet(id)`). Using the full `PolicySetResponse` for list
+ * items would fail zod parse on every real call because `entries`
+ * is required there but absent in the list payload.
+ */
+export type PolicySetListItemResponse = Pick<
+  S["PolicySetListItem"],
+  "id" | "name" | "description" | "organization_id" | "visibility" | "is_approved" | "created_at"
+>;
+
 export type PolicyEntryResponse = Pick<
   S["PolicyEntryResponse"],
   "id" | "tag_slug" | "country_codes"
@@ -722,7 +735,7 @@ export interface ApiGateway {
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
 
   // Policy sets
-  listPolicySets(): Promise<Result<readonly PolicySetResponse[], ApiError>>;
+  listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>>;
   getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>>;
   createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>>;
   updatePolicySet(
@@ -781,10 +794,15 @@ export interface ApiGateway {
     Result<readonly AlertNotificationDestinationResponse[], ApiError>
   >;
   deleteAlertDestination(id: string): Promise<Result<null, ApiError>>;
+  /**
+   * API returns 204 No Content; gateway surfaces `null` on success.
+   * Fetch the updated destination via `listAlertDestinations` if
+   * the new state is needed.
+   */
   setAlertDestinationVersion(
     id: string,
     body: SetDestinationVersionRequest
-  ): Promise<Result<AlertNotificationDestinationResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
   getCampaignAlertOverrides(
     campaignId: string
   ): Promise<Result<CampaignOverridesResponse, ApiError>>;

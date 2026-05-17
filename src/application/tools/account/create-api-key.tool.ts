@@ -20,12 +20,18 @@ const CreateApiKeyInputShape = {
     .min(1)
     .max(100)
     .describe("Human-readable label (e.g. `ci-pipeline`, `claude-mcp`)."),
+  // Accept BOTH `null` and omit for "no expiry" — many JSON clients
+  // (including a hand-written curl) send `null` explicitly; rejecting
+  // it forces awkward request-body construction on the caller side.
+  // Either form maps to API-side `expires_at: null` (the only shape
+  // the API accepts for "no expiry").
   expires_at: z
     .string()
     .datetime()
+    .nullable()
     .optional()
     .describe(
-      "Optional ISO-8601 expiry timestamp. Omit for a non-expiring key (operator can revoke any time)."
+      "Optional ISO-8601 expiry timestamp. Omit or send `null` for a non-expiring key (operator can revoke any time)."
     ),
 } as const;
 type CreateApiKeyInputShape = typeof CreateApiKeyInputShape;
@@ -47,7 +53,13 @@ export const createApiKeyTool: Tool<CreateApiKeyInputShape, CreateApiKeyOutput> 
   handler: async (input, ctx): Promise<Result<CreateApiKeyOutput, ToolError>> => {
     const body = {
       name: input.name,
-      ...(input.expires_at !== undefined ? { expires_at: input.expires_at } : {}),
+      // Forward both `null` and omitted as omitted to the gateway DTO
+      // (gateway treats absent field as "no expiry"). `null` would
+      // collide with the gateway's `Pick<CreateApiKeyRequest, ...>`
+      // type that does not include `null`.
+      ...(input.expires_at !== undefined && input.expires_at !== null
+        ? { expires_at: input.expires_at }
+        : {}),
     };
     const result = await ctx.api.createApiKey(body);
     if (result.isErr()) return err(mapApiError(result.error));

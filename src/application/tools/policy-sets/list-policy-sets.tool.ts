@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 
-import type { PolicySetResponse } from "../../../domain/ports/api-gateway.js";
+import type { PolicySetListItemResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -17,14 +17,14 @@ const ListPolicySetsInputShape = {} as const;
 type ListPolicySetsInputShape = typeof ListPolicySetsInputShape;
 
 export interface ListPolicySetsOutput {
-  readonly items: readonly PolicySetResponse[];
+  readonly items: readonly PolicySetListItemResponse[];
   readonly total: number;
 }
 
 export const listPolicySetsTool: Tool<ListPolicySetsInputShape, ListPolicySetsOutput> = {
   name: "list_policy_sets",
   description:
-    "List policy sets: named collections of (tag, country-list) entries that define what counts as a violation. Campaigns bind to one policy set.",
+    "List policy sets: named collections of (tag, country-list) entries that define what counts as a violation. Campaigns bind to one policy set. List items omit `entries` (the tag/country bindings) for payload size — fetch a single set via `get_policy_set` when you need them.",
   annotations: {
     title: "List Policy Sets",
     readOnlyHint: true,

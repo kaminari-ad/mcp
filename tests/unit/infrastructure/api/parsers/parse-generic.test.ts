@@ -198,19 +198,26 @@ describe("parseApiKeyCreated", () => {
 });
 
 describe("parseScanTag", () => {
+  const VALID = {
+    id: UUID_A,
+    scan_id: UUID_B,
+    tag_slug: "malware",
+    detail: "",
+    url: "https://example.com",
+    display_name: "Malware",
+    category: "security",
+    severity: "high",
+    created_at: TS,
+  };
   it("Ok valid", () => {
-    const r = parseScanTag({
-      id: UUID_A,
-      scan_id: UUID_B,
-      tag_slug: "malware",
-      detail: "",
-      url: "https://example.com",
-      display_name: "Malware",
-      category: "security",
-      severity: "high",
-      created_at: TS,
-    });
-    expect(r._unsafeUnwrap().tag_slug).toBe("malware");
+    expect(parseScanTag(VALID)._unsafeUnwrap().tag_slug).toBe("malware");
+  });
+  it("rejects non-uuid id", () => {
+    expect(parseScanTag({ ...VALID, id: "not-uuid" }).isErr()).toBe(true);
+  });
+  it("rejects on missing required (scan_id)", () => {
+    const { scan_id: _omit, ...rest } = VALID;
+    expect(parseScanTag(rest).isErr()).toBe(true);
   });
 });
 
@@ -280,72 +287,101 @@ describe("parseAlertStats", () => {
 });
 
 describe("parseUsage", () => {
+  const VALID = {
+    id: UUID_A,
+    scan_id: UUID_B,
+    charged_micros: 1000,
+    balance_after_micros: 5000,
+    within_plan: true,
+    event_type: "scan",
+    created_at: TS,
+  };
   it("Ok valid", () => {
-    const r = parseUsage({
-      id: UUID_A,
-      scan_id: UUID_B,
-      charged_micros: 1000,
-      balance_after_micros: 5000,
-      within_plan: true,
-      event_type: "scan",
-      created_at: TS,
-    });
-    expect(r._unsafeUnwrap().event_type).toBe("scan");
+    expect(parseUsage(VALID)._unsafeUnwrap().event_type).toBe("scan");
+  });
+  it("rejects wrong type (non-bool within_plan)", () => {
+    expect(parseUsage({ ...VALID, within_plan: "yes" }).isErr()).toBe(true);
+  });
+  it("rejects on missing required (charged_micros)", () => {
+    const { charged_micros: _omit, ...rest } = VALID;
+    expect(parseUsage(rest).isErr()).toBe(true);
   });
 });
 
 describe("parseUsageSummary", () => {
+  const VALID = {
+    period_start: TS,
+    period_end: TS,
+    checks: 10,
+    rechecks: 2,
+    within_plan: 8,
+    overage: 4,
+    charged_micros: 12000,
+  };
   it("Ok valid", () => {
-    const r = parseUsageSummary({
-      period_start: TS,
-      period_end: TS,
-      checks: 10,
-      rechecks: 2,
-      within_plan: 8,
-      overage: 4,
-      charged_micros: 12000,
-    });
-    expect(r._unsafeUnwrap().checks).toBe(10);
+    expect(parseUsageSummary(VALID)._unsafeUnwrap().checks).toBe(10);
+  });
+  it("rejects on missing required (period_end)", () => {
+    const { period_end: _omit, ...rest } = VALID;
+    expect(parseUsageSummary(rest).isErr()).toBe(true);
+  });
+  it("rejects wrong type (non-number checks)", () => {
+    expect(parseUsageSummary({ ...VALID, checks: "x" }).isErr()).toBe(true);
   });
 });
 
 describe("parseBalanceTx", () => {
+  const VALID = {
+    id: UUID_A,
+    type: "charge",
+    amount_micros: -1000,
+    balance_after_micros: 9000,
+    description: "",
+    reference_kind: "scan",
+    reference_id: UUID_B,
+    actor_user_id: null,
+    created_at: TS,
+  };
   it("Ok valid", () => {
-    const r = parseBalanceTx({
-      id: UUID_A,
-      type: "charge",
-      amount_micros: -1000,
-      balance_after_micros: 9000,
-      description: "",
-      reference_kind: "scan",
-      reference_id: UUID_B,
-      actor_user_id: null,
-      created_at: TS,
-    });
-    expect(r._unsafeUnwrap().type).toBe("charge");
+    expect(parseBalanceTx(VALID)._unsafeUnwrap().type).toBe("charge");
+  });
+  it("Ok with non-null actor_user_id", () => {
+    const r = parseBalanceTx({ ...VALID, actor_user_id: UUID_A });
+    expect(r._unsafeUnwrap().actor_user_id).toBe(UUID_A);
+  });
+  it("rejects on missing required (id)", () => {
+    const { id: _omit, ...rest } = VALID;
+    expect(parseBalanceTx(rest).isErr()).toBe(true);
   });
 });
 
 describe("parseInvoice", () => {
+  const VALID = {
+    id: UUID_A,
+    number: "INV-0001",
+    type: "final",
+    status: "paid",
+    total_micros: 100000,
+    currency: "USD",
+    period_start: TS,
+    period_end: TS,
+    issued_at: TS,
+    paid_at: TS,
+    voided_at: null,
+    has_pdf: true,
+    description: "",
+    payment_method: "card",
+    created_at: TS,
+  };
   it("Ok valid", () => {
-    const r = parseInvoice({
-      id: UUID_A,
-      number: "INV-0001",
-      type: "final",
-      status: "paid",
-      total_micros: 100000,
-      currency: "USD",
-      period_start: TS,
-      period_end: TS,
-      issued_at: TS,
-      paid_at: TS,
-      voided_at: null,
-      has_pdf: true,
-      description: "",
-      payment_method: "card",
-      created_at: TS,
-    });
-    expect(r._unsafeUnwrap().paid_at).toBe(TS);
+    expect(parseInvoice(VALID)._unsafeUnwrap().paid_at).toBe(TS);
+  });
+  it("Ok with null paid_at (issued but unpaid)", () => {
+    expect(parseInvoice({ ...VALID, paid_at: null }).isOk()).toBe(true);
+  });
+  it("rejects on missing required (number)", () => {
+    const { number: _omit, ...rest } = VALID;
+    expect(parseInvoice(rest).isErr()).toBe(true);
   });
 });
 
@@ -397,27 +433,34 @@ describe("parseEventCatalog", () => {
 });
 
 describe("parseAlertDestination", () => {
+  const VALID = {
+    id: UUID_A,
+    channel: "slack",
+    name: "#alerts",
+    is_active: true,
+    is_default_target: false,
+    version: "public",
+    consecutive_failures: 0,
+    last_delivery_at: TS,
+    last_delivery_status: 200,
+    slack_workspace_id: UUID_B,
+    slack_channel_name: "#alerts",
+    telegram_chat_title: null,
+    telegram_chat_type: null,
+    email_address: null,
+    included_label_keys: ["env"],
+    created_at: TS,
+    updated_at: TS,
+  };
   it("Ok valid slack", () => {
-    const r = parseAlertDestination({
-      id: UUID_A,
-      channel: "slack",
-      name: "#alerts",
-      is_active: true,
-      is_default_target: false,
-      version: "public",
-      consecutive_failures: 0,
-      last_delivery_at: TS,
-      last_delivery_status: 200,
-      slack_workspace_id: UUID_B,
-      slack_channel_name: "#alerts",
-      telegram_chat_title: null,
-      telegram_chat_type: null,
-      email_address: null,
-      included_label_keys: ["env"],
-      created_at: TS,
-      updated_at: TS,
-    });
-    expect(r._unsafeUnwrap().channel).toBe("slack");
+    expect(parseAlertDestination(VALID)._unsafeUnwrap().channel).toBe("slack");
+  });
+  it("rejects on missing required (channel)", () => {
+    const { channel: _omit, ...rest } = VALID;
+    expect(parseAlertDestination(rest).isErr()).toBe(true);
+  });
+  it("rejects wrong type (non-bool is_active)", () => {
+    expect(parseAlertDestination({ ...VALID, is_active: "true" }).isErr()).toBe(true);
   });
 });
 
@@ -445,8 +488,16 @@ describe("parseCampaignAlertOverrides", () => {
 
 describe("parseBulkReplay", () => {
   it("Ok valid", () => {
-    const r = parseBulkReplay({ replayed: 5, skipped: 2 });
-    expect(r._unsafeUnwrap()).toEqual({ replayed: 5, skipped: 2 });
+    expect(parseBulkReplay({ replayed: 5, skipped: 2 })._unsafeUnwrap()).toEqual({
+      replayed: 5,
+      skipped: 2,
+    });
+  });
+  it("rejects on missing required (skipped)", () => {
+    expect(parseBulkReplay({ replayed: 5 }).isErr()).toBe(true);
+  });
+  it("rejects non-object", () => {
+    expect(parseBulkReplay("nope").isErr()).toBe(true);
   });
 });
 

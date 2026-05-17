@@ -1096,33 +1096,15 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/alert-notifications/destinations/${DID}`, method: "DELETE" })
         .reply(204, "");
+      // API returns 204 No Content (see OpenAPI spec); gateway uses
+      // `parseEmpty` and surfaces `Result<null>`. The previous
+      // 200-with-body stub masked the real contract.
       a.get(ORIGIN)
         .intercept({
           path: `/api/v1/alert-notifications/destinations/${DID}/version`,
           method: "PATCH",
         })
-        .reply(200, {
-          id: DID,
-          channel: "slack",
-          name: "x",
-          is_active: true,
-          is_default_target: false,
-          version: "public",
-          consecutive_failures: 0,
-          last_delivery_at: null,
-          last_delivery_status: null,
-          slack_workspace_id: null,
-          slack_channel_id: null,
-          slack_channel_name: null,
-          telegram_chat_id: null,
-          telegram_chat_title: null,
-          telegram_chat_type: null,
-          email_address: null,
-          included_label_keys: [],
-          created_at: "2026-05-17T00:00:00Z",
-          updated_at: "2026-05-17T00:00:00Z",
-          organization_id: "00000000-0000-0000-0000-000000000010",
-        });
+        .reply(204, "");
       a.get(ORIGIN)
         .intercept({
           path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
