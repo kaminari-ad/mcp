@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-17
+
+Re-release of 0.1.1 / 0.1.2 (both failed at the npm publish step).
+The 0.1.2 OIDC debug step revealed every JWT claim matches the
+Trusted Publisher config perfectly — the failure was elsewhere.
+
+### Fixed
+
+- **npm CLI version too old for OIDC publishing.** GitHub Actions
+  Node 22 LTS runner ships with **npm 10.x bundled**, but npm
+  Trusted Publisher OIDC publish was introduced in **npm 11.5.1**
+  (Aug 2025). Without it, `npm publish --provenance` signs the
+  sigstore attestation BUT sends the actual PUT to the registry
+  unauthenticated → npm replies HTTP 404 "not found" (security
+  obscurity for "no auth"). Workflow now runs
+  `npm install -g npm@^11` before `npm ci` / publish, pinning the
+  latest npm 11.x line.
+
 ## [0.1.2] - 2026-05-17
 
 Re-release of v0.1.1 — that tag's release pipeline failed at the
@@ -420,7 +438,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.3
 [0.1.2]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.2
 [0.1.1]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kaminari-ad/mcp/releases/tag/v0.1.0
