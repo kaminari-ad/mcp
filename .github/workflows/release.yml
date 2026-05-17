@@ -1,0 +1,106 @@
+name: Release
+
+# Tag-driven publish. Push `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`) to
+# this repo and the workflow:
+#   1. Pauses on the `npm-publish` GitHub Environment (single-approver
+#      gate — protects against accidental tag push).
+#   2. Verifies the tag matches `package.json` version.
+#   3. Runs the full sanity gate (lint / typecheck / tests / build).
+#   4. `npm publish --provenance` — uses the GitHub OIDC token to mint
+#      a sigstore attestation; npm trusted-publisher setup on the
+#      package side translates this into a verified provenance badge.
+#   5. Creates a GitHub Release with auto-generated commit summary.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write # softprops/action-gh-release creates the Release
+  id-token: write # mandatory for npm OIDC provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    # Single-approver gate. Configured via `gh api repos/.../environments/npm-publish`.
+    environment:
+      name: npm-publish
+      url: https://www.npmjs.com/package/@kaminari-ad/mcp
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so action-gh-release can derive release notes
+          # from commits since the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install
+        run: npm ci --legacy-peer-deps --ignore-scripts
+
+      - name: Verify tag matches package.json version
+        # Belt-and-suspenders against "tagged but forgot to bump
+        # package.json" — would otherwise publish the previous version
+        # under a new tag and confuse npm's @kaminari-ad/mcp@vX.Y.Z
+        # vs `kaminari-ad-mcp/releases/tag/vX.Y.Z` correspondence.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: git tag '$GITHUB_REF_NAME' (-> $TAG_VERSION)"
+            echo "       does NOT match package.json version ($PKG_VERSION)."
+            echo "       Bump package.json and re-tag."
+            exit 1
+          fi
+          echo "Tag/version match: $TAG_VERSION"
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (with coverage)
+        run: npm run test:cov
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle size gate
+        run: npm run check:bundle-size
+
+      # `--access public` because the @kaminari-ad scope on npm is
+      # configured Public by default but explicit is better than silent.
+      # `--provenance` is also set via `publishConfig.provenance: true`
+      # in package.json; passing the flag is defense-in-depth so a
+      # future package.json edit cannot silently drop signing.
+      - name: Publish to npm with provenance
+        run: npm publish --access public --provenance
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          # Auto-summary of commits since the previous tag. For v0.1.0
+          # this collapses the full development arc; subsequent releases
+          # will produce focused per-version notes.
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          body: |
+            ## Install
+
+            ```bash
+            npx -y @kaminari-ad/mcp@${{ github.ref_name }}
+            ```
+
+            Add to your Cursor / Claude Desktop config — see
+            [README](README.md#quick-start).
+
+            Full changelog: [CHANGELOG.md](CHANGELOG.md).

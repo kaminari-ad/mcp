@@ -1,6 +1,6 @@
 {
   "name": "@kaminari-ad/mcp",
-  "version": "0.0.0-dev",
+  "version": "0.1.0",
   "description": "Official Model Context Protocol (MCP) server for the Kaminari Ad ad-verification platform.",
   "keywords": [
     "mcp",

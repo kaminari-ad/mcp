@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-17
+
+First public release of `@kaminari-ad/mcp`.
+
+Bundles the full pre-release development arc that lived on a private
+GitLab instance: HTTP + stdio transports, 82 MCP tools spanning scans /
+campaigns / policies / alerts / webhooks / billing / accounts, tenant-
+isolation suite, schema-backed parsers, openapi-fetch gateway, the
+`prod:smoke` CI job, and the OSS bootstrap (LICENSE, SECURITY,
+CONTRIBUTING, CODE_OF_CONDUCT, issue / PR templates).
+
+See the GitHub release notes for the auto-generated commit summary;
+the per-area changelog entries below capture the substantive engineering
+work since the project was scaffolded.
+
 ### Fixed (parser-drift phase 5 — post-review hardening)
 
 - **`list_policy_sets` regression introduced by phase 2b.** The
@@ -363,3 +378,6 @@ Initial public release. The first version that ships to npm under
   etc.) — agents rarely consume images directly. Reach out if you
   need them.
 - Invoice PDF fetcher — same reason.
+
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/kaminari-ad/mcp/releases/tag/v0.1.0
