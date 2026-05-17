@@ -1,22 +1,34 @@
 /**
- * Production {@link ApiGateway} adapter. Calls the Kaminari Ad
- * `/api/v1` surface over HTTPS via undici.
+ * Production {@link ApiGateway} adapter.
+ *
+ * Backed by `openapi-fetch` over `paths` generated from the API's live
+ * OpenAPI spec (see `scripts/gen-api-types.ts`):
+ *
+ *   - Every endpoint path is a literal type constrained by `paths`.
+ *     Renaming or removing an endpoint on the API side fails this
+ *     gateway at `tsc --noEmit` immediately, no runtime drift.
+ *   - Path / query / body shapes are validated by the same generated
+ *     types, with the agent-facing `Pick<S[K], ...>` projections in
+ *     `domain/ports/api-gateway.ts` narrowing the surface to the
+ *     fields the MCP exposes.
+ *   - Response decoding still goes through the typed parsers under
+ *     `./parsers/*` (each one a one-liner backed by
+ *     `parseWithSchema(schemas.X.pick({...}))`), so a wrong-shape
+ *     payload at runtime degrades to a typed `upstream` MCP error
+ *     instead of a crash.
  *
  * Tenant-isolation contract: built per-request in HTTP mode, holding
- * exactly ONE caller's Bearer in a private closure. Garbage-collected
- * when the request ends. The factory function is never used to build a
- * singleton.
+ * exactly ONE caller's Bearer in a private closure plus a fresh
+ * `openapi-fetch` client. The factory is never used to build a
+ * singleton — each MCP request gets its own gateway, gc'd when the
+ * request ends.
  *
- * Per-endpoint parsing logic lives in `./parsers/*`; error mapping
- * lives in `./error-mapping`. This file is the thin shell that ties
- * those together with the actual `undici` request.
- *
- * URLs and DTO shapes are validated by the generated openapi.ts types
- * (Pick projections in `domain/ports/api-gateway.ts`). A drift between
- * MCP and API forces a regen + tsc failure.
+ * Network transport: undici. Tests pass a `MockAgent`-backed
+ * `Dispatcher`; production uses the default global agent.
  */
 
-import { type Dispatcher, request as undiciRequest } from "undici";
+import createClient from "openapi-fetch";
+import { type Dispatcher, fetch as undiciFetch } from "undici";
 
 import type {
   AlertNotificationDestinationResponse,
@@ -58,6 +70,7 @@ import type {
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
   RecheckResponse,
@@ -72,6 +85,8 @@ import type {
   SetDestinationVersionRequest,
   TagDefinitionDetailResponse,
   TagDefinitionResponse,
+  TestWebhookRequest,
+  TestWebhookResponse,
   UpdateAlertStatusRequest,
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
@@ -90,13 +105,14 @@ import type {
 import type { Logger } from "../../domain/ports/logger.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
+import type { paths } from "../../shared/api/openapi.js";
 import { err, type Result } from "../../shared/result.js";
 import { toApiError } from "./error-mapping.js";
 import { parseAlertPage } from "./parsers/parse-alert.js";
 import { parseApiKeyList } from "./parsers/parse-api-key.js";
 import { parseBillingSummary } from "./parsers/parse-billing-summary.js";
 import { parseCampaign, parseCampaignPage } from "./parsers/parse-campaign.js";
-import { parseCampaignGroup, parseCampaignGroupPage } from "./parsers/parse-campaign-group.js";
+import { parseCampaignGroup, parseCampaignGroupArray } from "./parsers/parse-campaign-group.js";
 import { parseIntField } from "./parsers/parse-count-envelope.js";
 import { parseCustomRule, parseCustomRuleArray } from "./parsers/parse-custom-rule.js";
 import { parseEmpty } from "./parsers/parse-empty.js";
@@ -129,7 +145,12 @@ import { parseRun } from "./parsers/parse-run.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
 import { parseScanPage } from "./parsers/parse-scan-page.js";
 import { parseTagDefinitionArray } from "./parsers/parse-tag.js";
-import { parseWebhook, parseWebhookCreated, parseWebhookList } from "./parsers/parse-webhook.js";
+import {
+  parseTestWebhookResponse,
+  parseWebhook,
+  parseWebhookCreated,
+  parseWebhookList,
+} from "./parsers/parse-webhook.js";
 
 export interface HttpApiGatewayConfig {
   readonly baseUrl: string;
@@ -137,190 +158,345 @@ export interface HttpApiGatewayConfig {
   readonly requestId: RequestId;
   readonly logger: Logger;
   /**
-   * Optional undici dispatcher — tests pass a `MockAgent`-backed one;
-   * production uses the default global agent.
+   * Optional undici dispatcher — tests pass a `MockAgent`; production
+   * uses the default global agent.
    */
   readonly dispatcher?: Dispatcher;
 }
 
-type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+/**
+ * openapi-fetch's `init` argument differs per method (GET vs POST etc.)
+ * and per endpoint (which params it accepts). The typed surface is
+ * enforced by the per-method literal path passed at the call site:
+ * `client.GET("/api/v1/scans/{scan_id}", { params: { path: { scan_id: id } } })`
+ * is fully type-checked. Inside the generic `call()` helper we erase
+ * `init` to `unknown` because the helper is generic over arbitrary
+ * endpoint shapes — the eslint suppression below covers ONLY this
+ * internal erasure, not the per-method call sites.
+ */
+type OpenapiInit = unknown;
 
 /** Build a fresh `ApiGateway` for one logical request scope. */
 export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   const { baseUrl, bearer, requestId, logger, dispatcher } = config;
 
+  // Custom fetch — wraps undici.fetch so we can inject the per-request
+  // dispatcher (used by tests). In production `dispatcher` is undefined
+  // and undici.fetch uses the global agent.
+  //
+  // openapi-fetch passes a Request object as `input` (with headers,
+  // method and body bound to it); we splice those onto init so undici
+  // sees the auth header / body. If we passed `input` directly, undici
+  // ignores the Request and only reads init — auth headers vanish.
+  const fetchImpl: typeof fetch = async (input, init) => {
+    // openapi-fetch ALWAYS calls us with a fully-formed `Request`
+    // (it constructs one internally even when the consumer never
+    // passes one). The `string | URL` branches of the `typeof fetch`
+    // signature are dead in this codepath; narrow up-front so the
+    // hot path below can assume Request without re-typing every
+    // line. The branch IS reachable in isolation tests that hand-call
+    // `fetchImpl` to exercise the contract — see the smoke test in
+    // tests/unit/infrastructure/api/http-api-gateway.test.ts.
+    /* c8 ignore next 5 — defensive narrow, exercised via the typed call path; openapi-fetch never hits it */
+    if (typeof input === "string" || input instanceof URL) {
+      throw new TypeError(
+        "createHttpApiGateway.fetchImpl: openapi-fetch is expected to always pass a Request"
+      );
+    }
+
+    // undici's RequestInit and the global RequestInit have subtly
+    // different `BodyInit` shapes (undici-types vs undici/types).
+    // We forward fields as an opaque bag — openapi-fetch already
+    // constructed a fully-formed Request, we just rebind it for
+    // undici.fetch + the per-request dispatcher.
+    const baseInit: Record<string, unknown> = { ...(init ?? {}) };
+    baseInit["method"] ??= input.method;
+    if (baseInit["headers"] === undefined) {
+      const merged: Record<string, string> = {};
+      input.headers.forEach((value, key) => {
+        merged[key] = value;
+      });
+      baseInit["headers"] = merged;
+    }
+    // Request body is a ReadableStream; openapi-fetch has already
+    // serialised the JSON body and the Request wraps it. Read it
+    // back as text so undici sees a concrete payload — passing the
+    // ReadableStream straight through requires `duplex: "half"` AND
+    // triggers chunked transfer in some setups (and MockAgent does
+    // not understand chunked).
+    if (baseInit["body"] === undefined && input.body !== null) {
+      baseInit["body"] = await input.text();
+      baseInit["duplex"] ??= "half";
+    }
+
+    if (dispatcher !== undefined) {
+      baseInit["dispatcher"] = dispatcher;
+    }
+
+    // undici's Response and the global `Response` share the same
+    // primitive shape in Node 18+ (undici backs both). The narrow
+    // assertion here is the cross-library boundary.
+    /* eslint-disable @typescript-eslint/consistent-type-assertions */
+    return undiciFetch(
+      input.url,
+      baseInit as Parameters<typeof undiciFetch>[1]
+    ) as unknown as Response;
+    /* eslint-enable @typescript-eslint/consistent-type-assertions */
+  };
+
+  // Pinned outbound header allowlist — must match the 5-key contract
+  // documented in `CONTRIBUTING.md` "Tenant isolation" §9. Enforced by
+  // `tests/isolation/header-injection-e2e.test.ts` (source-text regex
+  // gate) and `tests/isolation/header-injection.test.ts` (behavioural
+  // assertion that the same five keys reach the wire).
+  const client = createClient<paths>({
+    baseUrl,
+    fetch: fetchImpl,
+    headers: {
+      authorization: bearer.toAuthorizationHeader(),
+      "content-type": "application/json",
+      accept: "application/json",
+      "user-agent": "kaminari-ad-mcp",
+      "x-request-id": requestId,
+    },
+  });
+
+  type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+  interface OpenapiResult {
+    readonly data?: unknown;
+    readonly error?: unknown;
+    readonly response: Response;
+  }
+
+  // Type-erased dispatch table over the openapi-fetch client's typed
+  // method surface (`client.GET("/api/v1/...", { params... })`). The
+  // per-call-site narrowing through the helper below preserves end-to-
+  // end path/body typing — the erasure here is purely so the helper
+  // can be generic over method name. The functions are bound to the
+  // client to preserve `this`.
+  /* eslint-disable @typescript-eslint/consistent-type-assertions */
+  const dispatch: Record<HttpMethod, (p: string, i: OpenapiInit) => Promise<OpenapiResult>> = {
+    GET: client.GET.bind(client) as (p: string, i: OpenapiInit) => Promise<OpenapiResult>,
+    POST: client.POST.bind(client) as (p: string, i: OpenapiInit) => Promise<OpenapiResult>,
+    PATCH: client.PATCH.bind(client) as (p: string, i: OpenapiInit) => Promise<OpenapiResult>,
+    PUT: client.PUT.bind(client) as (p: string, i: OpenapiInit) => Promise<OpenapiResult>,
+    DELETE: client.DELETE.bind(client) as (p: string, i: OpenapiInit) => Promise<OpenapiResult>,
+  };
+  /* eslint-enable @typescript-eslint/consistent-type-assertions */
+
   async function call<T>(
-    method: Method,
+    method: HttpMethod,
     path: string,
-    body: unknown,
+    init: OpenapiInit,
     parse: (raw: unknown) => Result<T, ApiError>
   ): Promise<Result<T, ApiError>> {
-    const url = `${baseUrl}${path}`;
     const startedAtMs = Date.now();
-    let res: Awaited<ReturnType<typeof undiciRequest>>;
+    let result: OpenapiResult;
     try {
-      const baseOptions = {
-        method,
-        headers: {
-          authorization: bearer.toAuthorizationHeader(),
-          "content-type": "application/json",
-          accept: "application/json",
-          "user-agent": "kaminari-ad-mcp",
-          "x-request-id": requestId,
-        },
-      };
-      const withBody =
-        body === undefined ? baseOptions : { ...baseOptions, body: JSON.stringify(body) };
-      const withDispatcher = dispatcher === undefined ? withBody : { ...withBody, dispatcher };
-      res = await undiciRequest(url, withDispatcher);
+      result = await dispatch[method](path, init);
     } catch (cause) {
       logger.warn({ api_path: path, elapsed_ms: Date.now() - startedAtMs }, "api.network_error");
+      // undici.fetch wraps the underlying connection error as
+      // `TypeError("fetch failed")` with `.cause = the original Error`.
+      // The raw message ("ECONNRESET", "ENOTFOUND", "self-signed
+      // certificate"…) is the operator-actionable bit — unwrap it.
+      const inner =
+        cause instanceof Error && cause.cause instanceof Error
+          ? cause.cause
+          : cause instanceof Error
+            ? cause
+            : null;
       return err({
         kind: "upstream",
-        detail: cause instanceof Error ? cause.message : "network error",
+        detail: inner !== null ? inner.message : "network error",
       });
     }
 
-    const status = res.statusCode;
-    let parsedBody: unknown;
-    try {
-      parsedBody = await res.body.json();
-    } catch {
-      parsedBody = undefined;
-    }
+    const { data, error, response } = result;
+    const status = response.status;
     logger.info(
       { api_path: path, api_status: status, elapsed_ms: Date.now() - startedAtMs },
       "api.done"
     );
 
     if (status >= 200 && status < 300) {
-      return parse(parsedBody);
+      return parse(data === undefined ? null : data);
     }
-    return err(toApiError(status, parsedBody, res.headers["retry-after"]));
+    return err(toApiError(status, error ?? data, response.headers.get("retry-after") ?? undefined));
   }
-
-  const enc = encodeURIComponent;
 
   return {
     // ── Account ───────────────────────────────────────────────────
     async getAccount(): Promise<Result<OrgResponse, ApiError>> {
-      return call("GET", "/api/v1/account", undefined, parseOrg);
+      return call("GET", "/api/v1/account", {}, parseOrg);
     },
     async updateOrg(body: UpdateOrgRequest): Promise<Result<OrgResponse, ApiError>> {
-      return call("PATCH", "/api/v1/account", body, parseOrg);
+      return call("PATCH", "/api/v1/account", { body }, parseOrg);
     },
     async listOrgUsers(): Promise<Result<readonly UserResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/users", undefined, parseArrayOf(parseUser));
+      return call("GET", "/api/v1/account/users", {}, parseArrayOf(parseUser));
     },
     async inviteUser(body: InviteUserRequest): Promise<Result<UserResponse, ApiError>> {
-      return call("POST", "/api/v1/account/users/invite", body, parseUser);
+      return call("POST", "/api/v1/account/users/invite", { body }, parseUser);
     },
     async updateUserRole(
       userId: string,
       body: UpdateUserRoleRequest
-    ): Promise<Result<UserResponse, ApiError>> {
-      return call("PATCH", `/api/v1/account/users/${enc(userId)}/role`, body, parseUser);
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "PATCH",
+        "/api/v1/account/users/{user_id}/role",
+        { params: { path: { user_id: userId } }, body },
+        parseEmpty
+      );
     },
     async removeUser(userId: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/account/users/${enc(userId)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/account/users/{user_id}",
+        { params: { path: { user_id: userId } } },
+        parseEmpty
+      );
     },
     async transferOwnership(userId: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
-        `/api/v1/account/users/${enc(userId)}/transfer-ownership`,
-        undefined,
+        "/api/v1/account/users/{user_id}/transfer-ownership",
+        { params: { path: { user_id: userId } } },
         parseEmpty
       );
     },
     async listOrgRoles(): Promise<Result<readonly RoleResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/roles", undefined, parseArrayOf(parseRole));
+      return call("GET", "/api/v1/account/roles", {}, parseArrayOf(parseRole));
     },
     async listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
-      return call("GET", "/api/v1/account/api-keys", undefined, parseApiKeyList);
+      return call("GET", "/api/v1/account/api-keys", {}, parseApiKeyList);
     },
     async createApiKey(
       body: CreateApiKeyRequest
     ): Promise<Result<ApiKeyCreatedResponse, ApiError>> {
-      return call("POST", "/api/v1/account/api-keys", body, parseApiKeyCreated);
+      return call("POST", "/api/v1/account/api-keys", { body }, parseApiKeyCreated);
     },
     async revokeApiKey(keyId: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/account/api-keys/${enc(keyId)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/account/api-keys/{key_id}",
+        { params: { path: { key_id: keyId } } },
+        parseEmpty
+      );
     },
 
     // ── Scans ─────────────────────────────────────────────────────
     async listScans(
       filters: ListScansFilters
     ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
-      return call("GET", `/api/v1/scans?${buildQuery(filters)}`, undefined, parseScanPage);
+      return call("GET", "/api/v1/scans", { params: { query: filters } }, parseScanPage);
     },
     async getScan(scanId: string): Promise<Result<ScanResponse, ApiError>> {
-      return call("GET", `/api/v1/scans/${enc(scanId)}`, undefined, parseScan);
+      return call(
+        "GET",
+        "/api/v1/scans/{scan_id}",
+        { params: { path: { scan_id: scanId } } },
+        parseScan
+      );
     },
     async createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>> {
-      return call("POST", "/api/v1/scans", body, parseScan);
+      return call("POST", "/api/v1/scans", { body }, parseScan);
     },
     async createBulkScans(
       body: BulkScanRequest
     ): Promise<Result<readonly ScanResponse[], ApiError>> {
-      return call("POST", "/api/v1/scans/bulk", body, parseScanArray);
+      return call("POST", "/api/v1/scans/bulk", { body }, parseScanArray);
     },
     async recheckScans(body: RecheckRequest): Promise<Result<RecheckResponse, ApiError>> {
-      return call("POST", "/api/v1/scans/recheck", body, (raw) =>
+      return call("POST", "/api/v1/scans/recheck", { body }, (raw) =>
         parseIntField(raw, "queued_count")
       );
     },
     async cancelScan(scanId: string): Promise<Result<CancelPendingResponse, ApiError>> {
-      return call("POST", `/api/v1/scans/${enc(scanId)}/cancel`, undefined, (raw) =>
-        parseIntField(raw, "cancelled_count")
+      return call(
+        "POST",
+        "/api/v1/scans/{scan_id}/cancel",
+        { params: { path: { scan_id: scanId } } },
+        (raw) => parseIntField(raw, "cancelled_count")
       );
     },
     async listScanTags(scanId: string): Promise<Result<readonly ScanTagResponse[], ApiError>> {
       return call(
         "GET",
-        `/api/v1/scans/${enc(scanId)}/tags`,
-        undefined,
+        "/api/v1/scans/{scan_id}/tags",
+        { params: { path: { scan_id: scanId } } },
         parseArrayOf(parseScanTag)
       );
     },
 
     // ── Geos / emulators ──────────────────────────────────────────
     async listGeos(): Promise<Result<readonly GeoResponse[], ApiError>> {
-      return call("GET", "/api/v1/geos", undefined, parseGeoList);
+      return call("GET", "/api/v1/geos", {}, parseGeoList);
     },
     async listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
-      return call("GET", "/api/v1/emulators", undefined, parseEmulatorList);
+      return call("GET", "/api/v1/emulators", {}, parseEmulatorList);
     },
 
     // ── Campaigns ─────────────────────────────────────────────────
     async listCampaigns(
       filters: ListCampaignsFilters
     ): Promise<Result<PaginatedResponse<CampaignResponse>, ApiError>> {
-      return call("GET", `/api/v1/campaigns?${buildQuery(filters)}`, undefined, parseCampaignPage);
+      return call("GET", "/api/v1/campaigns", { params: { query: filters } }, parseCampaignPage);
     },
     async getCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call("GET", `/api/v1/campaigns/${enc(id)}`, undefined, parseCampaign);
+      return call(
+        "GET",
+        "/api/v1/campaigns/{campaign_id}",
+        { params: { path: { campaign_id: id } } },
+        parseCampaign
+      );
     },
     async createCampaign(body: CreateCampaignRequest): Promise<Result<CampaignResponse, ApiError>> {
-      return call("POST", "/api/v1/campaigns", body, parseCampaign);
+      return call("POST", "/api/v1/campaigns", { body }, parseCampaign);
     },
     async updateCampaign(
       id: string,
       body: UpdateCampaignRequest
     ): Promise<Result<CampaignResponse, ApiError>> {
-      return call("PATCH", `/api/v1/campaigns/${enc(id)}`, body, parseCampaign);
+      return call(
+        "PATCH",
+        "/api/v1/campaigns/{campaign_id}",
+        { params: { path: { campaign_id: id } }, body },
+        parseCampaign
+      );
     },
     async runCampaign(id: string): Promise<Result<RunResponse, ApiError>> {
-      return call("POST", `/api/v1/campaigns/${enc(id)}/run`, undefined, parseRun);
+      return call(
+        "POST",
+        "/api/v1/campaigns/{campaign_id}/run",
+        { params: { path: { campaign_id: id } } },
+        parseRun
+      );
     },
     async archiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call("POST", `/api/v1/campaigns/${enc(id)}/archive`, undefined, parseCampaign);
+      return call(
+        "POST",
+        "/api/v1/campaigns/{campaign_id}/archive",
+        { params: { path: { campaign_id: id } } },
+        parseCampaign
+      );
     },
     async unarchiveCampaign(id: string): Promise<Result<CampaignResponse, ApiError>> {
-      return call("POST", `/api/v1/campaigns/${enc(id)}/unarchive`, undefined, parseCampaign);
+      return call(
+        "POST",
+        "/api/v1/campaigns/{campaign_id}/unarchive",
+        { params: { path: { campaign_id: id } } },
+        parseCampaign
+      );
     },
     async cancelCampaign(id: string): Promise<Result<CancelPendingResponse, ApiError>> {
-      return call("POST", `/api/v1/campaigns/${enc(id)}/cancel`, undefined, (raw) =>
-        parseIntField(raw, "cancelled_count")
+      return call(
+        "POST",
+        "/api/v1/campaigns/{campaign_id}/cancel",
+        { params: { path: { campaign_id: id } } },
+        (raw) => parseIntField(raw, "cancelled_count")
       );
     },
     async listCampaignRuns(
@@ -329,19 +505,22 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<PaginatedResponse<RunResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/campaigns/${enc(campaignId)}/runs?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/campaigns/{campaign_id}/runs",
+        { params: { path: { campaign_id: campaignId }, query: filters } },
         parsePageOf(parseRun)
       );
     },
 
     // ── Runs ──────────────────────────────────────────────────────
     async getRun(id: string): Promise<Result<RunResponse, ApiError>> {
-      return call("GET", `/api/v1/runs/${enc(id)}`, undefined, parseRun);
+      return call("GET", "/api/v1/runs/{run_id}", { params: { path: { run_id: id } } }, parseRun);
     },
     async cancelRun(id: string): Promise<Result<CancelPendingResponse, ApiError>> {
-      return call("POST", `/api/v1/runs/${enc(id)}/cancel`, undefined, (raw) =>
-        parseIntField(raw, "cancelled_count")
+      return call(
+        "POST",
+        "/api/v1/runs/{run_id}/cancel",
+        { params: { path: { run_id: id } } },
+        (raw) => parseIntField(raw, "cancelled_count")
       );
     },
     async listRunScans(
@@ -350,64 +529,84 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/runs/${enc(runId)}/scans?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/runs/{run_id}/scans",
+        { params: { path: { run_id: runId }, query: filters } },
         parseScanPage
       );
     },
 
     // ── Campaign groups ───────────────────────────────────────────
-    async listCampaignGroups(
-      filters: PageFilters
-    ): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>> {
+    async listCampaignGroups(filters?: {
+      readonly archived?: boolean;
+    }): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
       return call(
         "GET",
-        `/api/v1/campaign-groups?${buildQuery(filters)}`,
-        undefined,
-        parseCampaignGroupPage
+        "/api/v1/campaign-groups",
+        { params: { query: filters ?? {} } },
+        parseCampaignGroupArray
       );
     },
     async getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call("GET", `/api/v1/campaign-groups/${enc(id)}`, undefined, parseCampaignGroup);
+      return call(
+        "GET",
+        "/api/v1/campaign-groups/{group_id}",
+        { params: { path: { group_id: id } } },
+        parseCampaignGroup
+      );
     },
     async createCampaignGroup(
       body: CreateCampaignGroupRequest
     ): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call("POST", "/api/v1/campaign-groups", body, parseCampaignGroup);
+      return call("POST", "/api/v1/campaign-groups", { body }, parseCampaignGroup);
     },
     async updateCampaignGroup(
       id: string,
       body: UpdateCampaignGroupRequest
     ): Promise<Result<CampaignGroupResponse, ApiError>> {
-      return call("PATCH", `/api/v1/campaign-groups/${enc(id)}`, body, parseCampaignGroup);
-    },
-    async runCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
-      return call("POST", `/api/v1/campaign-groups/${enc(id)}/run`, undefined, parseGroupAction);
-    },
-    async cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
-      return call("POST", `/api/v1/campaign-groups/${enc(id)}/cancel`, undefined, parseGroupAction);
-    },
-    async archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
       return call(
-        "POST",
-        `/api/v1/campaign-groups/${enc(id)}/archive`,
-        undefined,
+        "PATCH",
+        "/api/v1/campaign-groups/{group_id}",
+        { params: { path: { group_id: id } }, body },
         parseCampaignGroup
       );
     },
-    async unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
+    async runCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/campaign-groups/${enc(id)}/unarchive`,
-        undefined,
-        parseCampaignGroup
+        "/api/v1/campaign-groups/{group_id}/run",
+        { params: { path: { group_id: id } } },
+        parseGroupAction
+      );
+    },
+    async cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/campaign-groups/{group_id}/cancel",
+        { params: { path: { group_id: id } } },
+        parseGroupAction
+      );
+    },
+    async archiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/campaign-groups/{group_id}/archive",
+        { params: { path: { group_id: id } } },
+        parseGroupAction
+      );
+    },
+    async unarchiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/campaign-groups/{group_id}/unarchive",
+        { params: { path: { group_id: id } } },
+        parseGroupAction
       );
     },
     async pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/campaign-groups/${enc(id)}/pause-schedule`,
-        undefined,
+        "/api/v1/campaign-groups/{group_id}/pause-schedule",
+        { params: { path: { group_id: id } } },
         parseCampaignGroup
       );
     },
@@ -416,27 +615,42 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<CampaignGroupResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/campaign-groups/${enc(id)}/resume-schedule`,
-        undefined,
+        "/api/v1/campaign-groups/{group_id}/resume-schedule",
+        { params: { path: { group_id: id } } },
         parseCampaignGroup
       );
     },
 
     // ── Tag definitions ───────────────────────────────────────────
     async listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>> {
-      return call("GET", "/api/v1/tag-definitions", undefined, parseTagDefinitionArray);
+      return call("GET", "/api/v1/tag-definitions", {}, parseTagDefinitionArray);
     },
     async getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
-      return call("GET", `/api/v1/tag-definitions/${enc(slug)}`, undefined, parseTagDetail);
+      return call(
+        "GET",
+        "/api/v1/tag-definitions/{slug}",
+        { params: { path: { slug } } },
+        parseTagDetail
+      );
     },
     async updateTagDefinition(
       slug: string,
       body: UpdateTagDefinitionRequest
-    ): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
-      return call("PATCH", `/api/v1/tag-definitions/${enc(slug)}`, body, parseTagDetail);
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "PATCH",
+        "/api/v1/tag-definitions/{slug}",
+        { params: { path: { slug } }, body },
+        parseEmpty
+      );
     },
     async deleteTagDefinition(slug: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/tag-definitions/${enc(slug)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/tag-definitions/{slug}",
+        { params: { path: { slug } } },
+        parseEmpty
+      );
     },
 
     // ── Custom rules ──────────────────────────────────────────────
@@ -445,59 +659,89 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<readonly CustomRuleResponse[], ApiError>> {
       return call(
         "GET",
-        `/api/v1/custom-rules?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/custom-rules",
+        { params: { query: filters } },
         parseCustomRuleArray
       );
     },
     async getCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("GET", `/api/v1/custom-rules/${enc(id)}`, undefined, parseCustomRule);
+      return call(
+        "GET",
+        "/api/v1/custom-rules/{rule_id}",
+        { params: { path: { rule_id: id } } },
+        parseCustomRule
+      );
     },
     async createCustomRule(
       body: CreateCustomRuleRequest
     ): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("POST", "/api/v1/custom-rules", body, parseCustomRule);
+      return call("POST", "/api/v1/custom-rules", { body }, parseCustomRule);
     },
     async updateCustomRule(
       id: string,
       body: UpdateCustomRuleRequest
     ): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call("PUT", `/api/v1/custom-rules/${enc(id)}`, body, parseCustomRule);
+      return call(
+        "PUT",
+        "/api/v1/custom-rules/{rule_id}",
+        { params: { path: { rule_id: id } }, body },
+        parseCustomRule
+      );
     },
     async deleteCustomRule(id: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/custom-rules/${enc(id)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/custom-rules/{rule_id}",
+        { params: { path: { rule_id: id } } },
+        parseEmpty
+      );
     },
     async testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>> {
-      return call("POST", "/api/v1/custom-rules/test", body, parseRuleTest);
+      return call("POST", "/api/v1/custom-rules/test", { body }, parseRuleTest);
     },
 
     // ── Policy sets ───────────────────────────────────────────────
-    async listPolicySets(): Promise<Result<readonly PolicySetResponse[], ApiError>> {
-      return call("GET", "/api/v1/policy-sets", undefined, parsePolicySetList);
+    async listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>> {
+      return call("GET", "/api/v1/policy-sets", {}, parsePolicySetList);
     },
     async getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("GET", `/api/v1/policy-sets/${enc(id)}`, undefined, parsePolicySet);
+      return call(
+        "GET",
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } } },
+        parsePolicySet
+      );
     },
     async createPolicySet(
       body: CreatePolicySetRequest
     ): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("POST", "/api/v1/policy-sets", body, parsePolicySet);
+      return call("POST", "/api/v1/policy-sets", { body }, parsePolicySet);
     },
     async updatePolicySet(
       id: string,
       body: UpdatePolicySetRequest
     ): Promise<Result<PolicySetResponse, ApiError>> {
-      return call("PUT", `/api/v1/policy-sets/${enc(id)}`, body, parsePolicySet);
+      return call(
+        "PUT",
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } }, body },
+        parsePolicySet
+      );
     },
     async deletePolicySet(id: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/policy-sets/${enc(id)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/policy-sets/{policy_set_id}",
+        { params: { path: { policy_set_id: id } } },
+        parseEmpty
+      );
     },
-    async requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>> {
+    async requestPolicySetApproval(id: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
-        `/api/v1/policy-sets/${enc(id)}/request-approval`,
-        undefined,
-        parsePolicySet
+        "/api/v1/policy-sets/{policy_set_id}/request-approval",
+        { params: { path: { policy_set_id: id } } },
+        parseEmpty
       );
     },
 
@@ -505,54 +749,82 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async listAlerts(
       filters: ListAlertsFilters
     ): Promise<Result<PaginatedResponse<AlertResponse>, ApiError>> {
-      return call("GET", `/api/v1/alerts?${buildQuery(filters)}`, undefined, parseAlertPage);
+      return call("GET", "/api/v1/alerts", { params: { query: filters } }, parseAlertPage);
     },
     async updateAlertStatus(
       alertId: string,
       body: UpdateAlertStatusRequest
     ): Promise<Result<null, ApiError>> {
-      return call("PATCH", `/api/v1/alerts/${enc(alertId)}/status`, body, parseEmpty);
+      return call(
+        "PATCH",
+        "/api/v1/alerts/{alert_id}/status",
+        { params: { path: { alert_id: alertId } }, body },
+        parseEmpty
+      );
     },
     async getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>> {
-      return call("GET", "/api/v1/alerts/stats", undefined, parseAlertStats);
+      return call("GET", "/api/v1/alerts/stats", {}, parseAlertStats);
     },
 
     // ── Webhooks ──────────────────────────────────────────────────
     async listWebhooks(): Promise<Result<readonly WebhookResponse[], ApiError>> {
-      return call("GET", "/api/v1/webhooks", undefined, parseWebhookList);
+      return call("GET", "/api/v1/webhooks", {}, parseWebhookList);
     },
     async getWebhook(id: string): Promise<Result<WebhookResponse, ApiError>> {
-      return call("GET", `/api/v1/webhooks/${enc(id)}`, undefined, parseWebhook);
+      return call(
+        "GET",
+        "/api/v1/webhooks/{endpoint_id}",
+        { params: { path: { endpoint_id: id } } },
+        parseWebhook
+      );
     },
     async createWebhook(
       body: CreateWebhookRequest
     ): Promise<Result<WebhookCreatedResponse, ApiError>> {
-      return call("POST", "/api/v1/webhooks", body, parseWebhookCreated);
+      return call("POST", "/api/v1/webhooks", { body }, parseWebhookCreated);
     },
     async updateWebhook(
       id: string,
       body: UpdateWebhookRequest
     ): Promise<Result<WebhookResponse, ApiError>> {
-      return call("PATCH", `/api/v1/webhooks/${enc(id)}`, body, parseWebhook);
+      return call(
+        "PATCH",
+        "/api/v1/webhooks/{endpoint_id}",
+        { params: { path: { endpoint_id: id } }, body },
+        parseWebhook
+      );
     },
     async deleteWebhook(id: string): Promise<Result<null, ApiError>> {
-      return call("DELETE", `/api/v1/webhooks/${enc(id)}`, undefined, parseEmpty);
+      return call(
+        "DELETE",
+        "/api/v1/webhooks/{endpoint_id}",
+        { params: { path: { endpoint_id: id } } },
+        parseEmpty
+      );
     },
-    async testWebhook(endpointId: string): Promise<Result<null, ApiError>> {
-      return call("POST", `/api/v1/webhooks/${enc(endpointId)}/test`, undefined, parseEmpty);
+    async testWebhook(
+      endpointId: string,
+      body: TestWebhookRequest
+    ): Promise<Result<TestWebhookResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/webhooks/{endpoint_id}/test",
+        { params: { path: { endpoint_id: endpointId } }, body },
+        parseTestWebhookResponse
+      );
     },
     async rotateWebhookSecret(
       endpointId: string
     ): Promise<Result<WebhookCreatedResponse, ApiError>> {
       return call(
         "POST",
-        `/api/v1/webhooks/${enc(endpointId)}/rotate-secret`,
-        undefined,
+        "/api/v1/webhooks/{endpoint_id}/rotate-secret",
+        { params: { path: { endpoint_id: endpointId } } },
         parseWebhookCreated
       );
     },
     async listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>> {
-      return call("GET", "/api/v1/webhooks/event-types", undefined, parseEventCatalog);
+      return call("GET", "/api/v1/webhooks/event-types", {}, parseEventCatalog);
     },
     async listWebhookDeliveries(
       endpointId: string,
@@ -560,16 +832,16 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/webhooks/${enc(endpointId)}/deliveries?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/webhooks/{endpoint_id}/deliveries",
+        { params: { path: { endpoint_id: endpointId }, query: filters } },
         parsePageOf(parseWebhookDelivery)
       );
     },
     async replayWebhookDelivery(attemptId: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
-        `/api/v1/webhooks/deliveries/${enc(attemptId)}/replay`,
-        undefined,
+        "/api/v1/webhooks/deliveries/{attempt_id}/replay",
+        { params: { path: { attempt_id: attemptId } } },
         parseEmpty
       );
     },
@@ -577,33 +849,38 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       endpointId: string,
       body: BulkReplayRequest
     ): Promise<Result<BulkReplayResponse, ApiError>> {
-      return call("POST", `/api/v1/webhooks/${enc(endpointId)}/replay`, body, parseBulkReplay);
+      return call(
+        "POST",
+        "/api/v1/webhooks/{endpoint_id}/replay",
+        { params: { path: { endpoint_id: endpointId } }, body },
+        parseBulkReplay
+      );
     },
 
     // ── Billing ───────────────────────────────────────────────────
     async getBillingSummary(): Promise<Result<BillingSummaryResponse, ApiError>> {
-      return call("GET", "/api/v1/billing", undefined, parseBillingSummary);
+      return call("GET", "/api/v1/billing", {}, parseBillingSummary);
     },
     async listUsage(
       filters: ListUsageFilters
     ): Promise<Result<PaginatedResponse<UsageResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/billing/usage?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/billing/usage",
+        { params: { query: filters } },
         parsePageOf(parseUsage)
       );
     },
     async getUsageSummary(): Promise<Result<UsagePeriodSummaryResponse, ApiError>> {
-      return call("GET", "/api/v1/billing/usage/summary", undefined, parseUsageSummary);
+      return call("GET", "/api/v1/billing/usage/summary", {}, parseUsageSummary);
     },
     async listBalanceHistory(
       filters: ListBalanceHistoryFilters
     ): Promise<Result<PaginatedResponse<BalanceTransactionResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/billing/history?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/billing/history",
+        { params: { query: filters } },
         parsePageOf(parseBalanceTx)
       );
     },
@@ -614,8 +891,8 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>> {
       return call(
         "GET",
-        `/api/v1/invoices?${buildQuery(filters)}`,
-        undefined,
+        "/api/v1/invoices",
+        { params: { query: filters } },
         parsePageOf(parseInvoice)
       );
     },
@@ -627,27 +904,29 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       return call(
         "GET",
         "/api/v1/alert-notifications/destinations",
-        undefined,
+        {},
         parseArrayOf(parseAlertDestination)
       );
     },
     async deleteAlertDestination(id: string): Promise<Result<null, ApiError>> {
       return call(
         "DELETE",
-        `/api/v1/alert-notifications/destinations/${enc(id)}`,
-        undefined,
+        "/api/v1/alert-notifications/destinations/{destination_id}",
+        { params: { path: { destination_id: id } } },
         parseEmpty
       );
     },
     async setAlertDestinationVersion(
       id: string,
       body: SetDestinationVersionRequest
-    ): Promise<Result<AlertNotificationDestinationResponse, ApiError>> {
+    ): Promise<Result<null, ApiError>> {
+      // API returns 204 No Content. Use `listAlertDestinations` for
+      // the new state if you need it.
       return call(
         "PATCH",
-        `/api/v1/alert-notifications/destinations/${enc(id)}/version`,
-        body,
-        parseAlertDestination
+        "/api/v1/alert-notifications/destinations/{destination_id}/version",
+        { params: { path: { destination_id: id } }, body },
+        parseEmpty
       );
     },
     async getCampaignAlertOverrides(
@@ -655,32 +934,21 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<CampaignOverridesResponse, ApiError>> {
       return call(
         "GET",
-        `/api/v1/alert-notifications/campaigns/${enc(campaignId)}/overrides`,
-        undefined,
+        "/api/v1/alert-notifications/campaigns/{campaign_id}/overrides",
+        { params: { path: { campaign_id: campaignId } } },
         parseCampaignAlertOverrides
       );
     },
     async setCampaignAlertOverrides(
       campaignId: string,
       body: SetCampaignOverridesRequest
-    ): Promise<Result<CampaignOverridesResponse, ApiError>> {
+    ): Promise<Result<null, ApiError>> {
       return call(
         "PUT",
-        `/api/v1/alert-notifications/campaigns/${enc(campaignId)}/overrides`,
-        body,
-        parseCampaignAlertOverrides
+        "/api/v1/alert-notifications/campaigns/{campaign_id}/overrides",
+        { params: { path: { campaign_id: campaignId } }, body },
+        parseEmpty
       );
     },
   };
-}
-
-function buildQuery(filters: object): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    // Port filter types only ever produce `undefined` for unset
-    // optional fields; we don't need to handle `null`.
-    if (value === undefined) continue;
-    qs.set(key, String(value));
-  }
-  return qs.toString();
 }

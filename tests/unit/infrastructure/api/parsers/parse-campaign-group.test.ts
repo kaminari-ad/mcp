@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseCampaignGroup,
-  parseCampaignGroupPage,
+  parseCampaignGroupArray,
 } from "../../../../../src/infrastructure/api/parsers/parse-campaign-group.js";
 
 const VALID = {
@@ -26,36 +26,50 @@ describe("parseCampaignGroup", () => {
     expect(parseCampaignGroup(withoutId).isErr()).toBe(true);
   });
 
-  it("defaults non-bool flags", () => {
-    const r = parseCampaignGroup({ ...VALID, is_default: "x", schedule_paused: "y" });
-    expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().is_default).toBe(false);
-    expect(r._unsafeUnwrap().schedule_paused).toBe(false);
+  it("rejects non-bool flag (strict schema)", () => {
+    expect(parseCampaignGroup({ ...VALID, is_default: "x" }).isErr()).toBe(true);
   });
 
-  it("treats null campaign_count as null", () => {
+  it("Ok with null campaign_count (nullable optional field)", () => {
     const r = parseCampaignGroup({ ...VALID, campaign_count: null });
-    expect(r._unsafeUnwrap().campaign_count).toBeNull();
-  });
-
-  it("treats non-number non-null campaign_count as null", () => {
-    const r = parseCampaignGroup({ ...VALID, campaign_count: "x" });
+    expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().campaign_count).toBeNull();
   });
 });
 
-describe("parseCampaignGroupPage", () => {
-  it("Ok valid", () => {
-    expect(parseCampaignGroupPage({ items: [VALID], total: 1, page: 1, limit: 50 }).isOk()).toBe(
-      true
-    );
+describe("parseCampaignGroupArray", () => {
+  it("Ok valid bare array (current OpenAPI contract)", () => {
+    const r = parseCampaignGroupArray([VALID]);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
   });
 
-  it("rejects bad envelope", () => {
-    expect(parseCampaignGroupPage("x").isErr()).toBe(true);
-    expect(parseCampaignGroupPage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
-    expect(
-      parseCampaignGroupPage({ items: [{ no: "id" }], total: 1, page: 1, limit: 50 }).isErr()
-    ).toBe(true);
+  it("Ok valid paginated envelope (defensive fallback if API ever wraps)", () => {
+    const r = parseCampaignGroupArray({
+      items: [VALID],
+      total: 1,
+      page: 1,
+      limit: 50,
+      pages: 1,
+    });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toHaveLength(1);
+  });
+
+  it("Ok empty paginated envelope", () => {
+    const r = parseCampaignGroupArray({ items: [], total: 0, page: 1, limit: 50, pages: 0 });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual([]);
+  });
+
+  it("rejects garbage (neither array nor envelope)", () => {
+    expect(parseCampaignGroupArray("x").isErr()).toBe(true);
+    expect(parseCampaignGroupArray({ items: "not-an-array" }).isErr()).toBe(true);
+    expect(parseCampaignGroupArray(42).isErr()).toBe(true);
+  });
+
+  it("rejects when an item is malformed", () => {
+    expect(parseCampaignGroupArray([{ no: "id" }]).isErr()).toBe(true);
+    expect(parseCampaignGroupArray({ items: [{ no: "id" }] }).isErr()).toBe(true);
   });
 });

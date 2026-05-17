@@ -1,7 +1,17 @@
 /**
- * Coverage for `parse-generic.ts`. One describe block per parser; each
- * exercises happy + the main error branches so the overall file hits
- * 100% line/statement and ≥95% branch.
+ * Coverage for `parse-generic.ts`. Post Phase 2b each per-DTO parser
+ * is a one-liner over `parseWithSchema(schemas.X.pick({...}).strip())`;
+ * fixtures must be schema-valid (UUIDs, ISO datetimes, enum values).
+ *
+ * Tests focus on:
+ *   - happy path (valid OpenAPI-shaped payload)
+ *   - the typed `upstream` error path (missing required, wrong type)
+ *   - the `null` paths for nullable optional fields
+ *
+ * The exhaustive list of helpers + paginated-envelope semantics is
+ * covered in `parse-with-schema.test.ts`. Here we only assert that
+ * each per-DTO parser is wired to the right schema and returns the
+ * expected `Result` shape.
  */
 
 import { describe, expect, it } from "vitest";
@@ -32,6 +42,13 @@ import {
 } from "../../../../../src/infrastructure/api/parsers/parse-generic.js";
 import { err, ok, type Result } from "../../../../../src/shared/result.js";
 
+// Stable UUIDs / ISO datetimes used across the file so each parser
+// has a canonical "this is valid" sample.
+const UUID_A = "00000000-0000-0000-0000-000000000001";
+const UUID_B = "00000000-0000-0000-0000-000000000002";
+const UUID_C = "00000000-0000-0000-0000-000000000003";
+const TS = "2026-05-17T12:00:00Z";
+
 describe("parsePageOf", () => {
   const inner = (raw: unknown): Result<{ id: string }, ApiError> => {
     if (
@@ -45,283 +62,478 @@ describe("parsePageOf", () => {
     return err({ kind: "upstream", detail: "bad" });
   };
   it("Ok valid envelope", () => {
-    const parse = parsePageOf(inner);
-    const r = parse({ items: [{ id: "x" }], total: 1, page: 1, limit: 50 });
+    const r = parsePageOf(inner)({ items: [{ id: "x" }], total: 1, page: 1, limit: 50 });
     expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({ items: [{ id: "x" }], total: 1, page: 1, limit: 50 });
   });
   it("rejects non-object", () => {
     expect(parsePageOf(inner)("x").isErr()).toBe(true);
   });
-  it("rejects bad envelope shape", () => {
+  it("rejects bad envelope shape (wrong types)", () => {
     expect(parsePageOf(inner)({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
+    expect(parsePageOf(inner)({ items: [], total: "1", page: 1, limit: 50 }).isErr()).toBe(true);
   });
-  it("rejects when item parse fails", () => {
+  it("rejects when an item parse fails", () => {
     expect(parsePageOf(inner)({ items: [{}], total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
   });
 });
 
 describe("parseArrayOf", () => {
-  const inner = (raw: unknown): Result<string, ApiError> =>
-    typeof raw === "string" ? ok(raw) : err({ kind: "upstream", detail: "bad" });
+  const inner = (raw: unknown): Result<{ id: string }, ApiError> =>
+    typeof raw === "object" && raw !== null && "id" in raw
+      ? ok({ id: String((raw as { id: unknown }).id) })
+      : err({ kind: "upstream", detail: "x" });
   it("Ok valid array", () => {
-    expect(parseArrayOf(inner)(["a", "b"]).isOk()).toBe(true);
+    const r = parseArrayOf(inner)([{ id: "a" }, { id: "b" }]);
+    expect(r._unsafeUnwrap()).toEqual([{ id: "a" }, { id: "b" }]);
   });
   it("rejects non-array", () => {
     expect(parseArrayOf(inner)({}).isErr()).toBe(true);
   });
-  it("rejects when item parse fails", () => {
-    expect(parseArrayOf(inner)(["a", 1]).isErr()).toBe(true);
+  it("rejects when an item parse fails", () => {
+    expect(parseArrayOf(inner)([{}]).isErr()).toBe(true);
   });
 });
 
-describe("withId-based parsers", () => {
-  it("parseOrg Ok / Err", () => {
-    expect(
-      parseOrg({
-        id: "o1",
-        name: "X",
-        owner_id: "u1",
-        is_active: true,
-        created_at: "t",
-      }).isOk()
-    ).toBe(true);
-    expect(parseOrg("x").isErr()).toBe(true);
-    expect(parseOrg({ name: "no id" }).isErr()).toBe(true);
-  });
-  it("parseUser defensive defaults", () => {
-    const r = parseUser({ id: "u1", email: 42 });
+// ── Per-DTO parsers ──────────────────────────────────────────────
+
+describe("parseOrg", () => {
+  it("Ok valid", () => {
+    const r = parseOrg({
+      id: UUID_A,
+      name: "Acme",
+      owner_id: UUID_B,
+      is_active: true,
+      created_at: TS,
+    });
     expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().email).toBe("");
+    expect(r._unsafeUnwrap().name).toBe("Acme");
   });
-  it("parseRole on a realistic API payload", () => {
+  it("rejects on non-UUID id", () => {
+    const r = parseOrg({
+      id: "not-uuid",
+      name: "x",
+      owner_id: UUID_B,
+      is_active: true,
+      created_at: TS,
+    });
+    expect(r.isErr()).toBe(true);
+    expect(r._unsafeUnwrapErr().detail).toContain("malformed org");
+  });
+  it("rejects on missing required field", () => {
+    const r = parseOrg({ id: UUID_A, owner_id: UUID_B, is_active: true, created_at: TS });
+    expect(r.isErr()).toBe(true);
+  });
+});
+
+describe("parseUser", () => {
+  it("Ok valid", () => {
+    const r = parseUser({
+      id: UUID_A,
+      email: "alice@example.com",
+      name: "Alice",
+      role_name: "owner",
+      is_active: true,
+      created_at: TS,
+    });
+    expect(r._unsafeUnwrap().email).toBe("alice@example.com");
+  });
+  it("rejects on missing required field (name)", () => {
+    const r = parseUser({
+      id: UUID_A,
+      email: "alice@example.com",
+      role_name: "owner",
+      is_active: true,
+      created_at: TS,
+    });
+    expect(r.isErr()).toBe(true);
+  });
+});
+
+describe("parseRole", () => {
+  it("Ok valid", () => {
     const r = parseRole({
-      id: "00000000-0000-0000-0000-000000000033",
-      name: "admin",
+      id: UUID_A,
+      name: "owner",
       scope: "organization",
-      is_system: false,
-      permissions: ["scans.read", "scans.write", "billing.read"],
+      is_system: true,
+      permissions: ["scans.read", "scans.write"],
     });
-    expect(r.isOk()).toBe(true);
-    const v = r._unsafeUnwrap();
-    expect(v.scope).toBe("organization");
-    expect(v.permissions).toEqual(["scans.read", "scans.write", "billing.read"]);
+    expect(r._unsafeUnwrap().permissions).toEqual(["scans.read", "scans.write"]);
   });
-  it("parseRole filters non-string permissions and defaults scope", () => {
-    const r = parseRole({ id: "r1", permissions: ["a", 1, "b"] });
-    expect(r._unsafeUnwrap().permissions).toEqual(["a", "b"]);
-    expect(r._unsafeUnwrap().scope).toBe("organization");
-  });
-  it("parseApiKeyCreated Ok / requires full_key", () => {
-    expect(parseApiKeyCreated({ id: "k1", full_key: "secret" }).isOk()).toBe(true);
-    expect(parseApiKeyCreated({ id: "k1" }).isErr()).toBe(true);
-    expect(parseApiKeyCreated("x").isErr()).toBe(true);
-  });
-  it("parseTagDetail Ok / Err / null org id", () => {
-    expect(parseTagDetail({ slug: "x", organization_id: null }).isOk()).toBe(true);
-    expect(parseTagDetail({}).isErr()).toBe(true);
-    expect(parseTagDetail("x").isErr()).toBe(true);
-  });
-  it("parseScanTag Ok / Err", () => {
-    expect(parseScanTag({ id: "s1", scan_id: "scan-1", tag_slug: "x" }).isOk()).toBe(true);
-    expect(parseScanTag({}).isErr()).toBe(true);
-    expect(parseScanTag("x").isErr()).toBe(true);
-  });
-  it("parseUsage on a realistic API row", () => {
-    const r = parseUsage({
-      id: "00000000-0000-0000-0000-000000000444",
-      scan_id: "00000000-0000-0000-0000-000000000aaa",
-      charged_micros: 250,
-      balance_after_micros: 49_750,
-      within_plan: false,
-      event_type: "recheck",
-      created_at: "2026-05-16T12:00:00Z",
+  it("rejects on non-string permissions array entry", () => {
+    const r = parseRole({
+      id: UUID_A,
+      name: "owner",
+      scope: "organization",
+      is_system: true,
+      permissions: ["scans.read", 42],
     });
-    expect(r.isOk()).toBe(true);
-    const v = r._unsafeUnwrap();
-    expect(v.charged_micros).toBe(250);
-    expect(v.balance_after_micros).toBe(49_750);
-    expect(v.within_plan).toBe(false);
-    expect(v.event_type).toBe("recheck");
-  });
-  it("parseUsage with skeleton input falls back to defaults", () => {
-    const r = parseUsage({ id: "x" });
-    expect(r._unsafeUnwrap().event_type).toBe("scan");
-    expect(r._unsafeUnwrap().charged_micros).toBe(0);
-  });
-  it("parseBalanceTx on a realistic API row", () => {
-    const r = parseBalanceTx({
-      id: "00000000-0000-0000-0000-000000000555",
-      type: "usage_charge",
-      amount_micros: -250,
-      balance_after_micros: 49_750,
-      description: "Scan charge",
-      reference_kind: "scan",
-      reference_id: "00000000-0000-0000-0000-000000000aaa",
-      actor_user_id: null,
-      created_at: "2026-05-16T12:00:00Z",
-    });
-    expect(r.isOk()).toBe(true);
-    const v = r._unsafeUnwrap();
-    expect(v.type).toBe("usage_charge");
-    expect(v.amount_micros).toBe(-250);
-    expect(v.reference_kind).toBe("scan");
-    expect(v.actor_user_id).toBeNull();
-  });
-  it("parseBalanceTx with skeleton input falls back to defaults", () => {
-    const r = parseBalanceTx({ id: "x" });
-    expect(r._unsafeUnwrap().amount_micros).toBe(0);
-  });
-  it("parseInvoice Ok / null paid_at coercion", () => {
-    const r = parseInvoice({ id: "x", paid_at: 5 });
-    expect(r._unsafeUnwrap().paid_at).toBeNull();
-  });
-  it("parseWebhookDelivery Ok / null response_status", () => {
-    const r = parseWebhookDelivery({ id: "x", response_status: null });
-    expect(r._unsafeUnwrap().response_status).toBeNull();
-  });
-  it("parseAlertDestination on a realistic Slack destination", () => {
-    const r = parseAlertDestination({
-      id: "00000000-0000-0000-0000-000000000999",
-      organization_id: "00000000-0000-0000-0000-000000000010",
-      channel: "slack",
-      name: "Ops alerts",
-      is_active: true,
-      is_default_target: true,
-      version: "internal",
-      consecutive_failures: 0,
-      last_delivery_at: "2026-05-16T11:59:00Z",
-      last_delivery_status: 200,
-      slack_workspace_id: "T01234567",
-      slack_channel_id: "C09876543",
-      slack_channel_name: "ops-alerts",
-      telegram_chat_id: null,
-      telegram_chat_title: null,
-      telegram_chat_type: null,
-      email_address: null,
-      included_label_keys: ["env", "campaign"],
-      created_at: "2026-05-01T00:00:00Z",
-      updated_at: "2026-05-16T11:59:00Z",
-    });
-    expect(r.isOk()).toBe(true);
-    const v = r._unsafeUnwrap();
-    expect(v.channel).toBe("slack");
-    expect(v.is_default_target).toBe(true);
-    expect(v.version).toBe("internal");
-    expect(v.slack_workspace_id).toBe("T01234567");
-    expect(v.slack_channel_name).toBe("ops-alerts");
-    expect(v.included_label_keys).toEqual(["env", "campaign"]);
-  });
-  it("parseAlertDestination on a realistic Telegram destination", () => {
-    const r = parseAlertDestination({
-      id: "00000000-0000-0000-0000-000000000aaa",
-      organization_id: "00000000-0000-0000-0000-000000000010",
-      channel: "telegram",
-      name: "TG bot",
-      is_active: true,
-      is_default_target: false,
-      version: "public",
-      consecutive_failures: 3,
-      last_delivery_at: "2026-05-16T11:00:00Z",
-      last_delivery_status: 403,
-      slack_workspace_id: null,
-      slack_channel_id: null,
-      slack_channel_name: null,
-      telegram_chat_id: "-100123456",
-      telegram_chat_title: "Kaminari alerts",
-      telegram_chat_type: "supergroup",
-      email_address: null,
-      included_label_keys: [],
-      created_at: "2026-04-01T00:00:00Z",
-      updated_at: "2026-05-16T11:00:00Z",
-    });
-    expect(r.isOk()).toBe(true);
-    const v = r._unsafeUnwrap();
-    expect(v.channel).toBe("telegram");
-    expect(v.telegram_chat_title).toBe("Kaminari alerts");
-    expect(v.telegram_chat_type).toBe("supergroup");
-    expect(v.consecutive_failures).toBe(3);
-    expect(v.last_delivery_status).toBe(403);
-  });
-  it("parseAlertDestination with skeleton input falls back to defaults", () => {
-    const r = parseAlertDestination({ id: "x" });
-    expect(r._unsafeUnwrap().channel).toBe("");
-    expect(r._unsafeUnwrap().version).toBe("public");
-  });
-  it("parsePolicyEntry Ok", () => {
-    expect(parsePolicyEntry({ id: "e1", tag_slug: "x", country_codes: ["US"] }).isOk()).toBe(true);
+    expect(r.isErr()).toBe(true);
   });
 });
 
-describe("standalone parsers", () => {
-  it("parseRuleTest Ok with defaults", () => {
-    const r = parseRuleTest({});
-    expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().matched).toBe(false);
-    expect(parseRuleTest("x").isErr()).toBe(true);
+describe("parseApiKeyCreated", () => {
+  it("Ok valid", () => {
+    const r = parseApiKeyCreated({
+      id: UUID_A,
+      key_prefix: "kad_xx",
+      full_key: "kad_xxxxxxxxxxxxxx",
+      name: "ci-key",
+      expires_at: null,
+      created_at: TS,
+    });
+    expect(r._unsafeUnwrap().full_key).toBe("kad_xxxxxxxxxxxxxx");
   });
-  it("parseRuleTest collects tag results", () => {
+  it("rejects on missing full_key", () => {
+    const r = parseApiKeyCreated({
+      id: UUID_A,
+      key_prefix: "kad_xx",
+      name: "ci-key",
+      expires_at: null,
+      created_at: TS,
+    });
+    expect(r.isErr()).toBe(true);
+  });
+});
+
+describe("parseScanTag", () => {
+  const VALID = {
+    id: UUID_A,
+    scan_id: UUID_B,
+    tag_slug: "malware",
+    detail: "",
+    url: "https://example.com",
+    display_name: "Malware",
+    category: "security",
+    severity: "high",
+    created_at: TS,
+  };
+  it("Ok valid", () => {
+    expect(parseScanTag(VALID)._unsafeUnwrap().tag_slug).toBe("malware");
+  });
+  it("rejects non-uuid id", () => {
+    expect(parseScanTag({ ...VALID, id: "not-uuid" }).isErr()).toBe(true);
+  });
+  it("rejects on missing required (scan_id)", () => {
+    const { scan_id: _omit, ...rest } = VALID;
+    expect(parseScanTag(rest).isErr()).toBe(true);
+  });
+});
+
+describe("parseTagDetail", () => {
+  it("Ok valid system tag", () => {
+    const r = parseTagDetail({
+      slug: "malware",
+      category: "security",
+      source: "system",
+      display_name: "Malware",
+      description: "Malicious payload",
+      severity: "high",
+      is_system: true,
+      organization_id: null,
+      show_in_public_report: true,
+      scans_count: 0,
+      rules_count: 0,
+    });
+    expect(r._unsafeUnwrap().organization_id).toBeNull();
+  });
+  it("Ok valid custom tag with org id", () => {
+    const r = parseTagDetail({
+      slug: "custom",
+      category: "security",
+      source: "custom",
+      display_name: "Custom",
+      description: "",
+      severity: "medium",
+      is_system: false,
+      organization_id: UUID_A,
+      show_in_public_report: false,
+      scans_count: 12,
+      rules_count: 3,
+    });
+    expect(r._unsafeUnwrap().organization_id).toBe(UUID_A);
+  });
+  it("rejects on missing slug", () => {
+    const r = parseTagDetail({ category: "security" });
+    expect(r.isErr()).toBe(true);
+  });
+});
+
+describe("parseRuleTest", () => {
+  it("Ok valid", () => {
     const r = parseRuleTest({
       matched: true,
-      elapsed_ms: 7,
-      tags: [
-        { tag_slug: "malware", detail: "matched on .exe" },
-        { tag_slug: "phishing", detail: null },
-        { tag_slug: 42 },
-        { not_an_obj: true },
-        "not-an-object-at-all",
-      ],
+      elapsed_ms: 12,
+      tags: [{ tag_slug: "malware", detail: "matched" }],
     });
-    expect(r._unsafeUnwrap().tags).toEqual([
-      { tag_slug: "malware", detail: "matched on .exe" },
-      { tag_slug: "phishing", detail: null },
-    ]);
+    expect(r._unsafeUnwrap().matched).toBe(true);
+    expect(r._unsafeUnwrap().tags).toHaveLength(1);
   });
-  it("parseAlertStats Ok", () => {
-    expect(parseAlertStats({ open: 1 }).isOk()).toBe(true);
-    expect(parseAlertStats("x").isErr()).toBe(true);
+  it("Ok with empty tags array", () => {
+    const r = parseRuleTest({ matched: false, elapsed_ms: 5, tags: [] });
+    expect(r._unsafeUnwrap().tags).toEqual([]);
   });
-  it("parseUsageSummary Ok / Err", () => {
-    expect(parseUsageSummary({}).isOk()).toBe(true);
-    expect(parseUsageSummary("x").isErr()).toBe(true);
+});
+
+describe("parseAlertStats", () => {
+  it("Ok valid", () => {
+    const r = parseAlertStats({ open: 3, acknowledged: 0, resolved: 5, dismissed: 1 });
+    expect(r._unsafeUnwrap()).toEqual({ open: 3, acknowledged: 0, resolved: 5, dismissed: 1 });
   });
-  it("parseEventCatalog Ok / Err shapes", () => {
-    expect(
-      parseEventCatalog({
-        entries: [{ event_type: "scan.done", description: "" }],
-      }).isOk()
-    ).toBe(true);
-    expect(parseEventCatalog("x").isErr()).toBe(true);
-    expect(parseEventCatalog({ entries: "x" }).isErr()).toBe(true);
-    expect(parseEventCatalog({ entries: ["x"] }).isErr()).toBe(true);
-    expect(parseEventCatalog({ entries: [{ noType: "x" }] }).isErr()).toBe(true);
+  it("rejects on missing field", () => {
+    expect(parseAlertStats({ open: 3 }).isErr()).toBe(true);
   });
-  it("parseCampaignAlertOverrides Ok / Err / mode normalization", () => {
+});
+
+describe("parseUsage", () => {
+  const VALID = {
+    id: UUID_A,
+    scan_id: UUID_B,
+    charged_micros: 1000,
+    balance_after_micros: 5000,
+    within_plan: true,
+    event_type: "scan",
+    created_at: TS,
+  };
+  it("Ok valid", () => {
+    expect(parseUsage(VALID)._unsafeUnwrap().event_type).toBe("scan");
+  });
+  it("rejects wrong type (non-bool within_plan)", () => {
+    expect(parseUsage({ ...VALID, within_plan: "yes" }).isErr()).toBe(true);
+  });
+  it("rejects on missing required (charged_micros)", () => {
+    const { charged_micros: _omit, ...rest } = VALID;
+    expect(parseUsage(rest).isErr()).toBe(true);
+  });
+});
+
+describe("parseUsageSummary", () => {
+  const VALID = {
+    period_start: TS,
+    period_end: TS,
+    checks: 10,
+    rechecks: 2,
+    within_plan: 8,
+    overage: 4,
+    charged_micros: 12000,
+  };
+  it("Ok valid", () => {
+    expect(parseUsageSummary(VALID)._unsafeUnwrap().checks).toBe(10);
+  });
+  it("rejects on missing required (period_end)", () => {
+    const { period_end: _omit, ...rest } = VALID;
+    expect(parseUsageSummary(rest).isErr()).toBe(true);
+  });
+  it("rejects wrong type (non-number checks)", () => {
+    expect(parseUsageSummary({ ...VALID, checks: "x" }).isErr()).toBe(true);
+  });
+});
+
+describe("parseBalanceTx", () => {
+  const VALID = {
+    id: UUID_A,
+    type: "charge",
+    amount_micros: -1000,
+    balance_after_micros: 9000,
+    description: "",
+    reference_kind: "scan",
+    reference_id: UUID_B,
+    actor_user_id: null,
+    created_at: TS,
+  };
+  it("Ok valid", () => {
+    expect(parseBalanceTx(VALID)._unsafeUnwrap().type).toBe("charge");
+  });
+  it("Ok with non-null actor_user_id", () => {
+    const r = parseBalanceTx({ ...VALID, actor_user_id: UUID_A });
+    expect(r._unsafeUnwrap().actor_user_id).toBe(UUID_A);
+  });
+  it("rejects on missing required (id)", () => {
+    const { id: _omit, ...rest } = VALID;
+    expect(parseBalanceTx(rest).isErr()).toBe(true);
+  });
+});
+
+describe("parseInvoice", () => {
+  const VALID = {
+    id: UUID_A,
+    number: "INV-0001",
+    type: "final",
+    status: "paid",
+    total_micros: 100000,
+    currency: "USD",
+    period_start: TS,
+    period_end: TS,
+    issued_at: TS,
+    paid_at: TS,
+    voided_at: null,
+    has_pdf: true,
+    description: "",
+    payment_method: "card",
+    created_at: TS,
+  };
+  it("Ok valid", () => {
+    expect(parseInvoice(VALID)._unsafeUnwrap().paid_at).toBe(TS);
+  });
+  it("Ok with null paid_at (issued but unpaid)", () => {
+    expect(parseInvoice({ ...VALID, paid_at: null }).isOk()).toBe(true);
+  });
+  it("rejects on missing required (number)", () => {
+    const { number: _omit, ...rest } = VALID;
+    expect(parseInvoice(rest).isErr()).toBe(true);
+  });
+});
+
+describe("parseWebhookDelivery", () => {
+  it("Ok valid with status", () => {
+    const r = parseWebhookDelivery({
+      id: UUID_A,
+      event_id: UUID_B,
+      event_type: "scan.completed",
+      response_status: 200,
+      success: true,
+      attempt_number: 1,
+      error_code: null,
+      elapsed_ms: 12,
+      created_at: TS,
+    });
+    expect(r._unsafeUnwrap().response_status).toBe(200);
+  });
+  it("Ok valid with null status + error_code", () => {
+    const r = parseWebhookDelivery({
+      id: UUID_A,
+      event_id: UUID_B,
+      event_type: "scan.completed",
+      response_status: null,
+      success: false,
+      attempt_number: 1,
+      error_code: "connect",
+      elapsed_ms: 5000,
+      created_at: TS,
+    });
+    expect(r._unsafeUnwrap().response_status).toBeNull();
+    expect(r._unsafeUnwrap().error_code).toBe("connect");
+  });
+});
+
+describe("parseEventCatalog", () => {
+  it("Ok valid", () => {
+    const r = parseEventCatalog({
+      entries: [{ event_type: "scan.completed", description: "scan finished", sample_payload: {} }],
+    });
+    expect(r._unsafeUnwrap().entries).toHaveLength(1);
+  });
+  it("Ok empty entries", () => {
+    expect(parseEventCatalog({ entries: [] })._unsafeUnwrap().entries).toEqual([]);
+  });
+  it("rejects on missing entries", () => {
+    expect(parseEventCatalog({}).isErr()).toBe(true);
+  });
+});
+
+describe("parseAlertDestination", () => {
+  const VALID = {
+    id: UUID_A,
+    channel: "slack",
+    name: "#alerts",
+    is_active: true,
+    is_default_target: false,
+    version: "public",
+    consecutive_failures: 0,
+    last_delivery_at: TS,
+    last_delivery_status: 200,
+    slack_workspace_id: UUID_B,
+    slack_channel_name: "#alerts",
+    telegram_chat_title: null,
+    telegram_chat_type: null,
+    email_address: null,
+    included_label_keys: ["env"],
+    created_at: TS,
+    updated_at: TS,
+  };
+  it("Ok valid slack", () => {
+    expect(parseAlertDestination(VALID)._unsafeUnwrap().channel).toBe("slack");
+  });
+  it("rejects on missing required (channel)", () => {
+    const { channel: _omit, ...rest } = VALID;
+    expect(parseAlertDestination(rest).isErr()).toBe(true);
+  });
+  it("rejects wrong type (non-bool is_active)", () => {
+    expect(parseAlertDestination({ ...VALID, is_active: "true" }).isErr()).toBe(true);
+  });
+});
+
+describe("parseCampaignAlertOverrides", () => {
+  it("Ok valid inherit", () => {
     const r = parseCampaignAlertOverrides({
-      campaign_id: "c1",
-      mode: "include",
-      destination_ids: ["d1"],
+      campaign_id: UUID_A,
+      mode: "inherit",
+      destination_ids: [],
     });
-    expect(r._unsafeUnwrap().mode).toBe("include");
-    expect(parseCampaignAlertOverrides({ campaign_id: "c1" })._unsafeUnwrap().mode).toBe("inherit");
-    expect(parseCampaignAlertOverrides("x").isErr()).toBe(true);
-    expect(parseCampaignAlertOverrides({}).isErr()).toBe(true);
+    expect(r._unsafeUnwrap().mode).toBe("inherit");
   });
-  it("parseBulkReplay Ok / Err", () => {
-    expect(parseBulkReplay({ replayed: 5, skipped: 1 }).isOk()).toBe(true);
-    expect(parseBulkReplay("x").isErr()).toBe(true);
+  it("Ok valid include with destinations", () => {
+    const r = parseCampaignAlertOverrides({
+      campaign_id: UUID_A,
+      mode: "include",
+      destination_ids: [UUID_B, UUID_C],
+    });
+    expect(r._unsafeUnwrap().destination_ids).toEqual([UUID_B, UUID_C]);
   });
-  it("parseGroupAction Ok / Err", () => {
+  it("rejects on missing campaign_id", () => {
+    expect(parseCampaignAlertOverrides({ mode: "inherit" }).isErr()).toBe(true);
+  });
+});
+
+describe("parseBulkReplay", () => {
+  it("Ok valid", () => {
+    expect(parseBulkReplay({ replayed: 5, skipped: 2 })._unsafeUnwrap()).toEqual({
+      replayed: 5,
+      skipped: 2,
+    });
+  });
+  it("rejects on missing required (skipped)", () => {
+    expect(parseBulkReplay({ replayed: 5 }).isErr()).toBe(true);
+  });
+  it("rejects non-object", () => {
+    expect(parseBulkReplay("nope").isErr()).toBe(true);
+  });
+});
+
+describe("parseGroupAction", () => {
+  it("Ok valid full payload", () => {
     const r = parseGroupAction({
-      group_id: "g1",
+      group_id: UUID_A,
       affected_campaigns: 3,
       cancelled_count: 0,
-      run_ids: ["r1", "r2"],
-      failures: [{ campaign_id: "c1", error_code: "X", detail: "boom" }],
+      run_ids: [UUID_B, UUID_C],
+      failures: [{ campaign_id: UUID_B, error_code: "X", detail: "boom" }],
     });
     expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().run_ids).toEqual(["r1", "r2"]);
-    expect(r._unsafeUnwrap().failures.length).toBe(1);
+    expect(r._unsafeUnwrap().run_ids).toEqual([UUID_B, UUID_C]);
+    expect(r._unsafeUnwrap().failures?.length ?? 0).toBe(1);
+  });
+  it("Ok with optional fields omitted (no runs / no failures)", () => {
+    const r = parseGroupAction({ group_id: UUID_A, affected_campaigns: 0, cancelled_count: 0 });
+    expect(r.isOk()).toBe(true);
+  });
+  it("rejects non-object", () => {
     expect(parseGroupAction("x").isErr()).toBe(true);
     expect(parseGroupAction({}).isErr()).toBe(true);
+  });
+});
+
+describe("parsePolicyEntry", () => {
+  it("Ok valid", () => {
+    const r = parsePolicyEntry({
+      id: UUID_A,
+      tag_slug: "malware",
+      country_codes: ["US", "DE"],
+    });
+    expect(r._unsafeUnwrap().country_codes).toEqual(["US", "DE"]);
+  });
+  it("rejects on missing id", () => {
+    expect(parsePolicyEntry({ tag_slug: "malware", country_codes: [] }).isErr()).toBe(true);
   });
 });

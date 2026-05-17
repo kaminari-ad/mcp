@@ -1,99 +1,74 @@
 /**
- * Parsers for `/api/v1/webhooks` — list, single item, and create
- * response.
+ * Parsers for `/api/v1/webhooks`.
  *
- * `POST /api/v1/webhooks` and `POST .../{id}/rotate-secret` both
+ * `POST /api/v1/webhooks` and `POST /webhooks/{id}/rotate-secret`
  * return the envelope `{ webhook: WebhookResponse, secret: string }`
- * — the secret is shown exactly once.
+ * — the secret is shown exactly once on creation / rotation.
+ *
+ * `POST /api/v1/webhooks/{id}/test` returns `TestWebhookResponse`
+ * synchronously (success + status + elapsed + error + body).
  */
+
+import { z } from "zod";
 
 import type {
   ApiError,
+  TestWebhookResponse,
   WebhookCreatedResponse,
   WebhookResponse,
 } from "../../../domain/ports/api-gateway.js";
-import { err, ok, type Result } from "../../../shared/result.js";
-import { isStringRecord } from "./shared.js";
+import { schemas } from "../../../shared/api/zod-schemas.js";
+import type { Result } from "../../../shared/result.js";
+import { parseWithSchema } from "./parse-with-schema.js";
 
-function s(v: unknown, fallback: string): string {
-  return typeof v === "string" ? v : fallback;
-}
-function sOrNull(v: unknown): string | null {
-  if (v === null) return null;
-  return typeof v === "string" ? v : null;
-}
-function b(v: unknown, fallback: boolean): boolean {
-  return typeof v === "boolean" ? v : fallback;
-}
-function strArr(v: unknown): readonly string[] {
-  if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === "string");
-}
-function obj(v: unknown): Readonly<Record<string, unknown>> {
-  return isStringRecord(v) ? v : {};
-}
+const WebhookSchema = schemas.WebhookResponse.pick({
+  id: true,
+  url: true,
+  description: true,
+  event_types: true,
+  campaign_ids: true,
+  is_active: true,
+  disabled_reason: true,
+  disabled_at: true,
+  health: true,
+  created_at: true,
+  updated_at: true,
+}).strip();
 
-function buildWebhook(raw: Record<string, unknown>, id: string): WebhookResponse {
-  return {
-    id,
-    url: s(raw["url"], ""),
-    description: s(raw["description"], ""),
-    event_types: [...strArr(raw["event_types"])],
-    campaign_ids: [...strArr(raw["campaign_ids"])],
-    is_active: b(raw["is_active"], true),
-    disabled_reason: sOrNull(raw["disabled_reason"]),
-    disabled_at: sOrNull(raw["disabled_at"]),
-    health: obj(raw["health"]) as WebhookResponse["health"],
-    created_at: s(raw["created_at"], ""),
-    updated_at: s(raw["updated_at"], ""),
-  };
-}
+const WebhookListSchema = z.array(WebhookSchema);
 
-/**
- *
- */
-export function parseWebhook(raw: unknown): Result<WebhookResponse, ApiError> {
-  if (!isStringRecord(raw)) return err({ kind: "upstream", detail: "malformed webhook" });
-  const id = raw["id"];
-  if (typeof id !== "string") return err({ kind: "upstream", detail: "webhook: id required" });
-  return ok(buildWebhook(raw, id));
-}
+const WebhookCreatedSchema = z
+  .object({
+    webhook: WebhookSchema,
+    secret: z.string(),
+  })
+  .strip();
 
-/**
- *
- */
-export function parseWebhookList(raw: unknown): Result<readonly WebhookResponse[], ApiError> {
-  if (!Array.isArray(raw)) {
-    return err({ kind: "upstream", detail: "expected array of webhooks" });
-  }
-  const out: WebhookResponse[] = [];
-  for (const item of raw) {
-    const r = parseWebhook(item);
-    if (r.isErr()) return err(r.error);
-    out.push(r.value);
-  }
-  return ok(out);
-}
+const TestWebhookResponseSchema = schemas.TestWebhookResponse.pick({
+  success: true,
+  response_status: true,
+  elapsed_ms: true,
+  error_code: true,
+  response_body: true,
+}).strip();
 
-/**
- *
- */
-export function parseWebhookCreated(raw: unknown): Result<WebhookCreatedResponse, ApiError> {
-  if (!isStringRecord(raw)) {
-    return err({ kind: "upstream", detail: "malformed webhook-created response" });
-  }
-  const wh = raw["webhook"];
-  const secret = raw["secret"];
-  if (!isStringRecord(wh) || typeof secret !== "string") {
-    return err({
-      kind: "upstream",
-      detail: "webhook-created: { webhook, secret } envelope required",
-    });
-  }
-  const id = wh["id"];
-  if (typeof id !== "string") {
-    return err({ kind: "upstream", detail: "webhook-created: webhook.id required" });
-  }
-  const result: WebhookCreatedResponse = { webhook: buildWebhook(wh, id), secret };
-  return ok(result);
-}
+export const parseWebhook = (raw: unknown): Result<WebhookResponse, ApiError> =>
+  parseWithSchema(WebhookSchema, raw, "webhook") as Result<WebhookResponse, ApiError>;
+
+export const parseWebhookList = (raw: unknown): Result<readonly WebhookResponse[], ApiError> =>
+  parseWithSchema(WebhookListSchema, raw, "webhooks") as Result<
+    readonly WebhookResponse[],
+    ApiError
+  >;
+
+export const parseWebhookCreated = (raw: unknown): Result<WebhookCreatedResponse, ApiError> =>
+  parseWithSchema(WebhookCreatedSchema, raw, "webhook-created") as Result<
+    WebhookCreatedResponse,
+    ApiError
+  >;
+
+export const parseTestWebhookResponse = (raw: unknown): Result<TestWebhookResponse, ApiError> =>
+  parseWithSchema(TestWebhookResponseSchema, raw, "test-webhook") as Result<
+    TestWebhookResponse,
+    ApiError
+  >;

@@ -7,6 +7,211 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (parser-drift phase 5 — post-review hardening)
+
+- **`list_policy_sets` regression introduced by phase 2b.** The
+  schema-strict parser required `entries`, but `GET /api/v1/policy-sets`
+  returns `PolicySetListItem` (a slim per-item shape WITHOUT entries —
+  entries are loaded on demand via `get_policy_set(id)`). Every real
+  list call after the phase 2b roll-out returned
+  `"malformed policy-sets: 0.entries: Required"`. Now:
+  - New port DTO `PolicySetListItemResponse` (no `entries`).
+  - New `PolicySetListItemSchema` in `parse-policy-set.ts` backed by
+    the generated `schemas.PolicySetListItem`.
+  - `list_policy_sets` tool now exposes the slim shape and its
+    description tells the agent to follow up with `get_policy_set`
+    when it needs the entries.
+  - HTTP gateway test stub + fake fixture updated to the slim shape.
+  - Verified against prod API via end-to-end smoke against a sandbox
+    org: parser now accepts the real response.
+- **`set_alert_destination_version` was parsing a 204 No Content as
+  JSON.** Pre-existing on `main` but surfaced more loudly under strict
+  zod. Now uses `parseEmpty`; port returns `Result<null>`; tool emits
+  `{ updated: true }` like the other 204 mutators. HTTP gateway test
+  updated to a 204 stub (the previous 200-with-body fixture masked
+  the real contract).
+- **`create_api_key` rejected `expires_at: null`.** Common JSON-client
+  convention is to send `null` explicitly for "no expiry". Input
+  schema now accepts both `null` and omit; the gateway sees them as
+  equivalent (no `expires_at` field on the request body).
+- **Dist bundle ~770 KB → ~210 KB.** The `openapi-zod-client`
+  generator emits a Zodios endpoints catalogue + `axios` client at
+  the tail of `zod-schemas.ts`. We use only the `schemas` bag for
+  runtime validation; the MCP gateway is `openapi-fetch`-based, not
+  Zodios. `scripts/gen-api-types.ts` now post-processes the generated
+  output to strip the Zodios runtime (imports, `endpoints` array,
+  `api` instance, `createApiClient` helper). Axios + `form-data` (which
+  use CJS `require("util")`) no longer reach the bundle — this also
+  fixes a `"Dynamic require of util is not supported"` crash on
+  `node dist/bin.js` startup that the integration smoke test caught.
+  `check:bundle-size` reverted to the original 500 KB ceiling.
+- **`{set_id}` path templates corrected to `{policy_set_id}`** in
+  `http-api-gateway.ts` to match the OpenAPI spec. Runtime URLs are
+  identical (openapi-fetch substitutes by key name), but the literal
+  now lines up with the spec for future-readers.
+- **CONTRIBUTING.md "Tenant isolation" §9** added — the pinned 5-key
+  outbound header allowlist (authorization / content-type / accept /
+  user-agent / x-request-id) is now an explicit numbered rule, not
+  an implicit one referenced from inline comments. Stale §8/§11
+  references in `http-api-gateway.ts`, `pino-logger.ts`, and the
+  isolation test headers updated to point at the correct sections.
+- **Empty-body JSDocs filled in.** `parse-empty.ts::parseEmpty` and
+  `parse-count-envelope.ts::parseIntField` now document the contract
+  (204 No Content vs single-int envelope) instead of shipping
+  placeholder `/** * */` stubs.
+- **Tool-test success-payload assertions.** Several 204-mutator tool
+  tests (`set_alert_destination_version`, `set_campaign_alert_overrides`,
+  `request_policy_set_approval`, `update_user_role`) only asserted
+  `isOk()` and never checked the synthetic `{ updated: true }` /
+  `{ requested: true }` payload — a regression that silently changed
+  the success shape would have slipped through. Each now asserts
+  both the call body AND the success payload.
+- **Per-DTO parser error coverage gaps closed.** `parseScanTag`,
+  `parseUsage`, `parseUsageSummary`, `parseBalanceTx`, `parseInvoice`,
+  `parseAlertDestination`, `parseBulkReplay` were happy-path only.
+  Added missing-required + wrong-type cases to each. Coverage stays
+  100% lines + 100% statements + 98.48% branches.
+
+### Fixed (parser-drift phase 1)
+
+Production smoke against a fresh test org found 8 of the 82 tools
+broken on 4 distinct root-cause patterns. All fixed; the global
+masking bug that hid the real failure mode is fixed too.
+
+- **API returns 204 No Content, parser expected entity.** Four tools
+  hit this — `set_campaign_alert_overrides`, `request_policy_set_approval`,
+  `update_tag_definition`, `update_user_role` — with errors like
+  `malformed user` / `malformed tag detail` / `malformed policy-set`.
+  Parsers now use `parseEmpty`; port DTOs return `null`; the tool
+  output is `{ updated: true }` / `{ requested: true }` so JSON output
+  stays a plain object. Tool descriptions updated to point at the
+  follow-up GET when the caller needs the new state echoed.
+- **Action endpoint returns `GroupActionResponse` summary, parser
+  expected the group entity.** `archive_campaign_group` and
+  `unarchive_campaign_group` both POST endpoints return
+  `{ group_id, affected_campaigns, cancelled_count, run_ids,
+  failures }` like `run_campaign_group` / `cancel_campaign_group`.
+  Parsers now use the existing `parseGroupAction`; port DTO is
+  `GroupActionResponse`.
+- **Paginated envelope vs bare array (inverted from last week).**
+  `list_campaign_groups` — OpenAPI documents the response as a bare
+  `CampaignGroupResponse[]` but the parser was `parseCampaignGroupPage`
+  expecting `{items, total, page, limit}`. New
+  `parseCampaignGroupArray` accepts both shapes defensively (same
+  `unwrapItems` pattern used in `parsePolicySetList`). Tool DTO becomes
+  `readonly CampaignGroupResponse[]` and the bogus `page` / `limit`
+  query params (the endpoint only documents `archived?`) are dropped.
+- **Missing required request body + ignored response.** `test_webhook`
+  sent `undefined` body, but the API requires `{event_type: string}`
+  (422 without). The rich `TestWebhookResponse` was dropped via
+  `parseEmpty`. The gateway now sends the body; new
+  `parseTestWebhookResponse` decodes
+  `{ success, response_status, elapsed_ms, error_code, response_body }`
+  so the agent can diagnose a receiver failure from one call.
+- **`error-mapping.ts::detail()` only handled string `detail`.**
+  FastAPI 422 returns `detail: ValidationError[]`. Every 422 across
+  every tool degraded to opaque `"Upstream error"` — which masked the
+  real `test_webhook` failure mode. The detail extractor now walks
+  the array, formats each entry as `"<loc>: <msg>"`, joins with
+  `; `, surfaces field-level RCA in the tool error string.
+
+### Added (parser-drift phase 2a — infrastructure for the rest)
+
+- **Generated zod runtime schemas** at `src/shared/api/zod-schemas.ts`.
+  `scripts/gen-api-types.ts` now emits both
+  `src/shared/api/openapi.ts` (types, via `openapi-typescript`) and
+  `src/shared/api/zod-schemas.ts` (runtime schemas + Zodios endpoint
+  catalogue, via `openapi-zod-client`) from the SAME live OpenAPI
+  document — so the two files cannot drift relative to each other,
+  and the existing CI drift-check on the committed copies covers
+  both. Source URL changed from `https://kaminari.ad/openapi.json`
+  (returns a Next.js 404) to `https://app.kaminari.ad/openapi.json`
+  (the actual API host).
+- **`parseWithSchema` helper** at
+  `src/infrastructure/api/parsers/parse-with-schema.ts` — wraps
+  `schema.safeParse()` with typed `ApiError` failure mapping AND
+  strips explicit-`undefined` keys from the parsed object so the
+  output matches the port DTO's `exactOptionalPropertyTypes` style.
+  Foundation for Phase 2b (converting each hand-written
+  `parse-*.ts` to a one-liner backed by `schemas.X.pick({...})`).
+
+### Added (parser-drift phase 4 — production observability)
+
+- **`scripts/prod-smoke.ts`** + **`npm run prod:smoke`** + a manual
+  `prod:smoke` GitLab CI job. Fires a read-only subset of MCP tools
+  at the hosted endpoint using a long-lived sandbox-org bearer
+  (`KAMINARI_AD_MCP_PROD_TOKEN` CI variable, Masked + Protected).
+  Catches drifts that escape compile-time gates — API shape changes,
+  feature-flag-gated routes flipping on/off, parser regressions.
+  Manual trigger by default; flip to a daily schedule once the
+  sandbox org + token are provisioned.
+
+### Added (parser-drift phase 2b — full conversion)
+
+- **Every `parse-*.ts` rewritten as a `parseWithSchema(schemas.X.pick
+  ({...}).strip())` one-liner.** All 17 hand-written parsers now
+  delegate to zod schemas generated from the live OpenAPI spec. A
+  field rename / removal upstream surfaces as a `tsc` error on the
+  `.pick({…})` mask (drift fails at compile time, not at the first
+  production request). A wrong-shape runtime payload degrades to a
+  typed `upstream` MCP error with the zod issue chain — never to an
+  `undefined.x` crash.
+- **Test fixtures hardened.** ~30 fixtures across
+  `tests/unit/infrastructure/api/**` migrated from the old loose
+  hand-parser stubs (`id: "u1"`, `created_at: "t"`,
+  `status: "done"`) to schema-valid values
+  (`id: "00000000-0000-0000-0000-…"`, ISO datetimes, enum members
+  from the OpenAPI source like `"completed"` / `"api"`). Tests now
+  assert the same contract the production API enforces.
+- **Two exempt files**, both documented in
+  `scripts/check-no-handwritten-parsers.ts`:
+  - `parse-empty.ts` — `204 No Content`, no body to validate.
+  - `parse-count-envelope.ts::parseIntField(raw, "x")` — generic
+    one-field-int extractor used by ad-hoc envelopes like
+    `{queued_count}` / `{cancelled_count}` that have no dedicated DTO
+    in the spec.
+
+### Added (parser-drift phase 3 — typed HTTP client)
+
+- **`src/infrastructure/api/http-api-gateway.ts` ported to
+  `openapi-fetch`.** Every endpoint path is now a literal type
+  constrained by `paths` from `src/shared/api/openapi.ts`; path /
+  query / body shapes are validated by the same generated types,
+  with the agent-facing `Pick<S[K], …>` projections in
+  `domain/ports/api-gateway.ts` narrowing the surface. Renaming or
+  removing an endpoint on the API side fails the gateway at
+  `tsc --noEmit` immediately — no runtime drift.
+- **Tenant-isolation contract preserved.** Pinned 5-key outbound
+  header allowlist (authorization / content-type / accept /
+  user-agent / x-request-id) — same shape the existing
+  `tests/isolation/header-injection-e2e.test.ts` AST gate already
+  enforces. Per-request `Dispatcher` injection (used by tests with
+  `MockAgent`; production uses the global agent) is forwarded through
+  a thin `fetchImpl` wrapper that splices `input.headers` /
+  `input.body` from openapi-fetch's `Request` onto the undici init
+  bag — without this the auth header silently vanishes (because
+  undici.fetch ignores `Request` and reads only `init`).
+- **Removed `buildQuery` and the manual `${enc(id)}` interpolation.**
+  Query / path params now go through openapi-fetch's typed
+  `params.query` / `params.path` — typed key names per endpoint,
+  enforced at compile time (`scan_id` for `/scans/{scan_id}`,
+  `endpoint_id` for `/webhooks/{endpoint_id}`, etc.). A key typo
+  fails `tsc` rather than producing a silently-wrong URL.
+
+### Added (parser-drift phase 4 — production observability)
+
+- **`scripts/prod-smoke.ts`** + **`npm run prod:smoke`** + a manual
+  `prod:smoke` GitLab CI job (description retained from phase 2a).
+- **`npm run check:no-handwritten-parsers`** + new
+  `check:no-handwritten-parsers` GitLab CI job in `arch_gates`.
+  Belt-and-suspenders gate: parses every `src/infrastructure/api/
+  parsers/*.ts` and fails if a parser does NOT import `{ schemas }
+  from "../../shared/api/zod-schemas"` (or one of the two documented
+  exemptions). A future contributor who adds a hand-rolled
+  `typeof raw === "object" && "field" in raw` parser hits this gate
+  immediately, with a pointer to `parse-org` / `parse-scan` as the
+  canonical schema-backed shape.
+
 ### Changed (breaking — pre-release, no API consumers yet)
 
 - **Env vars now carry the `KAMINARI_AD_` namespace prefix.** Generic

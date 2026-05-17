@@ -5,7 +5,6 @@
 
 import { z } from "zod";
 
-import type { TagDefinitionDetailResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -23,7 +22,9 @@ const UpdateTagDefinitionInputShape = {
 } as const;
 type UpdateTagDefinitionInputShape = typeof UpdateTagDefinitionInputShape;
 
-export type UpdateTagDefinitionOutput = TagDefinitionDetailResponse;
+export interface UpdateTagDefinitionOutput {
+  readonly updated: true;
+}
 
 export const updateTagDefinitionTool: Tool<
   UpdateTagDefinitionInputShape,
@@ -31,7 +32,7 @@ export const updateTagDefinitionTool: Tool<
 > = {
   name: "update_tag_definition",
   description:
-    "Update display fields of a CUSTOM tag (system tags are read-only). Only supplied fields are touched.",
+    "Update display fields of a CUSTOM tag (system tags are read-only). Only supplied fields are touched. To read the updated definition, follow up with `get_tag_definition`.",
   annotations: {
     title: "Update Tag Definition",
     readOnlyHint: false,
@@ -53,8 +54,9 @@ export const updateTagDefinitionTool: Tool<
     if (input.show_in_public_report !== undefined) {
       body.show_in_public_report = input.show_in_public_report;
     }
+    // API returns 204 No Content on success.
     const result = await ctx.api.updateTagDefinition(input.slug, body);
     if (result.isErr()) return err(mapApiError(result.error));
-    return ok(result.value);
+    return ok({ updated: true });
   },
 };

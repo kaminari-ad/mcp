@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 
-import type { CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
+import type { GroupActionResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -15,7 +15,11 @@ const UnarchiveCampaignGroupInputShape = {
 } as const;
 type UnarchiveCampaignGroupInputShape = typeof UnarchiveCampaignGroupInputShape;
 
-export type UnarchiveCampaignGroupOutput = CampaignGroupResponse;
+/**
+ * API returns a `GroupActionResponse` action summary (typically with
+ * `cancelled_count: 0` because unarchive does not touch pending scans).
+ */
+export type UnarchiveCampaignGroupOutput = GroupActionResponse;
 
 export const unarchiveCampaignGroupTool: Tool<
   UnarchiveCampaignGroupInputShape,

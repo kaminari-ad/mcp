@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-import type { CampaignGroupResponse } from "../../../domain/ports/api-gateway.js";
+import type { GroupActionResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -16,7 +16,13 @@ const ArchiveCampaignGroupInputShape = {
 } as const;
 type ArchiveCampaignGroupInputShape = typeof ArchiveCampaignGroupInputShape;
 
-export type ArchiveCampaignGroupOutput = CampaignGroupResponse;
+/**
+ * API returns a `GroupActionResponse` action summary (campaigns
+ * affected, pending scans cancelled, failed campaign ids), NOT the
+ * group entity. Same shape as `run_campaign_group` /
+ * `cancel_campaign_group`.
+ */
+export type ArchiveCampaignGroupOutput = GroupActionResponse;
 
 export const archiveCampaignGroupTool: Tool<
   ArchiveCampaignGroupInputShape,

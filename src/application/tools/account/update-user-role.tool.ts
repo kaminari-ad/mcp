@@ -4,7 +4,6 @@
 
 import { z } from "zod";
 
-import type { UserResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -16,12 +15,14 @@ const UpdateUserRoleInputShape = {
 } as const;
 type UpdateUserRoleInputShape = typeof UpdateUserRoleInputShape;
 
-export type UpdateUserRoleOutput = UserResponse;
+export interface UpdateUserRoleOutput {
+  readonly updated: true;
+}
 
 export const updateUserRoleTool: Tool<UpdateUserRoleInputShape, UpdateUserRoleOutput> = {
   name: "update_user_role",
   description:
-    "Change an organization member's role. The owner role can only be transferred via `transfer_ownership`.",
+    "Change an organization member's role. The owner role can only be transferred via `transfer_ownership`. Returns `{updated: true}` on success; refetch with `list_org_users` if you need the new role echoed.",
   annotations: {
     title: "Update User Role",
     readOnlyHint: false,
@@ -31,8 +32,9 @@ export const updateUserRoleTool: Tool<UpdateUserRoleInputShape, UpdateUserRoleOu
   },
   inputSchema: z.object(UpdateUserRoleInputShape),
   handler: async (input, ctx): Promise<Result<UpdateUserRoleOutput, ToolError>> => {
+    // API returns 204 No Content on success.
     const result = await ctx.api.updateUserRole(input.user_id, { role_id: input.role_id });
     if (result.isErr()) return err(mapApiError(result.error));
-    return ok(result.value);
+    return ok({ updated: true });
   },
 };

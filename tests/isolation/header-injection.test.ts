@@ -1,5 +1,8 @@
 /**
- * Isolation test: CONTRIBUTING.md "Tenant isolation" §8.
+ * Isolation test: CONTRIBUTING.md "Tenant isolation" §9 — outbound
+ * 5-key header allowlist (authorization / content-type / accept /
+ * user-agent / x-request-id). No other headers reach the upstream
+ * API even if the inbound MCP request carried them.
  *
  * The HttpApiGateway adapter copies ONLY `Authorization` (and its own
  * `Content-Type` / `Accept` / `User-Agent` / `X-Request-Id`) to the

@@ -10,11 +10,22 @@ describe("unarchiveCampaignGroupTool", () => {
   it("name", () => {
     expect(unarchiveCampaignGroupTool.name).toBe("unarchive_campaign_group");
   });
-  it("returns is_archived=false", async () => {
+
+  it("returns the GroupActionResponse summary on success", async () => {
     const api = createFakeApiGateway();
     const r = await unarchiveCampaignGroupTool.handler({ group_id: GID }, makeToolContext({ api }));
-    expect(r._unsafeUnwrap().is_archived).toBe(false);
+    const payload = r._unsafeUnwrap();
+    // Same envelope as archive; cancelled_count is typically 0 here.
+    expect(payload.group_id).toBe("00000000-0000-0000-0000-000000000111");
+    expect(typeof payload.affected_campaigns).toBe("number");
   });
+
+  it("forwards the group id to the gateway", async () => {
+    const api = createFakeApiGateway();
+    await unarchiveCampaignGroupTool.handler({ group_id: GID }, makeToolContext({ api }));
+    expect(api.state.calls[0]).toEqual({ method: "unarchiveCampaignGroup", id: GID });
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.unarchiveCampaignGroup = err(makeApiError("not-found", "x"));

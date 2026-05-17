@@ -208,13 +208,16 @@ export type RunResponse = Pick<
   | "created_at"
 >;
 
+/**
+ * Both `run_ids` and `failures` default to empty arrays in the API
+ * — they're declared optional in the spec and present only when
+ * action produced runs or per-campaign failures. The schema-based
+ * parser emits the keys when populated, omits them when empty.
+ */
 export type GroupActionResponse = Pick<
   S["GroupActionResponse"],
-  "group_id" | "affected_campaigns" | "cancelled_count" | "run_ids"
-> & {
-  /** Surfaced loosely — API has `{ campaign_id, error_code, detail }`. */
-  readonly failures: readonly unknown[];
-};
+  "group_id" | "affected_campaigns" | "cancelled_count" | "run_ids" | "failures"
+>;
 
 export type CreateCampaignRequest = Pick<
   S["CreateCampaignRequest"],
@@ -316,6 +319,19 @@ export type PolicySetResponse = Pick<
   | "is_approved"
   | "entries"
   | "created_at"
+>;
+
+/**
+ * `GET /api/v1/policy-sets` returns a slim per-item shape that
+ * intentionally OMITS `entries` (the API exposes `PolicySetListItem`
+ * for paginated list views — entries are loaded on demand via
+ * `getPolicySet(id)`). Using the full `PolicySetResponse` for list
+ * items would fail zod parse on every real call because `entries`
+ * is required there but absent in the list payload.
+ */
+export type PolicySetListItemResponse = Pick<
+  S["PolicySetListItem"],
+  "id" | "name" | "description" | "organization_id" | "visibility" | "is_approved" | "created_at"
 >;
 
 export type PolicyEntryResponse = Pick<
@@ -550,6 +566,15 @@ export type CampaignOverridesResponse = Pick<
   "campaign_id" | "mode" | "destination_ids"
 >;
 
+// ── Webhook test ───────────────────────────────────────────────────
+
+export type TestWebhookRequest = Pick<S["TestWebhookRequest"], "event_type">;
+
+export type TestWebhookResponse = Pick<
+  S["TestWebhookResponse"],
+  "success" | "response_status" | "elapsed_ms" | "error_code" | "response_body"
+>;
+
 export type SetDestinationVersionRequest = Pick<S["SetDestinationVersionRequest"], "version">;
 
 export type SetCampaignOverridesRequest = Pick<
@@ -612,10 +637,8 @@ export interface ApiGateway {
   updateOrg(body: UpdateOrgRequest): Promise<Result<OrgResponse, ApiError>>;
   listOrgUsers(): Promise<Result<readonly UserResponse[], ApiError>>;
   inviteUser(body: InviteUserRequest): Promise<Result<UserResponse, ApiError>>;
-  updateUserRole(
-    userId: string,
-    body: UpdateUserRoleRequest
-  ): Promise<Result<UserResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  updateUserRole(userId: string, body: UpdateUserRoleRequest): Promise<Result<null, ApiError>>;
   removeUser(userId: string): Promise<Result<null, ApiError>>;
   transferOwnership(userId: string): Promise<Result<null, ApiError>>;
   listOrgRoles(): Promise<Result<readonly RoleResponse[], ApiError>>;
@@ -666,9 +689,13 @@ export interface ApiGateway {
   ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
 
   // Campaign groups
-  listCampaignGroups(
-    filters: PageFilters
-  ): Promise<Result<PaginatedResponse<CampaignGroupResponse>, ApiError>>;
+  /**
+   * API returns a bare `CampaignGroupResponse[]` (not paginated).
+   * Documented query param is only `archived?: boolean` — no `page` / `limit`.
+   */
+  listCampaignGroups(filters?: {
+    readonly archived?: boolean;
+  }): Promise<Result<readonly CampaignGroupResponse[], ApiError>>;
   getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
   createCampaignGroup(
     body: CreateCampaignGroupRequest
@@ -679,18 +706,21 @@ export interface ApiGateway {
   ): Promise<Result<CampaignGroupResponse, ApiError>>;
   runCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
   cancelCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
-  archiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
-  unarchiveCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
+  /** Returns `GroupActionResponse` (action summary), NOT the group entity. */
+  archiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
+  /** Returns `GroupActionResponse` (action summary), NOT the group entity. */
+  unarchiveCampaignGroup(id: string): Promise<Result<GroupActionResponse, ApiError>>;
   pauseCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
   resumeCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
 
   // Tag definitions
   listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
   getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
   updateTagDefinition(
     slug: string,
     body: UpdateTagDefinitionRequest
-  ): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
   deleteTagDefinition(slug: string): Promise<Result<null, ApiError>>;
 
   // Custom rules
@@ -705,7 +735,7 @@ export interface ApiGateway {
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
 
   // Policy sets
-  listPolicySets(): Promise<Result<readonly PolicySetResponse[], ApiError>>;
+  listPolicySets(): Promise<Result<readonly PolicySetListItemResponse[], ApiError>>;
   getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>>;
   createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>>;
   updatePolicySet(
@@ -713,7 +743,8 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
-  requestPolicySetApproval(id: string): Promise<Result<PolicySetResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
 
   // Alerts
   listAlerts(
@@ -731,7 +762,10 @@ export interface ApiGateway {
   createWebhook(body: CreateWebhookRequest): Promise<Result<WebhookCreatedResponse, ApiError>>;
   updateWebhook(id: string, body: UpdateWebhookRequest): Promise<Result<WebhookResponse, ApiError>>;
   deleteWebhook(id: string): Promise<Result<null, ApiError>>;
-  testWebhook(endpointId: string): Promise<Result<null, ApiError>>;
+  testWebhook(
+    endpointId: string,
+    body: TestWebhookRequest
+  ): Promise<Result<TestWebhookResponse, ApiError>>;
   rotateWebhookSecret(endpointId: string): Promise<Result<WebhookCreatedResponse, ApiError>>;
   listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>>;
   listWebhookDeliveries(
@@ -760,15 +794,21 @@ export interface ApiGateway {
     Result<readonly AlertNotificationDestinationResponse[], ApiError>
   >;
   deleteAlertDestination(id: string): Promise<Result<null, ApiError>>;
+  /**
+   * API returns 204 No Content; gateway surfaces `null` on success.
+   * Fetch the updated destination via `listAlertDestinations` if
+   * the new state is needed.
+   */
   setAlertDestinationVersion(
     id: string,
     body: SetDestinationVersionRequest
-  ): Promise<Result<AlertNotificationDestinationResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
   getCampaignAlertOverrides(
     campaignId: string
   ): Promise<Result<CampaignOverridesResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
   setCampaignAlertOverrides(
     campaignId: string,
     body: SetCampaignOverridesRequest
-  ): Promise<Result<CampaignOverridesResponse, ApiError>>;
+  ): Promise<Result<null, ApiError>>;
 }

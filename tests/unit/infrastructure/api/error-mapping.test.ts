@@ -96,4 +96,67 @@ describe("toApiError", () => {
       detail: "x",
     });
   });
+
+  describe("FastAPI 422 array-shaped detail", () => {
+    it("formats single entry as `<loc>: <msg>`", () => {
+      const body = {
+        detail: [
+          {
+            type: "missing",
+            loc: ["body", "event_type"],
+            msg: "Field required",
+            input: null,
+          },
+        ],
+      };
+      expect(toApiError(422, body, undefined)).toEqual({
+        kind: "invalid-input",
+        detail: "body.event_type: Field required",
+      });
+    });
+
+    it("joins multiple entries with `; `", () => {
+      const body = {
+        detail: [
+          { type: "missing", loc: ["body", "event_type"], msg: "Field required" },
+          { type: "string_type", loc: ["body", "url"], msg: "Input should be a valid string" },
+        ],
+      };
+      expect(toApiError(422, body, undefined).detail).toBe(
+        "body.event_type: Field required; body.url: Input should be a valid string"
+      );
+    });
+
+    it("falls back to `<msg>` when loc is missing", () => {
+      const body = { detail: [{ msg: "something failed" }] };
+      expect(toApiError(422, body, undefined).detail).toBe("something failed");
+    });
+
+    it("skips entries with neither loc nor msg", () => {
+      const body = {
+        detail: [{ msg: "kept" }, { type: "noise" }, { loc: ["body", "x"], msg: "also kept" }],
+      };
+      expect(toApiError(422, body, undefined).detail).toBe("kept; body.x: also kept");
+    });
+
+    it("falls back to 'Upstream error' when detail array has no usable entries", () => {
+      expect(toApiError(422, { detail: [{ type: "noise" }] }, undefined).detail).toBe(
+        "Upstream error"
+      );
+    });
+
+    it("filters non-string parts out of `loc`", () => {
+      const body = { detail: [{ loc: ["body", 0, "x"], msg: "bad" }] };
+      // Integer parts (array indices) are dropped; only string parts are joined.
+      expect(toApiError(422, body, undefined).detail).toBe("body.x: bad");
+    });
+
+    it("skips null / non-object array entries", () => {
+      // Defensive — Pydantic always sends `{loc, msg, ...}` objects,
+      // but a buggy middleware between us and the API could mangle
+      // the array. Don't blow up; just keep the usable entries.
+      const body = { detail: [null, "raw-string", 42, { msg: "kept" }] };
+      expect(toApiError(422, body, undefined).detail).toBe("kept");
+    });
+  });
 });

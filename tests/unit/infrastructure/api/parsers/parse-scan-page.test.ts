@@ -2,67 +2,43 @@ import { describe, expect, it } from "vitest";
 
 import { parseScanPage } from "../../../../../src/infrastructure/api/parsers/parse-scan-page.js";
 
+const VALID_BRIEF = {
+  id: "00000000-0000-0000-0000-000000000bbb",
+  url: "https://example.com/landing",
+  country_code: "US",
+  status: "completed",
+  offer_url: "https://example.com/offer",
+  screenshot_url: "https://example.com/s.png",
+  labels: { campaign: "spring" },
+  elapsed_ms: 1234,
+  campaign_id: "00000000-0000-0000-0000-000000000ccc",
+  campaign_name: "Spring",
+  is_ad_tag: false,
+  created_at: "2026-05-17T00:00:00Z",
+};
+
 describe("parseScanPage", () => {
-  it("returns Ok for a valid envelope", () => {
-    const result = parseScanPage({
-      items: [
-        {
-          id: "x",
-          url: "u",
-          country_code: "US",
-          status: "done",
-          created_at: "2026-01-01T00:00:00Z",
-        },
-      ],
+  it("Ok valid envelope with one item", () => {
+    const r = parseScanPage({
+      items: [VALID_BRIEF],
       total: 1,
       page: 1,
       limit: 50,
     });
-    expect(result.isOk()).toBe(true);
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap().items).toHaveLength(1);
   });
-
-  it("rejects non-object input", () => {
-    expect(parseScanPage("string").isErr()).toBe(true);
-    expect(parseScanPage(null).isErr()).toBe(true);
+  it("Ok empty envelope", () => {
+    const r = parseScanPage({ items: [], total: 0, page: 1, limit: 50 });
+    expect(r.isOk()).toBe(true);
   });
-
-  it("rejects when envelope fields are wrong types", () => {
-    expect(parseScanPage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
-    expect(parseScanPage({ items: [], total: "x", page: 1, limit: 50 }).isErr()).toBe(true);
-  });
-
-  it("rejects when an item is not an object", () => {
-    expect(
-      parseScanPage({
-        items: ["not-an-object"],
-        total: 1,
-        page: 1,
-        limit: 50,
-      }).isErr()
-    ).toBe(true);
-  });
-
-  it("rejects when an item id is wrong type", () => {
-    expect(
-      parseScanPage({
-        items: [{ id: 1, url: "u", country_code: "US", status: "done", created_at: "x" }],
-        total: 1,
-        page: 1,
-        limit: 50,
-      }).isErr()
-    ).toBe(true);
-  });
-
-  it("preserves explicit null campaign_id (sOrNull null branch)", () => {
+  it("Ok with null nullable fields (campaign_id, campaign_name)", () => {
     const r = parseScanPage({
       items: [
         {
-          id: "00000000-0000-0000-0000-000000000aaa",
-          url: "https://x",
-          country_code: "US",
-          status: "completed",
+          ...VALID_BRIEF,
           campaign_id: null,
-          created_at: "2026-01-01T00:00:00Z",
+          campaign_name: null,
         },
       ],
       total: 1,
@@ -71,24 +47,13 @@ describe("parseScanPage", () => {
     });
     expect(r._unsafeUnwrap().items[0]?.campaign_id).toBeNull();
   });
-
-  it("preserves labels and filters non-string label values", () => {
-    const r = parseScanPage({
-      items: [
-        {
-          id: "00000000-0000-0000-0000-000000000aaa",
-          url: "https://x",
-          country_code: "US",
-          status: "completed",
-          labels: { keep: "yes", drop: 42 },
-          created_at: "2026-01-01T00:00:00Z",
-        },
-      ],
-      total: 1,
-      page: 1,
-      limit: 50,
-    });
-    expect(r.isOk()).toBe(true);
-    expect(r._unsafeUnwrap().items[0]?.labels).toEqual({ keep: "yes" });
+  it("rejects bad envelope shape", () => {
+    expect(parseScanPage({ items: "x", total: 1, page: 1, limit: 50 }).isErr()).toBe(true);
+    expect(parseScanPage({}).isErr()).toBe(true);
+  });
+  it("rejects when item is malformed", () => {
+    expect(
+      parseScanPage({ items: [{ id: "not-uuid" }], total: 1, page: 1, limit: 50 }).isErr()
+    ).toBe(true);
   });
 });

@@ -7,10 +7,37 @@
 
 import type { ApiError } from "../../domain/ports/api-gateway.js";
 
+/**
+ * Extract a human-readable error message from an API response body.
+ *
+ * FastAPI uses TWO shapes for the `detail` field:
+ *   - String (`"Not found"` from a `HTTPException(detail=...)`)
+ *   - Array of `{loc, msg, type, ...}` objects (Pydantic 422 validation)
+ *
+ * Both need to surface in MCP tool error output. Without the array
+ * branch, EVERY 422 across every tool degrades to opaque
+ * "Upstream error", which makes diagnosing missing/wrong request
+ * bodies (and similar drift) impossible from the agent log alone.
+ */
 function detail(parsed: unknown): string {
-  if (parsed !== null && typeof parsed === "object" && "detail" in parsed) {
-    const d = (parsed as { detail: unknown }).detail;
-    if (typeof d === "string") return d;
+  if (parsed === null || typeof parsed !== "object") return "Upstream error";
+  if (!("detail" in parsed)) return "Upstream error";
+  const d = (parsed as { detail: unknown }).detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) {
+    const messages = d
+      .map((entry): string | undefined => {
+        if (entry === null || typeof entry !== "object") return undefined;
+        const e = entry as { loc?: unknown; msg?: unknown };
+        const loc = Array.isArray(e.loc)
+          ? e.loc.filter((p) => typeof p === "string").join(".")
+          : "";
+        const msg = typeof e.msg === "string" ? e.msg : "";
+        if (loc === "" && msg === "") return undefined;
+        return loc === "" ? msg : `${loc}: ${msg}`;
+      })
+      .filter((m): m is string => m !== undefined);
+    if (messages.length > 0) return messages.join("; ");
   }
   return "Upstream error";
 }

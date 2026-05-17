@@ -1,5 +1,6 @@
 /**
- * Isolation test (E2E): CONTRIBUTING.md "Tenant isolation" §8 / §11.
+ * Isolation test (E2E): CONTRIBUTING.md "Tenant isolation" §6 (inbound
+ * header stripping) + §9 (outbound 5-key allowlist).
  *
  * The adapter-level test (`header-injection.test.ts`) proves the
  * outbound `HttpApiGateway` ignores extra headers when constructed

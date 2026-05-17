@@ -11,7 +11,16 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { isStringRecord } from "./shared.js";
 
 /**
+ * Validates `{ [fieldName]: number }` envelopes and returns the field
+ * wrapped in an object that uses the original field name (so the
+ * caller can keep its strong type), or a typed `upstream` ApiError.
  *
+ * The API uses this shape for one-off operation summaries (e.g.
+ * `POST /scans/recheck → { queued_count }`, `POST /campaigns/{id}/cancel
+ *  → { cancelled_count }`) that have no dedicated DTO. Hand-written
+ * here because emitting a one-field zod schema per call site would be
+ * more noise than it saves; the `check:no-handwritten-parsers` gate
+ * explicitly exempts this file.
  */
 export function parseIntField<TKey extends string>(
   raw: unknown,

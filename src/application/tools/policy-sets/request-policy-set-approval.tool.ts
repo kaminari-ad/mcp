@@ -5,7 +5,6 @@
 
 import { z } from "zod";
 
-import type { PolicySetResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -16,7 +15,9 @@ const RequestPolicySetApprovalInputShape = {
 } as const;
 type RequestPolicySetApprovalInputShape = typeof RequestPolicySetApprovalInputShape;
 
-export type RequestPolicySetApprovalOutput = PolicySetResponse;
+export interface RequestPolicySetApprovalOutput {
+  readonly requested: true;
+}
 
 export const requestPolicySetApprovalTool: Tool<
   RequestPolicySetApprovalInputShape,
@@ -24,7 +25,7 @@ export const requestPolicySetApprovalTool: Tool<
 > = {
   name: "request_policy_set_approval",
   description:
-    "Submit a private policy set for Kaminari Ad team review so it can be marked PUBLIC and used by other organizations. The set must be complete and well-formed.",
+    "Submit a private policy set for Kaminari Ad team review so it can be marked PUBLIC and used by other organizations. The set must be complete and well-formed. Returns immediately; approval status is reflected on the policy set entity once the review completes.",
   annotations: {
     title: "Request Policy Set Approval",
     readOnlyHint: false,
@@ -34,8 +35,9 @@ export const requestPolicySetApprovalTool: Tool<
   },
   inputSchema: z.object(RequestPolicySetApprovalInputShape),
   handler: async (input, ctx): Promise<Result<RequestPolicySetApprovalOutput, ToolError>> => {
+    // API returns 204 No Content on success.
     const result = await ctx.api.requestPolicySetApproval(input.policy_set_id);
     if (result.isErr()) return err(mapApiError(result.error));
-    return ok(result.value);
+    return ok({ requested: true });
   },
 };

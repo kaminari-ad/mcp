@@ -12,12 +12,14 @@ describe("setCampaignAlertOverridesTool", () => {
     expect(setCampaignAlertOverridesTool.name).toBe("set_campaign_alert_overrides");
     expect(setCampaignAlertOverridesTool.annotations.idempotentHint).toBe(true);
   });
-  it("forwards mode + destination_ids on the call body", async () => {
+  it("forwards mode + destination_ids and returns { updated: true } on 204", async () => {
     const api = createFakeApiGateway();
-    await setCampaignAlertOverridesTool.handler(
+    const r = await setCampaignAlertOverridesTool.handler(
       { campaign_id: CID, mode: "include", destination_ids: [DID] },
       makeToolContext({ api })
     );
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap()).toEqual({ updated: true });
     const call = api.state.calls[0];
     if (call?.method !== "setCampaignAlertOverrides") throw new Error("wrong");
     expect(call.campaignId).toBe(CID);
