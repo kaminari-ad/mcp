@@ -11,14 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Comprehensive parser-drift sweep across all `/api/v1/*` list
 endpoints, a new tool for slim campaign selection, an MCP-client
-interop fix, and small docs polish. Semver-minor because two list
+interop fix, and small docs polish. Semver-minor because three list
 tools changed output shape (breaking) and one new tool was added.
 
-The MCP audit covered all 21 `/api/v1/*` list/page endpoints — the 18
-that were already wired correctly stayed untouched, the 4 with drift
-were rewritten, and 1 missing tool was added. See
-[MIGRATION_0_2.md](./MIGRATION_0_2.md) for the agent-side migration
-notes.
+The MCP audit covered every `/api/v1/*` list endpoint. The MCP
+already wrapped 21 of them — 18 were correctly wired, 3 had drift
+(now fixed: `list_run_scans`, `list_custom_rules`, `list_policy_sets`).
+One additional list endpoint (`/campaigns/picker`) had no MCP wrapper
+and was added as the new `list_campaigns_picker` tool. The detail
+endpoint `get_tag_definition` was also fixed to surface
+`linked_rules`. See [MIGRATION_0_2.md](https://github.com/kaminari-ad/mcp/blob/main/MIGRATION_0_2.md)
+for the agent-side migration notes.
 
 ### Breaking
 
@@ -60,10 +63,10 @@ notes.
 
 ### Added
 
-- **`list_campaigns_picker`** (82nd tool) — slim per-row campaign
-  list for selection UIs (id, name, group_id, is_archived). Cheaper
-  than `list_campaigns` for orgs with thousands of campaigns. Use
-  `get_campaign(id)` after a selection.
+- **`list_campaigns_picker`** (83rd tool — was 82, now 83) — slim
+  per-row campaign list for selection UIs (id, name, group_id,
+  is_archived). Cheaper than `list_campaigns` for orgs with thousands
+  of campaigns. Use `get_campaign(id)` after a selection.
 - **Server now declares empty `resources` and `prompts` capabilities
   with handlers returning `[]`.** Cursor / Claude Desktop / Cline
   probe these at session start; previously the SDK responded with
@@ -88,10 +91,11 @@ notes.
 
 ### Internal
 
-- Comprehensive parser-drift audit across all 21 `/api/v1/*` list
+- Comprehensive parser-drift audit across all `/api/v1/*` list
   endpoints (run via parallel `explore` subagents covering API + MCP
-  sides). 18 endpoints clean, 4 fixed, 1 tool added — no remaining
-  drift.
+  sides). 21 endpoints already had MCP wrappers — 18 clean, 3 with
+  drift (now fixed); 1 additional list endpoint had no wrapper and
+  was added as a new tool. No remaining drift.
 - New parser modules: `parse-run-scan-page.ts`, `parse-custom-rule-page.ts`,
   `parse-policy-set-page.ts`, `parse-campaign-picker.ts`. The old
   defensive bare-or-envelope helpers (`parseCustomRuleArray`,

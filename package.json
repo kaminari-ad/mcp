@@ -31,7 +31,8 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "MIGRATION_0_2.md"
   ],
   "bin": {
     "kaminari-ad-mcp": "./dist/bin.js",

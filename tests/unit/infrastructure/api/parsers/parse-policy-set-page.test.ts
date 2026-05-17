@@ -60,4 +60,14 @@ describe("parsePolicySetPage", () => {
   it("Ok on empty envelope", () => {
     expect(parsePolicySetPage(ENVELOPE([], 0)).isOk()).toBe(true);
   });
+
+  // Envelope-shape symmetry with `parse-custom-rule-page.test.ts` —
+  // missing `total` should fail (FastAPI always emits it).
+  it("rejects when envelope misses total", () => {
+    expect(parsePolicySetPage({ items: [VALID_ITEM], page: 1, limit: 50 }).isErr()).toBe(true);
+  });
+
+  it("rejects when items is missing", () => {
+    expect(parsePolicySetPage({ total: 0, page: 1, limit: 50 }).isErr()).toBe(true);
+  });
 });

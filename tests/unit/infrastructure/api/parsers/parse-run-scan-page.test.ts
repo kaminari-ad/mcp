@@ -66,4 +66,32 @@ describe("parseRunScanPage", () => {
     expect(item).toBeDefined();
     expect((item as Record<string, unknown>)["future_field"]).toBeUndefined();
   });
+
+  // Guard against a future `.strict()` regression: a payload that
+  // ALSO carries the `ScanBriefResponse`-shaped extras (`url`,
+  // `created_at`, `labels`, `campaign_id`, `is_ad_tag`) must still
+  // parse Ok — the tile schema only REQUIRES the slim fields, extras
+  // are dropped by `.strip()`. The v0.1.5 bug was the inverse:
+  // requiring `url` from a tile payload. This test pins both halves.
+  it("accepts payloads with ScanBrief-shaped extras (strips them)", () => {
+    const r = parseRunScanPage(
+      ENVELOPE([
+        {
+          ...VALID_TILE,
+          url: "https://input.example/ad",
+          created_at: "2026-05-17T12:00:00Z",
+          labels: { source: "manual" },
+          campaign_id: "00000000-0000-0000-0000-000000000ccc",
+          campaign_name: "test",
+          is_ad_tag: false,
+        },
+      ])
+    );
+    expect(r.isOk()).toBe(true);
+    const item = r._unsafeUnwrap().items[0];
+    expect(item).toBeDefined();
+    expect((item as Record<string, unknown>)["url"]).toBeUndefined();
+    expect((item as Record<string, unknown>)["labels"]).toBeUndefined();
+    expect((item as Record<string, unknown>)["campaign_id"]).toBeUndefined();
+  });
 });

@@ -699,9 +699,15 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/custom-rules/${RULE.id}`, method: "DELETE" })
         .reply(204, "");
+      // `GET /policy-sets` returns the SLIM `PolicySetListItem` per row
+      // (no `entries` — those load on demand via `getPolicySet`). The
+      // parser strips `entries` if accidentally present, but the smoke
+      // fixture mirrors real prod shape so the assertion exercises the
+      // same wire format agents see.
+      const { entries: _omit, ...POLICY_LIST_ROW } = POLICY;
       a.get(ORIGIN)
         .intercept({ path: (p) => p.startsWith("/api/v1/policy-sets?"), method: "GET" })
-        .reply(200, { items: [POLICY], total: 1, page: 1, limit: 50, pages: 1 });
+        .reply(200, { items: [POLICY_LIST_ROW], total: 1, page: 1, limit: 50, pages: 1 });
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/policy-sets/${POLICY.id}`, method: "GET" })
         .reply(200, POLICY);
