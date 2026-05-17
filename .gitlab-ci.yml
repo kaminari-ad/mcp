@@ -178,6 +178,40 @@ build:
     paths:
       - dist/
 
+# Docker image build — exercises the SAME Dockerfile the production
+# server runs. Catches Dockerfile regressions before they hit prod
+# (e.g. `NODE_ENV=production` on the base stage silently omitting
+# devDependencies and tsup failing at `Cannot find module typescript`;
+# or `npm ci` peer-dep conflicts that don't appear in the host
+# `npm ci --legacy-peer-deps` flow).
+#
+# Uses kaniko (no docker daemon) so it works on every GitLab runner
+# type, including the docker-executor ones in this project where
+# Docker-in-Docker service networking is not enabled. The image is
+# built into the kaniko cache and discarded — production deploy still
+# rebuilds on rnd. When we move to registry-pulled deploys, drop
+# `--no-push` and add a `--destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA`
+# plus a registry-login step here.
+#
+# Runtime sanity (does the bundle resolve all deps?) is covered by
+# `tests/integration/cli-smoke.test.ts` against the host-built
+# `dist/bin.js`, so this job only has to prove the Dockerfile builds.
+docker:build:
+  stage: build
+  needs:
+    - setup
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  before_script: []
+  script:
+    # `--single-snapshot` is intentionally NOT used — multi-stage
+    # builds need a snapshot per RUN/COPY layer so files copied into
+    # the build stage survive until `tsup` runs. Otherwise tsup
+    # fails with "No input files" because src/ was reverted between
+    # layers.
+    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci"
+
 # ─────────────────────────────────────────────────────────────────────
 # 7. PUBLISH — only on git tag matching vX.Y.Z
 # ─────────────────────────────────────────────────────────────────────
