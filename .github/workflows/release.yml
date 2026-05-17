@@ -35,30 +35,34 @@ jobs:
           # from commits since the previous tag.
           fetch-depth: 0
 
+      # Use Node 24 for the RELEASE job only (CI and local dev stay on
+      # Node 22 per .nvmrc). Reason: npm Trusted Publisher OIDC publish
+      # support was added in npm 11.5.1 (Aug 2025); Node 22 LTS ships
+      # with npm 10.x bundled, Node 24+ bundles npm 11+. Without npm
+      # 11.5+, `npm publish --provenance` signs the sigstore attestation
+      # but sends the actual PUT unauthenticated → HTTP 404 (registry
+      # obscurity for "no credentials").
+      #
+      # Previous attempts to upgrade in-place (`npm install -g npm@^11`
+      # broke with `Cannot find module 'promise-retry'`; `corepack
+      # prepare npm@^11 --activate` left bundled npm 10.x active because
+      # Corepack shims weren't first in PATH). Using a newer Node is the
+      # least-magic path.
       - uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version: "24"
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Node 22 LTS ships with npm 10.x bundled; npm Trusted
-      # Publisher OIDC publishing was added in npm 11.5.1 (Aug 2025).
-      # Without it, `npm publish --provenance` signs the sigstore
-      # attestation but sends the actual PUT unauthenticated → HTTP
-      # 404 (registry obscurity for "no credentials").
-      #
-      # We use Corepack (bundled with Node 22+) instead of
-      # `npm install -g npm@latest` because in-place self-upgrade
-      # of npm 10 → 11 leaves a broken state (newer arborist
-      # references modules the old bundled tree never had:
-      # `Cannot find module 'promise-retry'`). Corepack manages
-      # the npm install via a separate symlink layer and avoids the
-      # self-upgrade race.
-      - name: Upgrade npm via Corepack
+      - name: Verify npm supports OIDC publish (>= 11.5.1)
         run: |
-          corepack enable
-          corepack prepare npm@^11 --activate
-          echo "npm version: $(npm --version)"
+          NPM_VER=$(npm --version)
+          echo "npm version: $NPM_VER"
+          MAJOR=$(echo "$NPM_VER" | cut -d. -f1)
+          if [ "$MAJOR" -lt 11 ]; then
+            echo "ERROR: npm $NPM_VER is too old for OIDC publish (need >= 11.5.1)"
+            exit 1
+          fi
 
       - name: Install
         run: npm ci --legacy-peer-deps --ignore-scripts

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-17
+
+Re-release of v0.1.4 — the Corepack-based npm upgrade in v0.1.4
+reported `Preparing npm@^11 for immediate activation...` but the
+shell still showed bundled `npm 10.9.7`, because Corepack shims
+were not in PATH priority. Publish failed at the same point (404).
+
+### Fixed
+
+- **Release workflow pinned to Node 24** (instead of .nvmrc Node 22)
+  so the bundled npm is 11.x, which has built-in Trusted Publisher
+  OIDC publish support. CI and local dev keep .nvmrc Node 22 — only
+  the release job overrides. Added an explicit `npm --version` gate
+  that fails the build if npm < 11.5.1 (defense against future Node
+  releases bundling older npm).
+
 ## [0.1.4] - 2026-05-17
 
 Re-release of v0.1.3 — that release's `npm install -g npm@^11`
@@ -453,7 +469,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.5
 [0.1.4]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.4
 [0.1.3]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.3
 [0.1.2]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.2
