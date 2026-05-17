@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-17
+
+### Fixed
+
+- **`npx -y @kaminari-ad/mcp` failed with `command not found`.** npx
+  defaults the bin name to the **basename of the package** (`mcp` for
+  a scoped `@kaminari-ad/mcp`), but v0.1.0 declared bin
+  `kaminari-ad-mcp` only — so the documented Cursor / Claude Desktop
+  config in README literally did not start the server. Added `"mcp":
+  "./dist/bin.js"` as a second bin entry; both names now work
+  (`npx -y @kaminari-ad/mcp` and `npx -y -p @kaminari-ad/mcp
+  kaminari-ad-mcp`). No other changes — pure ergonomics.
+
+### Changed
+
+- **npm publish now uses GitHub Actions OIDC + provenance** instead
+  of a static `NPM_TOKEN`. Restored `publishConfig.provenance: true`
+  and `--provenance` flag in `release.yml`; the `npm-publish`
+  GitHub Environment + the Trusted Publisher registered on the npm
+  package settings page produce signed sigstore attestations
+  reachable from the npm package page.
+
 ## [0.1.0] - 2026-05-17
 
 First public release of `@kaminari-ad/mcp`.
@@ -379,5 +401,6 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kaminari-ad/mcp/releases/tag/v0.1.0
