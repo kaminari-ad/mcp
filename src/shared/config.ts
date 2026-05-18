@@ -71,7 +71,12 @@ export interface Config {
  */
 const RawSchema = z.object({
   KAMINARI_AD_TRANSPORT: TransportSchema.default("stdio"),
-  KAMINARI_AD_API_URL: z.string().url().default("https://kaminari.ad"),
+  // `app.kaminari.ad` is the API host; `kaminari.ad` (no subdomain)
+  // is the marketing landing page and does NOT serve /api/v1/*.
+  // Setting this wrong (e.g. the root domain) makes every tool call
+  // fail with HTTP 404 — the symptom that surfaced this default bug
+  // in v0.2.0.
+  KAMINARI_AD_API_URL: z.string().url().default("https://app.kaminari.ad"),
   KAMINARI_AD_LOG_LEVEL: LogLevelSchema.default("info"),
   KAMINARI_AD_LOG_FORMAT: LogFormatSchema.optional(),
   KAMINARI_AD_HTTP_PORT: z.coerce.number().int().min(0).max(65535).default(8080),

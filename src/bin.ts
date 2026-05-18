@@ -8,10 +8,18 @@
  * Wire-up is intentionally minimal — every dependency is constructed
  * inside the chosen bootstrap, never here. This file just parses argv
  * and config, then hands off.
+ *
+ * Imports policy: the STATIC imports below MUST stay free of any
+ * runtime dependency that requires Node >= 22.19 (undici, MCP SDK,
+ * pino). Otherwise the Node-version preflight in `main()` runs too
+ * late — those modules crash at import time on older Node. The
+ * transport bootstraps pull undici / MCP SDK / pino via dynamic
+ * `await import()` so the preflight gets to fire first.
  */
 
 import process from "node:process";
 
+import { checkNodeVersion } from "./shared/check-node-version.js";
 import { loadConfig, type Transport } from "./shared/config.js";
 import { NAME, VERSION } from "./shared/version.js";
 
@@ -31,6 +39,9 @@ function parseTransportFlag(argv: readonly string[]): Transport | undefined {
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
 
+  // Informational flags handled BEFORE the Node preflight so users on
+  // any Node can confirm the binary resolves and discover the help
+  // text — the only paths that touch zero runtime deps.
   if (argv.includes("--version") || argv.includes("-v")) {
     process.stdout.write(`${NAME} ${VERSION}\n`);
     return 0;
@@ -52,6 +63,17 @@ async function main(): Promise<number> {
       ].join("\n")
     );
     return 0;
+  }
+
+  // Preflight: bail with a clean upgrade message BEFORE any dynamic
+  // import pulls undici / MCP SDK / pino — all three require
+  // Node 22.19+ and crash at import time on older Node. Without this
+  // gate users see undici's cryptic
+  // `webidl.util.markAsUncloneable is not a function` instead.
+  const check = checkNodeVersion(process.versions.node);
+  if (check.isErr()) {
+    process.stderr.write(`${check.error}\n`);
+    return 2;
   }
 
   const cliTransport = parseTransportFlag(argv);
