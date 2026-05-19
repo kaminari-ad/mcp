@@ -1,13 +1,35 @@
 # `@kaminari-ad/mcp`
 
-Official Model Context Protocol (MCP) server for [Kaminari Ad](https://kaminari.ad) — the ad verification platform from the team behind [Kaminari.Click](https://kaminari.click).
+Official Model Context Protocol (MCP) server for [Kaminari Ad](https://kaminari.ad) — the ad verification platform from the team behind [Kaminari Click](https://kaminari.click).
 
 Lets AI agents (Cursor, Claude Desktop, Cline, and any MCP-compatible client) launch scans, inspect results, manage campaigns and policies, and read alerts directly against your Kaminari Ad workspace via your API key.
 
-[![npm](https://img.shields.io/npm/v/@kaminari-ad/mcp.svg)](https://www.npmjs.com/package/@kaminari-ad/mcp)
-[![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@kaminari-ad/mcp)](https://www.npmjs.com/package/@kaminari-ad/mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@kaminari-ad/mcp)](https://www.npmjs.com/package/@kaminari-ad/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![node](https://img.shields.io/node/v/@kaminari-ad/mcp)](https://nodejs.org)
+[![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
 [![Provenance](https://img.shields.io/npm/v/@kaminari-ad/mcp?label=provenance&logo=github)](https://www.npmjs.com/package/@kaminari-ad/mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-listed-blue)](https://registry.modelcontextprotocol.io)
+
+## Install (one click)
+
+### Cursor
+
+<a href="https://kaminari.ad/mcp/install"><img alt="Install in Cursor" src="https://cursor.com/deeplink/mcp-install-dark.png" height="32" /></a>
+
+### Claude Desktop
+
+[**Download `kaminari-ad-mcp.mcpb`**](https://github.com/kaminari-ad/mcp/releases/latest/download/kaminari-ad-mcp.mcpb) → double-click to install. Claude Desktop shows a config form for your API key.
+
+### Claude Code (CLI)
+
+```bash
+claude mcp add kaminari-ad -- npx -y @kaminari-ad/mcp
+export KAMINARI_AD_API_KEY=your-key
+```
+
+Full installation docs — see [Quick start](#quick-start) below.
 
 ---
 

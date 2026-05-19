@@ -1,6 +1,6 @@
 {
   "name": "@kaminari-ad/mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Official Model Context Protocol (MCP) server for the Kaminari Ad ad-verification platform.",
   "keywords": [
     "mcp",
@@ -51,6 +51,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
+    "build:mcpb-bundle": "tsup --config tsup.mcpb.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",

@@ -3,6 +3,9 @@ node_modules/
 
 # ── Build artifacts ──
 dist/
+dist-mcpb/
+mcpb-bundle/
+*.mcpb
 build/
 *.tsbuildinfo
 
