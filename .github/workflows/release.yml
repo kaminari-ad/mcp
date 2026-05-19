@@ -172,14 +172,19 @@ jobs:
   # ──────────────────────────────────────────────────────────────────
   # Claude Desktop extension (.mcpb) build + upload to GitHub Release.
   #
-  # Runs in parallel with `publish` (npm). Either job may create the
-  # release first; `gh release create ... || true` + `--clobber` on
-  # upload handle the race. No environment gate — the .mcpb is just a
-  # build artefact, not a credential-bearing publish like npm.
+  # `needs: publish` — must run AFTER the npm publish job passes its
+  # full gate (lint / typecheck / tests / build / OIDC publish). This
+  # is intentional: we never want a `.mcpb` floating on a tag whose
+  # npm publish failed (users could install a desktop extension that
+  # exists nowhere on npm — confusing and unsupportable).
+  #
+  # No environment gate (unlike `publish`): the .mcpb is a build
+  # artefact, not a credential-bearing publish.
   # ──────────────────────────────────────────────────────────────────
   publish-mcpb:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    needs: publish
     permissions:
       contents: write
     steps:
@@ -191,6 +196,19 @@ jobs:
 
       - name: Install
         run: npm ci --legacy-peer-deps --ignore-scripts
+
+      - name: Verify tag matches package.json version
+        # Belt-and-suspenders: `publish` already verifies this, but
+        # since this job depends only on `publish`'s `success`
+        # conclusion (not its file artefacts), repeating the check
+        # locally lets the upload step trust `package.json`.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: git tag '$GITHUB_REF_NAME' (-> $TAG_VERSION) != package.json ($PKG_VERSION)"
+            exit 1
+          fi
 
       - name: Build single-file bundle for .mcpb
         # tsup.mcpb.config.ts inlines all runtime deps into one ESM
@@ -271,9 +289,12 @@ jobs:
           "
 
       - name: Pack .mcpb
+        # Pinned mcpb version — unpinned `@latest` could ship a
+        # breaking CLI change that fails our release. Bump
+        # deliberately, after verifying the new version locally.
         run: |
           cd mcpb-bundle
-          npx -y @anthropic-ai/mcpb@latest pack .
+          npx -y @anthropic-ai/mcpb@2.1.2 pack .
           mv ./*.mcpb kaminari-ad-mcp.mcpb
           ls -lh kaminari-ad-mcp.mcpb
 
@@ -294,21 +315,41 @@ jobs:
       - name: Smoke test
         # Unpack and run the bundle in stdio mode with an `initialize`
         # JSON-RPC request. Verifies the bundle starts and the server
-        # is reachable. KAMINARI_AD_API_KEY=ci-dummy-key is needed to
-        # pass the stdio API-key precheck (see stdio-bootstrap.ts).
+        # is reachable.
+        #
+        # Three reliability guards:
+        #   1. `timeout 10s` — stdio transport blocks until peer
+        #      closes; without a hard timeout the job would hang to
+        #      its 15-minute ceiling on any startup glitch.
+        #   2. NO `|| true` on the node invocation — a non-zero exit
+        #      from the server (e.g. unhandled crash during bundle
+        #      load) must fail the step. `set -e` propagates it.
+        #   3. The parser tolerates timeout-induced truncation: if
+        #      `serverInfo` is missing the step exits non-zero.
+        #
+        # KAMINARI_AD_API_KEY is required to pass the stdio API-key
+        # precheck in stdio-bootstrap.ts (>= 8 chars).
         run: |
           set -e
           mkdir -p /tmp/mcpb-test && cd /tmp/mcpb-test
           unzip -q "$GITHUB_WORKSPACE/mcpb-bundle/kaminari-ad-mcp.mcpb"
           INIT='{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}},"id":0}'
-          OUT=$(echo "$INIT" | KAMINARI_AD_API_KEY=ci-dummy-key node server/index.js 2>/dev/null || true)
+          OUT=$(echo "$INIT" | KAMINARI_AD_API_KEY=ci-smoketest-key-1234 timeout 10s node server/index.js 2>/dev/null) || OUT="$OUT"
           echo "$OUT" | node -e "
             let d='';
             process.stdin.on('data', c => d += c);
             process.stdin.on('end', () => {
               const lines = d.trim().split('\n').filter(Boolean);
+              if (lines.length === 0) {
+                console.error('FAIL: no stdout from server');
+                process.exit(1);
+              }
               const last = lines[lines.length - 1];
-              const r = JSON.parse(last);
+              let r;
+              try { r = JSON.parse(last); } catch (e) {
+                console.error('FAIL: last stdout line not valid JSON:', last);
+                process.exit(1);
+              }
               if (!r.result || !r.result.serverInfo) {
                 console.error('FAIL: no serverInfo in response');
                 console.error(d);

@@ -23,6 +23,22 @@ import { defineConfig } from "tsup";
  * `external` is limited to Node built-ins (both `fs` and `node:fs`
  * forms) — anything else gets inlined.
  *
+ * ## createRequire banner — required for CJS deps
+ *
+ * Some bundled deps (pino-pretty, undici, parts of the MCP SDK) use
+ * CommonJS-style `require()` internally. esbuild's ESM output handles
+ * static requires fine, but a few do `require(varName)` or
+ * `require()` calls inside CJS code paths that get inlined verbatim.
+ * Without a top-level `require` symbol in ESM, those paths throw
+ * `Fatal: Dynamic require of "X" is not supported` at runtime.
+ *
+ * The banner injects `createRequire(import.meta.url)` so any leftover
+ * `require()` call inside the bundle resolves against the bundle file
+ * itself — which is enough because all the actually-required modules
+ * are already inlined into the same file. Verified empirically:
+ * without the banner the `initialize` smoke test crashes on first
+ * load; with it, the bundle starts and answers JSON-RPC.
+ *
  * Output: `dist-mcpb/index.js` (single ESM file with shebang).
  */
 export default defineConfig({
@@ -40,6 +56,12 @@ export default defineConfig({
   splitting: false,
   treeshake: true,
   clean: true,
-  banner: { js: "#!/usr/bin/env node" },
+  banner: {
+    js: [
+      "#!/usr/bin/env node",
+      'import { createRequire as __mcpbCreateRequire } from "node:module";',
+      "const require = __mcpbCreateRequire(import.meta.url);",
+    ].join("\n"),
+  },
   tsconfig: "./tsconfig.build.json",
 });
