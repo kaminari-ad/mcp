@@ -69,9 +69,11 @@ mcpb:
 	$(RUN) npm run build:mcpb-bundle
 	@echo ""
 	@echo "Single-file bundle: dist-mcpb/index.js"
-	@echo "To pack a .mcpb file:"
-	@echo "  cd dist-mcpb-staging  # create with manifest.json + server/index.js"
-	@echo "  npx -y @anthropic-ai/mcpb@latest pack ."
+	@echo "To pack a .mcpb file locally:"
+	@echo "  mkdir -p mcpb-bundle/server"
+	@echo "  cp dist-mcpb/index.js mcpb-bundle/server/index.js"
+	@echo "  # create mcpb-bundle/manifest.json (see release.yml for the spec)"
+	@echo "  cd mcpb-bundle && npx -y @anthropic-ai/mcpb@2.1.2 pack ."
 	@echo ""
 	@echo "Full .mcpb is built in CI on tag release — see .github/workflows/release.yml"
 

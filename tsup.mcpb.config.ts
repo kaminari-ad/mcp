@@ -11,12 +11,23 @@ import { defineConfig } from "tsup";
  * - **Inline ALL deps.** A `.mcpb` ships as a self-contained ZIP that
  *   double-clicks into Claude Desktop without any `npm install` —
  *   so the bundled JS must carry undici / @modelcontextprotocol/sdk
- *   / zod / pino / etc. directly. `noExternal: [/.*\/]` overrides
- *   tsup's default of externalising every dependency.
+ *   / zod / pino / etc. directly. `noExternal: [/.*\u002f]` (`/.*\u002f/`
+ *   matches every import path) overrides tsup's default of
+ *   externalising every dependency.
  * - **No splitting.** The runtime expects a single `server/index.js`
  *   entry inside the bundle (manifest's `entry_point`), and the
  *   single-file output also keeps the smoke-test in `release.yml`
  *   trivial (`node server/index.js < initialize.json`).
+ *
+ *   **Node version gotcha** — `tsup.config.ts` documents that
+ *   `splitting: false` defeats the lazy preflight in `bin.ts::main()`:
+ *   undici 8.x crashes at import-time on Node < 22.19 with the
+ *   cryptic `webidl.util.markAsUncloneable is not a function` instead
+ *   of our clean error message. We mitigate by declaring
+ *   `compatibility.runtimes.node: ">=22.19.0"` in the manifest; Claude
+ *   Desktop refuses to install on older Node. For users who edit
+ *   manifest or bypass that gate, the crash on first launch is the
+ *   trade-off for the simpler smoke-test surface.
  * - **No DTS / no sourcemap.** Bundle is consumed by Claude Desktop
  *   at runtime — types and source maps would just inflate the ZIP.
  *

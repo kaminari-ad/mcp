@@ -216,6 +216,11 @@ jobs:
         # `node server/index.js` with no further install step.
         run: npm run build:mcpb-bundle
 
+      - name: Verify single-file bundle size
+        # Separate from the packed-archive gate further down: this
+        # catches accidental dep bloat before the .mcpb pack stage.
+        run: npm run check:mcpb-bundle-size
+
       - name: Prepare mcpb-bundle/ directory
         run: |
           mkdir -p mcpb-bundle/server

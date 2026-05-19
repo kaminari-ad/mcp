@@ -67,6 +67,7 @@
     "check:file-sizes": "tsx scripts/check-file-sizes.ts",
     "check:imports": "depcruise --config .dependency-cruiser.cjs src",
     "check:bundle-size": "tsx scripts/check-bundle-size.ts",
+    "check:mcpb-bundle-size": "tsx scripts/check-mcpb-bundle-size.ts",
     "check:shared-state": "tsx scripts/check-no-shared-state.ts",
     "check:tool-naming": "tsx scripts/check-tool-naming.ts",
     "check:no-handwritten-parsers": "tsx scripts/check-no-handwritten-parsers.ts",
