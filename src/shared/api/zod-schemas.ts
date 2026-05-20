@@ -28,13 +28,21 @@ type SubRequestResponse = {
   children?: Array<SubRequestResponse> | undefined;
 };
 
+const OrganizationStatus = z.enum([
+  "pending_email_verification",
+  "pending_admin_approval",
+  "active",
+  "suspended",
+  "rejected",
+]);
 const OrgResponse = z
   .object({
     id: z.string().uuid(),
     name: z.string(),
     owner_id: z.string().uuid(),
-    is_active: z.boolean(),
+    status: OrganizationStatus,
     created_at: z.string().datetime({ offset: true }),
+    is_active: z.boolean(),
   })
   .passthrough();
 const UpdateOrgRequest = z
@@ -77,7 +85,10 @@ const UserResponse = z
     id: z.string().uuid(),
     email: z.string(),
     name: z.string(),
+    role_id: z.string().uuid(),
     role_name: z.string(),
+    organization_id: z.string().uuid(),
+    organization_name: z.string(),
     is_active: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
   })
@@ -190,7 +201,7 @@ const ProxyTargetResponse = z
     isp: z.string().optional().default(""),
   })
   .passthrough();
-const IabCategoryResponse = z
+const AiCategoryResponse = z
   .object({
     tier1: z.string(),
     tier2: z.union([z.string(), z.null()]).optional(),
@@ -198,11 +209,34 @@ const IabCategoryResponse = z
     tier4: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
+const IabV3CategoryResponse = z
+  .object({
+    tier1: z.string(),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const ScanTaxonomyClassificationResponse = z
+  .object({
+    taxonomy_id: z.string().uuid(),
+    taxonomy_name: z.string(),
+    taxonomy_slug: z.string(),
+    taxonomy_version: z.number().int(),
+    leaf_node_id: z.union([z.string(), z.null()]),
+    tier1: z.union([z.string(), z.null()]),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+    used_default: z.boolean().optional().default(false),
+  })
+  .passthrough();
 const ScanClassificationResponse = z
   .object({
     brand: z.union([z.string(), z.null()]),
-    iab_v2: z.union([IabCategoryResponse, z.null()]),
-    iab_v3: z.union([IabCategoryResponse, z.null()]),
+    ai_category: z.union([AiCategoryResponse, z.null()]),
+    iab_v3: z.union([IabV3CategoryResponse, z.null()]),
+    custom_taxonomies: z.array(ScanTaxonomyClassificationResponse).default([]),
   })
   .partial()
   .passthrough();
@@ -505,7 +539,7 @@ const TagDefinitionWithStatsResponse = z
     description: z.string(),
     is_system: z.boolean(),
     organization_id: z.union([z.string(), z.null()]),
-    show_in_public_report: z.boolean(),
+    visibility: z.string(),
     severity: z.string(),
     scans_count: z.number().int(),
     rules_count: z.number().int(),
@@ -529,19 +563,20 @@ const TagDefinitionDetailResponse = z
     description: z.string(),
     is_system: z.boolean(),
     organization_id: z.union([z.string(), z.null()]),
-    show_in_public_report: z.boolean(),
+    visibility: z.string(),
     severity: z.string(),
     scans_count: z.number().int(),
     rules_count: z.number().int(),
     linked_rules: z.array(LinkedRuleResponse).optional(),
   })
   .passthrough();
+const TagVisibility = z.enum(["hidden", "internal", "public"]);
 const TagSeverity = z.enum(["high", "medium", "low"]);
 const UpdateTagDefinitionRequest = z
   .object({
     display_name: z.union([z.string(), z.null()]),
     description: z.union([z.string(), z.null()]),
-    show_in_public_report: z.union([z.boolean(), z.null()]),
+    visibility: z.union([TagVisibility, z.null()]),
     severity: z.union([TagSeverity, z.null()]),
   })
   .partial()
@@ -609,11 +644,42 @@ const RuleTestResponse = z
     llm_response_url: z.string().optional().default(""),
   })
   .passthrough();
+const IabV3PolicyCategoryRequest = z
+  .object({
+    tier1: z.string().min(1).max(200),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const AiCategoryRequest = z
+  .object({
+    tier1: z.string().min(1).max(200),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const CustomTaxonomyRefRequest = z
+  .object({
+    taxonomy_id: z.string().uuid(),
+    tier1: z.string().min(1).max(200),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
 const PolicyEntryRequest = z
   .object({
-    tag_slug: z.string().min(1).max(100),
-    country_codes: z.array(z.string()).max(50).optional(),
+    rule_type: z.enum(["tag", "iab_v3", "brand", "ai_category", "custom_taxonomy"]).default("tag"),
+    tag_slug: z.union([z.string(), z.null()]),
+    iab_v3: z.union([IabV3PolicyCategoryRequest, z.null()]),
+    brand: z.union([z.string(), z.null()]),
+    ai_category: z.union([AiCategoryRequest, z.null()]),
+    custom_taxonomy: z.union([CustomTaxonomyRefRequest, z.null()]),
+    country_codes: z.array(z.string()).max(50),
   })
+  .partial()
   .passthrough();
 const CreatePolicySetRequest = z
   .object({
@@ -622,10 +688,40 @@ const CreatePolicySetRequest = z
     entries: z.array(PolicyEntryRequest).min(1).max(500),
   })
   .passthrough();
+const PolicyEntryIabV3Response = z
+  .object({
+    tier1: z.string(),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const PolicyEntryAiCategoryResponse = z
+  .object({
+    tier1: z.string(),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const PolicyEntryCustomTaxonomyResponse = z
+  .object({
+    taxonomy_id: z.string().uuid(),
+    tier1: z.string(),
+    tier2: z.union([z.string(), z.null()]).optional(),
+    tier3: z.union([z.string(), z.null()]).optional(),
+    tier4: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
 const PolicyEntryResponse = z
   .object({
     id: z.string().uuid(),
-    tag_slug: z.string(),
+    rule_type: z.string(),
+    tag_slug: z.union([z.string(), z.null()]).optional(),
+    iab_v3: z.union([PolicyEntryIabV3Response, z.null()]).optional(),
+    brand: z.union([z.string(), z.null()]).optional(),
+    ai_category: z.union([PolicyEntryAiCategoryResponse, z.null()]).optional(),
+    custom_taxonomy: z.union([PolicyEntryCustomTaxonomyResponse, z.null()]).optional(),
     country_codes: z.array(z.string()),
   })
   .passthrough();
@@ -689,6 +785,8 @@ const AlertResponse = z
     scan_url: z.string(),
     offer_url: z.string(),
     tag_display_name: z.string(),
+    rule_type: z.string().optional().default("tag"),
+    matched_value: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const PaginatedResponse_AlertResponse_ = z
@@ -1005,8 +1103,77 @@ const DemoInquiryAcknowledgement = z
     received_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
+const CustomTaxonomyListItem = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string(),
+    description: z.string(),
+    is_active: z.boolean(),
+    version: z.number().int(),
+    node_count: z.number().int(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const TaxonomyNodeRequest = z.object({
+  client_id: z.string().min(1).max(100),
+  parent_client_id: z.union([z.string(), z.null()]).optional(),
+  name: z.string().min(1).max(100),
+  description: z.string().max(200).optional().default(""),
+  is_default: z.boolean().optional().default(false),
+});
+const CreateCustomTaxonomyRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional().default(""),
+  nodes: z.array(TaxonomyNodeRequest).optional().default([]),
+});
+const TaxonomyNodeResponse = z
+  .object({
+    id: z.string().uuid(),
+    parent_id: z.union([z.string(), z.null()]),
+    level: z.number().int(),
+    position: z.number().int(),
+    name: z.string(),
+    description: z.string(),
+    is_default: z.boolean(),
+  })
+  .passthrough();
+const CustomTaxonomyResponse = z
+  .object({
+    id: z.string().uuid(),
+    organization_id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string(),
+    description: z.string(),
+    is_active: z.boolean(),
+    version: z.number().int(),
+    nodes: z.array(TaxonomyNodeResponse),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const ParseTaxonomyTextRequest = z.object({
+  text: z.string().min(1).max(50000),
+});
+const ParsedTaxonomyNode = z
+  .object({
+    level: z.number().int(),
+    name: z.string(),
+    description: z.string(),
+  })
+  .passthrough();
+const ParseTaxonomyTextResponse = z
+  .object({ nodes: z.array(ParsedTaxonomyNode), warnings: z.array(z.string()) })
+  .passthrough();
+const UpdateCustomTaxonomyRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional().default(""),
+  nodes: z.array(TaxonomyNodeRequest).optional().default([]),
+});
 
 export const schemas = {
+  OrganizationStatus,
   OrgResponse,
   UpdateOrgRequest,
   ValidationError,
@@ -1028,7 +1195,9 @@ export const schemas = {
   SubRequestResponse,
   RedirectHopResponse,
   ProxyTargetResponse,
-  IabCategoryResponse,
+  AiCategoryResponse,
+  IabV3CategoryResponse,
+  ScanTaxonomyClassificationResponse,
   ScanClassificationResponse,
   LandingResponse,
   ScanResponse,
@@ -1062,6 +1231,7 @@ export const schemas = {
   TagDefinitionWithStatsResponse,
   LinkedRuleResponse,
   TagDefinitionDetailResponse,
+  TagVisibility,
   TagSeverity,
   UpdateTagDefinitionRequest,
   CreateCustomRuleRequest,
@@ -1071,8 +1241,14 @@ export const schemas = {
   RuleTestRequest,
   RuleTestTagResult,
   RuleTestResponse,
+  IabV3PolicyCategoryRequest,
+  AiCategoryRequest,
+  CustomTaxonomyRefRequest,
   PolicyEntryRequest,
   CreatePolicySetRequest,
+  PolicyEntryIabV3Response,
+  PolicyEntryAiCategoryResponse,
+  PolicyEntryCustomTaxonomyResponse,
   PolicyEntryResponse,
   PolicySetResponse,
   VisibilityType,
@@ -1126,4 +1302,13 @@ export const schemas = {
   PreferredContactChannel,
   SubmitDemoInquiryRequest,
   DemoInquiryAcknowledgement,
+  CustomTaxonomyListItem,
+  TaxonomyNodeRequest,
+  CreateCustomTaxonomyRequest,
+  TaxonomyNodeResponse,
+  CustomTaxonomyResponse,
+  ParseTaxonomyTextRequest,
+  ParsedTaxonomyNode,
+  ParseTaxonomyTextResponse,
+  UpdateCustomTaxonomyRequest,
 };
