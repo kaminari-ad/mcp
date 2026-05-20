@@ -33,7 +33,10 @@ export const deleteCustomTaxonomyTool: Tool<
     title: "Delete Custom Taxonomy",
     readOnlyHint: false,
     destructiveHint: true,
-    idempotentHint: false,
+    // Soft-delete: a second call returns 404 for the same id but
+    // does not change observable state — same convention used by
+    // `delete_policy_set` and `delete_tag_definition`.
+    idempotentHint: true,
     openWorldHint: false,
   },
   inputSchema: z.object(DeleteCustomTaxonomyInputShape),

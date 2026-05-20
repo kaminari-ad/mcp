@@ -64,10 +64,17 @@ const ListScansInputShape = {
     .describe("Filter by legacy IAB V2.2 category (only present on pre-P3 scans)."),
   brand: z.string().optional().describe("Filter by detected advertiser brand (case-insensitive)."),
   labels: z
-    .record(z.string().min(1).max(100), z.string().min(1).max(200))
+    .record(
+      z
+        .string()
+        .min(1)
+        .max(100)
+        .regex(/^[a-z0-9_]+$/, "label keys must be snake_case ([a-z0-9_]+)"),
+      z.string().min(1).max(200)
+    )
     .optional()
     .describe(
-      "Dynamic label filters as a flat object: { brand_safety: 'high', vertical: 'gambling' }. Each key becomes a `label_<key>=<value>` query param. See `list_account_labels` for the org's labels."
+      "Dynamic label filters as a flat object: { brand_safety: 'high', vertical: 'gambling' }. Keys are snake_case and must exist in the org's label catalogue. Each key becomes a `label_<key>=<value>` query param. See `list_account_labels`."
     ),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size (1-200). Default 50."),

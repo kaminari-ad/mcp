@@ -33,6 +33,12 @@ describe("listCampaignsPickerTool", () => {
     expect(call.filters).toBeUndefined();
   });
 
+  it("rejects invalid group_id uuid + out-of-range limit", () => {
+    expect(() => listCampaignsPickerTool.inputSchema.parse({ group_id: "nope" })).toThrow();
+    expect(() => listCampaignsPickerTool.inputSchema.parse({ limit: 501 })).toThrow();
+    expect(() => listCampaignsPickerTool.inputSchema.parse({ limit: 0 })).toThrow();
+  });
+
   it("forwards archived / group_id / q / limit filters", async () => {
     const api = createFakeApiGateway();
     await listCampaignsPickerTool.handler(

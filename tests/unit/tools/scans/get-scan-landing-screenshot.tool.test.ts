@@ -10,6 +10,9 @@ describe("getScanLandingScreenshotTool", () => {
   it("name + uuid + landing_ord validation", () => {
     expect(getScanLandingScreenshotTool.name).toBe("get_scan_landing_screenshot");
     expect(() =>
+      getScanLandingScreenshotTool.inputSchema.parse({ scan_id: "nope", landing_ord: 0 })
+    ).toThrow();
+    expect(() =>
       getScanLandingScreenshotTool.inputSchema.parse({ scan_id: SID, landing_ord: -1 })
     ).toThrow();
     expect(() =>
@@ -17,17 +20,24 @@ describe("getScanLandingScreenshotTool", () => {
     ).toThrow();
   });
 
-  it("forwards landing_ord and returns image block", async () => {
+  it("forwards landing_ord and returns full MCP image envelope (base64 + mimeType)", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanLandingScreenshot = ok({
-      bytes: new Uint8Array([0x89]),
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
       contentType: "image/png",
     });
     const r = await getScanLandingScreenshotTool.handler(
       { scan_id: SID, landing_ord: 2, width: 600 },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().content[0].type).toBe("image");
+    const out = r._unsafeUnwrap();
+    expect(out.content).toHaveLength(1);
+    const block = out.content[0];
+    expect(block.type).toBe("image");
+    if (block.type === "image") {
+      expect(block.mimeType).toBe("image/png");
+      expect(block.data).toBe("iVBORw==");
+    }
     const call = api.state.calls[0];
     if (call?.method !== "getScanLandingScreenshot") throw new Error("wrong");
     expect(call.landingOrd).toBe(2);

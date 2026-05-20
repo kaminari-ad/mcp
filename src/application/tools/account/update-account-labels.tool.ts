@@ -53,7 +53,11 @@ export const updateAccountLabelsTool: Tool<
   annotations: {
     title: "Update Account Labels",
     readOnlyHint: false,
-    destructiveHint: false,
+    // REPLACE semantics: passing `labels: []` wipes every label and
+    // detaches the value on every scan that referenced one. Hint as
+    // destructive so MCP clients that gate dangerous tools warn the
+    // user before this call runs.
+    destructiveHint: true,
     idempotentHint: true,
     openWorldHint: false,
   },

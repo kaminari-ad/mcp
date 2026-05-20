@@ -354,10 +354,23 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
   /**
    * Direct binary GET — bypasses openapi-fetch (which always parses
-   * JSON). Used by screenshot / invoice-PDF tools. Same auth headers,
-   * same per-request dispatcher, same error mapping. Tools base64-
-   * encode the bytes when building the MCP `image` / `resource`
-   * content block.
+   * JSON). Used by screenshot / invoice-PDF tools. Same auth, same
+   * per-request dispatcher, same error mapping. Tools base64-encode
+   * the bytes when building the MCP `image` / `resource` content
+   * block.
+   *
+   * Tenant-isolation header contract (CONTRIBUTING.md §9): JSON calls
+   * pin the 5-key allowlist `authorization, content-type, accept,
+   * user-agent, x-request-id`. Binary GETs deliberately deviate on
+   * two of those:
+   *   - **no** `content-type` — there is no request body, so the
+   *     header would be a misleading no-op.
+   *   - `accept` widened to `image/*, application/pdf,
+   *     application/octet-stream` — the API returns binary, not JSON.
+   *
+   * The remaining three keys (auth, user-agent, x-request-id) match
+   * the JSON path exactly. The Bearer is pulled from the same
+   * per-request closure, so cross-tenant isolation behaves identically.
    */
   async function binaryGet(
     path: string,
@@ -375,6 +388,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     try {
       const init: Record<string, unknown> = {
         method: "GET",
+        // Header allowlist: see binaryGet docstring above. Keep this
+        // map minimal; any future addition needs a CONTRIBUTING.md
+        // update + a tenant-isolation review.
         headers: {
           authorization: bearer.toAuthorizationHeader(),
           accept: "image/*, application/pdf, application/octet-stream",

@@ -20,6 +20,8 @@ describe("listAccountLabelsTool", () => {
     const r = await listAccountLabelsTool.handler({}, makeToolContext({ api }));
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().items).toEqual(labels);
+    // Exactly one gateway call, no extra round-trips.
+    expect(api.state.calls).toEqual([{ method: "listAccountLabels" }]);
   });
 
   it("maps error", async () => {

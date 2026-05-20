@@ -855,6 +855,13 @@ export interface ListBalanceHistoryFilters {
 export type InvoiceType = "proforma" | "final";
 export type InvoiceStatus = "draft" | "issued" | "paid" | "voided" | "overdue";
 
+/**
+ * Filters for `GET /api/v1/invoices`. The OpenAPI spec also lists
+ * `organization_id` as a query — it is intentionally NOT exposed via
+ * MCP because the public `/api/v1` is always org-scoped to the
+ * caller's Bearer token. Cross-tenant queries belong on
+ * `/api/admin/*`, which MCP does not consume.
+ */
 export interface ListInvoicesFilters extends PageFilters {
   readonly type?: InvoiceType;
   readonly status?: InvoiceStatus;

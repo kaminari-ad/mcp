@@ -12,17 +12,29 @@ describe("getScanCreativeScreenshotTool", () => {
     expect(() => getScanCreativeScreenshotTool.inputSchema.parse({ scan_id: "nope" })).toThrow();
   });
 
-  it("returns image content block", async () => {
+  it("returns full MCP image envelope (base64 + mimeType from response)", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanCreativeScreenshot = ok({
-      bytes: new Uint8Array([0x89]),
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
       contentType: "image/png",
     });
     const r = await getScanCreativeScreenshotTool.handler(
-      { scan_id: SID },
+      { scan_id: SID, width: 600 },
       makeToolContext({ api })
     );
-    expect(r._unsafeUnwrap().content[0].type).toBe("image");
+    const out = r._unsafeUnwrap();
+    expect(out.content).toHaveLength(1);
+    const block = out.content[0];
+    expect(block.type).toBe("image");
+    if (block.type === "image") {
+      expect(block.mimeType).toBe("image/png");
+      // base64 of [0x89, 0x50, 0x4e, 0x47] = "iVBORw=="
+      expect(block.data).toBe("iVBORw==");
+    }
+    const call = api.state.calls[0];
+    if (call?.method !== "getScanCreativeScreenshot") throw new Error("wrong");
+    expect(call.scanId).toBe(SID);
+    expect(call.w).toBe(600);
   });
 
   it("maps error", async () => {
