@@ -69,9 +69,13 @@ import type {
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
+  ListCampaignsPickerFilters,
+  ListInvoicesFilters,
   ListPolicySetsFilters,
   ListScansFilters,
+  ListTagsFilters,
   ListUsageFilters,
+  ListWebhookDeliveriesFilters,
   OrgResponse,
   PageFilters,
   PaginatedResponse,
@@ -527,8 +531,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parsePageOf(parseRun)
       );
     },
-    async listCampaignsPicker(): Promise<Result<readonly CampaignPickerItem[], ApiError>> {
-      return call("GET", "/api/v1/campaigns/picker", {}, parseCampaignPickerArray);
+    async listCampaignsPicker(
+      filters?: ListCampaignsPickerFilters
+    ): Promise<Result<readonly CampaignPickerItem[], ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/campaigns/picker",
+        filters ? { params: { query: filters } } : {},
+        parseCampaignPickerArray
+      );
     },
 
     // ── Runs ──────────────────────────────────────────────────────
@@ -642,8 +653,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Tag definitions ───────────────────────────────────────────
-    async listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>> {
-      return call("GET", "/api/v1/tag-definitions", {}, parseTagDefinitionArray);
+    async listTags(
+      filters?: ListTagsFilters
+    ): Promise<Result<readonly TagDefinitionResponse[], ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/tag-definitions",
+        filters ? { params: { query: filters } } : {},
+        parseTagDefinitionArray
+      );
     },
     async getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>> {
       return call(
@@ -905,7 +923,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
     async listWebhookDeliveries(
       endpointId: string,
-      filters: PageFilters
+      filters: ListWebhookDeliveriesFilters
     ): Promise<Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>> {
       return call(
         "GET",
@@ -964,7 +982,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
     // ── Invoicing ─────────────────────────────────────────────────
     async listInvoices(
-      filters: PageFilters
+      filters: ListInvoicesFilters
     ): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>> {
       return call(
         "GET",

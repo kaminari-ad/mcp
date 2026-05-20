@@ -5,9 +5,19 @@ import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("listTagsTool", () => {
-  it("name + zero-arg input", () => {
+  it("name + accepts optional category", () => {
     expect(listTagsTool.name).toBe("list_tags");
-    expect(Object.keys(listTagsTool.inputSchema.shape)).toEqual([]);
+    expect(Object.keys(listTagsTool.inputSchema.shape)).toEqual(["category"]);
+    expect(() => listTagsTool.inputSchema.parse({ category: "security" })).not.toThrow();
+    expect(() => listTagsTool.inputSchema.parse({})).not.toThrow();
+  });
+
+  it("forwards category filter when provided", async () => {
+    const api = createFakeApiGateway();
+    await listTagsTool.handler({ category: "security" }, makeToolContext({ api }));
+    const call = api.state.calls[0];
+    if (call?.method !== "listTags") throw new Error("wrong");
+    expect(call.filters).toEqual({ category: "security" });
   });
 
   it("calls listTags without filters and returns items + total", async () => {

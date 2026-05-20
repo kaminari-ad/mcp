@@ -14,7 +14,16 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
-const ListTagsInputShape = {} as const;
+const ListTagsInputShape = {
+  category: z
+    .string()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe(
+      "Filter to tags in one category slug (e.g. 'security', 'malware', 'compliance'). Use the slug exactly as it appears in `category` of an existing tag."
+    ),
+} as const;
 type ListTagsInputShape = typeof ListTagsInputShape;
 
 export interface ListTagsOutput {
@@ -25,7 +34,7 @@ export interface ListTagsOutput {
 export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
   name: "list_tags",
   description:
-    "List every tag definition the platform knows (system tags + organization custom tags) with category, severity, and usage counters (scans + rules per tag).",
+    "List every tag definition the platform knows (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category.",
   annotations: {
     title: "List Tags",
     readOnlyHint: true,
@@ -34,8 +43,9 @@ export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
     openWorldHint: false,
   },
   inputSchema: z.object(ListTagsInputShape),
-  handler: async (_input, ctx): Promise<Result<ListTagsOutput, ToolError>> => {
-    const result = await ctx.api.listTags();
+  handler: async (input, ctx): Promise<Result<ListTagsOutput, ToolError>> => {
+    const filters = input.category !== undefined ? { category: input.category } : undefined;
+    const result = await ctx.api.listTags(filters);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok({ items: result.value, total: result.value.length });
   },

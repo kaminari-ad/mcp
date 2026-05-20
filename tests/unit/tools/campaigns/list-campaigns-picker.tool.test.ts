@@ -25,11 +25,28 @@ describe("listCampaignsPickerTool", () => {
     expect(r._unsafeUnwrap()[0]?.name).toBe("Brand A");
   });
 
-  it("records the call (no input filters)", async () => {
+  it("records the call (no input filters) and forwards undefined", async () => {
     const api = createFakeApiGateway();
     await listCampaignsPickerTool.handler({}, makeToolContext({ api }));
     const call = api.state.calls[0];
-    expect(call?.method).toBe("listCampaignsPicker");
+    if (call?.method !== "listCampaignsPicker") throw new Error("wrong");
+    expect(call.filters).toBeUndefined();
+  });
+
+  it("forwards archived / group_id / q / limit filters", async () => {
+    const api = createFakeApiGateway();
+    await listCampaignsPickerTool.handler(
+      { archived: true, group_id: UUID_G, q: "Brand", limit: 100 },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listCampaignsPicker") throw new Error("wrong");
+    expect(call.filters).toEqual({
+      archived: true,
+      group_id: UUID_G,
+      q: "Brand",
+      limit: 100,
+    });
   });
 
   it("maps error", async () => {

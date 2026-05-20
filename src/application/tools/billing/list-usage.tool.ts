@@ -11,8 +11,18 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListUsageInputShape = {
-  date_from: z.string().date().optional().describe("ISO date (YYYY-MM-DD), inclusive."),
-  date_to: z.string().date().optional().describe("ISO date (YYYY-MM-DD), inclusive."),
+  date_from: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .describe(
+      "ISO 8601 datetime (with timezone offset), inclusive lower bound on the usage timestamp. Plain dates also work — the API normalises to UTC midnight."
+    ),
+  date_to: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .describe("ISO 8601 datetime (with offset), inclusive upper bound."),
   scan_id: z.string().uuid().optional().describe("Filter to one scan's cost rows."),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),

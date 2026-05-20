@@ -33,6 +33,18 @@ describe("listCampaignsTool", () => {
     expect(call.filters.group_id).toBeUndefined();
   });
 
+  it("forwards archived + q filters", async () => {
+    const api = createFakeApiGateway();
+    await listCampaignsTool.handler(
+      { page: 1, limit: 50, archived: true, q: "Holiday" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listCampaigns") throw new Error("wrong method");
+    expect(call.filters.archived).toBe(true);
+    expect(call.filters.q).toBe("Holiday");
+  });
+
   it("maps ApiError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listCampaigns = err(makeApiError("forbidden", "no"));

@@ -46,8 +46,12 @@ import type {
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
+  ListCampaignsPickerFilters,
+  ListInvoicesFilters,
   ListScansFilters,
+  ListTagsFilters,
   ListUsageFilters,
+  ListWebhookDeliveriesFilters,
   OrgResponse,
   PageFilters,
   PaginatedResponse,
@@ -131,7 +135,10 @@ type Call =
       readonly campaignId: string;
       readonly filters: PageFilters;
     }
-  | { readonly method: "listCampaignsPicker" }
+  | {
+      readonly method: "listCampaignsPicker";
+      readonly filters: ListCampaignsPickerFilters | undefined;
+    }
   | { readonly method: "getRun"; readonly id: string }
   | { readonly method: "cancelRun"; readonly id: string }
   | {
@@ -153,7 +160,7 @@ type Call =
   | { readonly method: "unarchiveCampaignGroup"; readonly id: string }
   | { readonly method: "pauseCampaignGroupSchedule"; readonly id: string }
   | { readonly method: "resumeCampaignGroupSchedule"; readonly id: string }
-  | { readonly method: "listTags" }
+  | { readonly method: "listTags"; readonly filters: ListTagsFilters | undefined }
   | { readonly method: "getTagDefinition"; readonly slug: string }
   | {
       readonly method: "updateTagDefinition";
@@ -218,7 +225,7 @@ type Call =
   | {
       readonly method: "listWebhookDeliveries";
       readonly endpointId: string;
-      readonly filters: PageFilters;
+      readonly filters: ListWebhookDeliveriesFilters;
     }
   | { readonly method: "replayWebhookDelivery"; readonly attemptId: string }
   | {
@@ -230,7 +237,7 @@ type Call =
   | { readonly method: "listUsage"; readonly filters: ListUsageFilters }
   | { readonly method: "getUsageSummary" }
   | { readonly method: "listBalanceHistory"; readonly filters: ListBalanceHistoryFilters }
-  | { readonly method: "listInvoices"; readonly filters: PageFilters }
+  | { readonly method: "listInvoices"; readonly filters: ListInvoicesFilters }
   | { readonly method: "listAlertDestinations" }
   | { readonly method: "deleteAlertDestination"; readonly id: string }
   | {
@@ -794,8 +801,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         })
       );
     },
-    async listCampaignsPicker() {
-      push({ method: "listCampaignsPicker" });
+    async listCampaignsPicker(filters) {
+      push({ method: "listCampaignsPicker", filters });
       await Promise.resolve();
       return (
         state.responses.listCampaignsPicker ??
@@ -906,8 +913,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     },
 
     // ── Tag definitions ────────────────────────────────────────
-    async listTags() {
-      push({ method: "listTags" });
+    async listTags(filters) {
+      push({ method: "listTags", filters });
       await Promise.resolve();
       return state.responses.listTags ?? ok<readonly TagDefinitionResponse[], ApiError>([]);
     },

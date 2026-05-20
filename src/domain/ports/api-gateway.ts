@@ -768,6 +768,13 @@ export type SetCampaignOverridesRequest = Pick<
 
 // ── Filters (query params, not body schemas) ──────────────────────
 
+/**
+ * Filters for `GET /api/v1/scans`. All filter fields are optional;
+ * the API applies a 7-day rolling window on `date_from` if no
+ * temporal filter is set. `label_*` is a dynamic key family — the
+ * gateway whitelists every `label_<key>` from the caller's
+ * label-definitions on the request and forwards them verbatim.
+ */
 export interface ListScansFilters {
   readonly status?: string;
   readonly country_code?: string;
@@ -775,9 +782,19 @@ export interface ListScansFilters {
   readonly scan_id?: string;
   readonly date_from?: string;
   readonly date_to?: string;
+  readonly timezone?: string;
+  readonly run_id?: string;
+  readonly campaign_id?: string;
+  readonly group_id?: string;
   readonly tag?: string;
+  readonly ai_category?: string;
+  readonly iab_v3_category?: string;
+  readonly iab_category?: string;
+  readonly brand?: string;
   readonly page: number;
   readonly limit: number;
+  /** Dynamic per-org label filters: `label_<key>=<value>`. */
+  readonly [labelKey: `label_${string}`]: string | number | undefined;
 }
 
 export interface ListAlertsFilters {
@@ -787,6 +804,12 @@ export interface ListAlertsFilters {
   readonly limit: number;
 }
 
+/**
+ * Filters for `GET /api/v1/billing/usage`. ``date_from`` /
+ * ``date_to`` accept ISO 8601 *datetime* strings (with timezone
+ * offset) — the API treats them as inclusive bounds. Plain dates
+ * (YYYY-MM-DD) also work; the API normalises to UTC midnight.
+ */
 export interface ListUsageFilters {
   readonly date_from?: string;
   readonly date_to?: string;
@@ -795,11 +818,45 @@ export interface ListUsageFilters {
   readonly limit: number;
 }
 
+/** Possible values for ``ListBalanceHistoryFilters.type``. */
+export type BalanceTransactionType =
+  | "initial_balance"
+  | "top_up_manual"
+  | "usage_charge"
+  | "subscription_renewal"
+  | "subscription_upgrade"
+  | "admin_adjustment"
+  | "refund"
+  | "invoice_settlement"
+  | "crypto_top_up";
+
 export interface ListBalanceHistoryFilters {
   readonly date_from?: string;
   readonly date_to?: string;
+  /** Multi-select: pass several values to OR them. */
+  readonly type?: readonly BalanceTransactionType[];
   readonly page: number;
   readonly limit: number;
+}
+
+/** Possible values for ``ListInvoicesFilters.type`` and ``status``. */
+export type InvoiceType = "proforma" | "final";
+export type InvoiceStatus = "draft" | "issued" | "paid" | "voided" | "overdue";
+
+export interface ListInvoicesFilters extends PageFilters {
+  readonly type?: InvoiceType;
+  readonly status?: InvoiceStatus;
+}
+
+export interface ListWebhookDeliveriesFilters extends PageFilters {
+  readonly success?: boolean;
+  /** ISO 8601 datetime (inclusive). */
+  readonly from_ts?: string;
+  readonly to_ts?: string;
+}
+
+export interface ListTagsFilters {
+  readonly category?: string;
 }
 
 export interface PageFilters {
@@ -809,6 +866,20 @@ export interface PageFilters {
 
 export interface ListCampaignsFilters extends PageFilters {
   readonly group_id?: string;
+  readonly archived?: boolean;
+  readonly q?: string;
+}
+
+/**
+ * Filters for `GET /api/v1/campaigns/picker` (NOT paginated). The
+ * picker returns a bare array capped by `limit` and tuned for
+ * autocomplete UIs.
+ */
+export interface ListCampaignsPickerFilters {
+  readonly archived?: boolean;
+  readonly group_id?: string;
+  readonly q?: string;
+  readonly limit?: number;
 }
 
 /**
@@ -880,7 +951,9 @@ export interface ApiGateway {
    * autocomplete / combobox UIs. Returns a bare array (not paginated)
    * — the API treats picker as a non-paginated lookup table.
    */
-  listCampaignsPicker(): Promise<Result<readonly CampaignPickerItem[], ApiError>>;
+  listCampaignsPicker(
+    filters?: ListCampaignsPickerFilters
+  ): Promise<Result<readonly CampaignPickerItem[], ApiError>>;
 
   // Runs
   getRun(id: string): Promise<Result<RunResponse, ApiError>>;
@@ -916,7 +989,7 @@ export interface ApiGateway {
   resumeCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
 
   // Tag definitions
-  listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
+  listTags(filters?: ListTagsFilters): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
   getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   updateTagDefinition(
@@ -993,7 +1066,7 @@ export interface ApiGateway {
   listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>>;
   listWebhookDeliveries(
     endpointId: string,
-    filters: PageFilters
+    filters: ListWebhookDeliveriesFilters
   ): Promise<Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>>;
   replayWebhookDelivery(attemptId: string): Promise<Result<null, ApiError>>;
   bulkReplayWebhook(
@@ -1010,7 +1083,9 @@ export interface ApiGateway {
   ): Promise<Result<PaginatedResponse<BalanceTransactionResponse>, ApiError>>;
 
   // Invoicing
-  listInvoices(filters: PageFilters): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>>;
+  listInvoices(
+    filters: ListInvoicesFilters
+  ): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>>;
 
   // Alert notifications
   listAlertDestinations(): Promise<

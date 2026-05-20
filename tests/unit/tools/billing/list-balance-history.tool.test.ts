@@ -26,6 +26,23 @@ describe("listBalanceHistoryTool", () => {
     if (call?.method !== "listBalanceHistory") throw new Error("wrong");
     expect(call.filters.date_from).toBeUndefined();
   });
+
+  it("forwards multi-value type filter", async () => {
+    const api = createFakeApiGateway();
+    await listBalanceHistoryTool.handler(
+      { type: ["top_up_manual", "crypto_top_up"], page: 1, limit: 50 },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listBalanceHistory") throw new Error("wrong");
+    expect(call.filters.type).toEqual(["top_up_manual", "crypto_top_up"]);
+  });
+
+  it("rejects unknown transaction-type values", () => {
+    expect(() =>
+      listBalanceHistoryTool.inputSchema.parse({ type: ["weird"], page: 1, limit: 50 })
+    ).toThrow();
+  });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listBalanceHistory = err(makeApiError("forbidden", "x"));
