@@ -22,7 +22,7 @@ describe("listTagsTool", () => {
         severity: "high",
         is_system: true,
         organization_id: null,
-        show_in_public_report: true,
+        visibility: "public",
         scans_count: 10,
         rules_count: 1,
       },

@@ -15,10 +15,12 @@ const UpdateTagDefinitionInputShape = {
   display_name: z.string().min(1).max(200).optional().describe("New human-readable name."),
   description: z.string().max(2000).optional().describe("New description."),
   severity: z.enum(["high", "medium", "low"]).optional().describe("New severity level."),
-  show_in_public_report: z
-    .boolean()
+  visibility: z
+    .enum(["hidden", "internal", "public"])
     .optional()
-    .describe("Whether the tag appears in the public scan-report view."),
+    .describe(
+      "Tag visibility on the scan report: hidden = not surfaced; internal = visible to org members; public = appears in the public scan-share view."
+    ),
 } as const;
 type UpdateTagDefinitionInputShape = typeof UpdateTagDefinitionInputShape;
 
@@ -46,14 +48,12 @@ export const updateTagDefinitionTool: Tool<
       display_name?: string;
       description?: string;
       severity?: "high" | "medium" | "low";
-      show_in_public_report?: boolean;
+      visibility?: "hidden" | "internal" | "public";
     } = {};
     if (input.display_name !== undefined) body.display_name = input.display_name;
     if (input.description !== undefined) body.description = input.description;
     if (input.severity !== undefined) body.severity = input.severity;
-    if (input.show_in_public_report !== undefined) {
-      body.show_in_public_report = input.show_in_public_report;
-    }
+    if (input.visibility !== undefined) body.visibility = input.visibility;
     // API returns 204 No Content on success.
     const result = await ctx.api.updateTagDefinition(input.slug, body);
     if (result.isErr()) return err(mapApiError(result.error));

@@ -10,6 +10,20 @@ describe("listAlertsTool", () => {
     expect(() => listAlertsTool.inputSchema.parse({ status: "weird" })).toThrow();
   });
 
+  it("accepts the four canonical AlertStatus values", () => {
+    for (const status of ["open", "acknowledged", "resolved", "dismissed"] as const) {
+      expect(listAlertsTool.inputSchema.parse({ status }).status).toBe(status);
+    }
+  });
+
+  it("rejects legacy 'ack' / 'ignored' values now that API uses canonical names", () => {
+    // Regression guard for the COOP-13940 P3 alert status enum drift —
+    // sending the old values would 422 the API, and zod must catch it
+    // before the request is built.
+    expect(() => listAlertsTool.inputSchema.parse({ status: "ack" })).toThrow();
+    expect(() => listAlertsTool.inputSchema.parse({ status: "ignored" })).toThrow();
+  });
+
   it("forwards campaign_id + status filters", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

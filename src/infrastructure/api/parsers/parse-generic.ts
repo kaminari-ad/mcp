@@ -352,7 +352,12 @@ export const parseGroupAction = (raw: unknown): Result<GroupActionResponse, ApiE
 
 const PolicyEntrySchema = schemas.PolicyEntryResponse.pick({
   id: true,
+  rule_type: true,
   tag_slug: true,
+  iab_v3: true,
+  brand: true,
+  ai_category: true,
+  custom_taxonomy: true,
   country_codes: true,
 }).strip();
 

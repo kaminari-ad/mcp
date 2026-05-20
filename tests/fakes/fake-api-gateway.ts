@@ -473,7 +473,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   severity: "medium",
   is_system: true,
   organization_id: null,
-  show_in_public_report: false,
+  visibility: "internal",
   scans_count: 0,
   rules_count: 0,
   linked_rules: [],

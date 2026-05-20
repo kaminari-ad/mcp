@@ -66,6 +66,7 @@ import type {
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
+  ListPolicySetsFilters,
   ListScansFilters,
   ListUsageFilters,
   OrgResponse,
@@ -710,7 +711,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
     // ── Policy sets ───────────────────────────────────────────────
     async listPolicySets(
-      filters: PageFilters
+      filters: ListPolicySetsFilters
     ): Promise<Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>> {
       return call("GET", "/api/v1/policy-sets", { params: { query: filters } }, parsePolicySetPage);
     },

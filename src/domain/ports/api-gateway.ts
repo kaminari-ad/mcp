@@ -287,7 +287,7 @@ export type TagDefinitionResponse = Pick<
   | "severity"
   | "is_system"
   | "organization_id"
-  | "show_in_public_report"
+  | "visibility"
   | "scans_count"
   | "rules_count"
 >;
@@ -321,7 +321,7 @@ export interface TagDefinitionDetailResponse extends TagDefinitionResponse {
 
 export type UpdateTagDefinitionRequest = Pick<
   S["UpdateTagDefinitionRequest"],
-  "display_name" | "description" | "show_in_public_report" | "severity"
+  "display_name" | "description" | "visibility" | "severity"
 >;
 
 // ── Custom rules ──────────────────────────────────────────────────
@@ -393,9 +393,30 @@ export type PolicySetListItemResponse = Pick<
   "id" | "name" | "description" | "organization_id" | "visibility" | "is_approved" | "created_at"
 >;
 
+/**
+ * Sum-type policy rule. Discriminated by ``rule_type``; exactly one
+ * value-block is populated per row:
+ *
+ *   - ``tag``             -> ``tag_slug``
+ *   - ``iab_v3``          -> ``iab_v3`` (IAB Content Taxonomy V3 prefix, tier1..4)
+ *   - ``brand``           -> ``brand`` (case-insensitive equality)
+ *   - ``ai_category``     -> ``ai_category`` (freeform LLM-generated prefix)
+ *   - ``custom_taxonomy`` -> ``custom_taxonomy`` (per-org node prefix)
+ *
+ * The remaining blocks are ``null``. Agents that only care about one
+ * kind can branch on ``rule_type`` and ignore the rest. ``country_codes``
+ * narrows the rule to specific ISO countries; an empty list means all.
+ */
 export type PolicyEntryResponse = Pick<
   S["PolicyEntryResponse"],
-  "id" | "tag_slug" | "country_codes"
+  | "id"
+  | "rule_type"
+  | "tag_slug"
+  | "iab_v3"
+  | "brand"
+  | "ai_category"
+  | "custom_taxonomy"
+  | "country_codes"
 >;
 
 export type CreatePolicySetRequest = Pick<
@@ -410,6 +431,19 @@ export type UpdatePolicySetRequest = Pick<
 
 // ── Alerts ────────────────────────────────────────────────────────
 
+/**
+ * Alert row.
+ *
+ * `rule_type` is the kind of policy rule that triggered the alert
+ * (one of: ``tag``, ``iab_v3``, ``brand``, ``ai_category``,
+ * ``custom_taxonomy``). `matched_value` is the canonical text the
+ * scan matched against the rule (e.g. tag display name, IAB tier
+ * path, brand string, taxonomy node path) — null only for legacy
+ * rows produced before COOP-13940 P3.
+ *
+ * `tag_slug` / `tag_display_name` remain populated for legacy
+ * tag-kind alerts; for non-tag kinds inspect `matched_value`.
+ */
 export type AlertResponse = Pick<
   S["AlertResponse"],
   | "id"
@@ -417,6 +451,8 @@ export type AlertResponse = Pick<
   | "campaign_id"
   | "policy_set_id"
   | "violation_rule_id"
+  | "rule_type"
+  | "matched_value"
   | "tag_slug"
   | "tag_display_name"
   | "country_code"
@@ -687,6 +723,18 @@ export interface ListCampaignsFilters extends PageFilters {
 }
 
 /**
+ * Filters for `GET /api/v1/policy-sets` (list).
+ *
+ * `visibility` filters policy-set scope:
+ *   - `private` — org-owned sets only (default API behaviour);
+ *   - `public`  — Kaminari.Ad-curated sets visible to every org;
+ *   - `all`     — both.
+ */
+export interface ListPolicySetsFilters extends PageFilters {
+  readonly visibility?: "private" | "public" | "all";
+}
+
+/**
  * Port for outbound calls to `/api/v1`. Every method maps 1:1 to an
  * MCP tool. Path / body shapes mirror the generated OpenAPI types.
  */
@@ -803,7 +851,7 @@ export interface ApiGateway {
 
   // Policy sets
   listPolicySets(
-    filters: PageFilters
+    filters: ListPolicySetsFilters
   ): Promise<Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>>;
   getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>>;
   createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>>;

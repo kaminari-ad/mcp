@@ -29,14 +29,38 @@ describe("updateTagDefinitionTool", () => {
         display_name: "Y",
         description: "d",
         severity: "low",
-        show_in_public_report: true,
+        visibility: "public",
       },
       makeToolContext({ api })
     );
     const call = api.state.calls[0];
     if (call?.method !== "updateTagDefinition") throw new Error("wrong");
     expect(call.body.description).toBe("d");
-    expect(call.body.show_in_public_report).toBe(true);
+    expect(call.body.visibility).toBe("public");
+  });
+
+  it("strips legacy 'show_in_public_report' field (regression for COOP-13940 P3 rename)", () => {
+    // The COOP-13940 P3 rename replaced the boolean
+    // `show_in_public_report` with the `visibility` enum. Old agents
+    // sending the legacy key must not have it forwarded to the API —
+    // zod's strict object-pick drops the unknown field silently, but
+    // we assert the body never carries it.
+    const parsed = updateTagDefinitionTool.inputSchema.parse({
+      slug: "x",
+      show_in_public_report: true,
+    } as unknown as Record<string, unknown>);
+    expect("show_in_public_report" in parsed).toBe(false);
+  });
+
+  it("validates visibility enum", () => {
+    expect(() =>
+      updateTagDefinitionTool.inputSchema.parse({ slug: "x", visibility: "weird" })
+    ).toThrow();
+    for (const v of ["hidden", "internal", "public"] as const) {
+      expect(
+        updateTagDefinitionTool.inputSchema.parse({ slug: "x", visibility: v }).visibility
+      ).toBe(v);
+    }
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

@@ -9,23 +9,18 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-
-const PolicyEntryShape = z.object({
-  tag_slug: z.string().min(1).max(100).describe("Tag slug that triggers a violation."),
-  country_codes: z
-    .array(z.string().length(2))
-    .max(50)
-    .describe("Restrict the violation to these countries. Empty array = all countries."),
-});
+import { PolicyEntryInput, policyEntryToRequest } from "./_policy-entry-input.js";
 
 const CreatePolicySetInputShape = {
   name: z.string().min(1).max(200).describe("Display name."),
   description: z.string().max(2000).describe("Free-form description (use empty string for none)."),
   entries: z
-    .array(PolicyEntryShape)
+    .array(PolicyEntryInput)
     .min(1)
     .max(500)
-    .describe("At least one entry. Each entry pairs a tag-slug with country codes."),
+    .describe(
+      "At least one entry. Each entry is a discriminated union over five rule kinds: tag / iab_v3 / brand / ai_category / custom_taxonomy."
+    ),
 } as const;
 type CreatePolicySetInputShape = typeof CreatePolicySetInputShape;
 
@@ -34,7 +29,7 @@ export type CreatePolicySetOutput = PolicySetResponse;
 export const createPolicySetTool: Tool<CreatePolicySetInputShape, CreatePolicySetOutput> = {
   name: "create_policy_set",
   description:
-    "Create a new policy set (named collection of tag + country-list entries). Once created, you can bind campaigns to it via `update_campaign`.",
+    "Create a new policy set (named collection of violation rules). Each rule is one of: tag slug, IAB V3 category prefix, advertiser brand, freeform AI category, or per-org custom-taxonomy node. Bind campaigns to the set via `update_campaign`.",
   annotations: {
     title: "Create Policy Set",
     readOnlyHint: false,
@@ -47,7 +42,7 @@ export const createPolicySetTool: Tool<CreatePolicySetInputShape, CreatePolicySe
     const result = await ctx.api.createPolicySet({
       name: input.name,
       description: input.description,
-      entries: input.entries.map((e) => ({ tag_slug: e.tag_slug, country_codes: e.country_codes })),
+      entries: input.entries.map(policyEntryToRequest),
     });
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);

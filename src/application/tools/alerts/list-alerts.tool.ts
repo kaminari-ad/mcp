@@ -13,9 +13,11 @@ import type { ToolError } from "../_shared/tool-result.js";
 const ListAlertsInputShape = {
   campaign_id: z.string().uuid().optional().describe("Filter to one campaign's alerts."),
   status: z
-    .enum(["open", "ack", "resolved", "ignored"])
+    .enum(["open", "acknowledged", "resolved", "dismissed"])
     .optional()
-    .describe("Filter by alert status."),
+    .describe(
+      "Filter by alert status. Open = unhandled; acknowledged = seen by an operator; resolved = closed; dismissed = closed without action."
+    ),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
 } as const;

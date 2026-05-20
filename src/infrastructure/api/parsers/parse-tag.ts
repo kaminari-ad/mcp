@@ -36,7 +36,7 @@ const TagDefinitionSchema = schemas.TagDefinitionWithStatsResponse.pick({
   severity: true,
   is_system: true,
   organization_id: true,
-  show_in_public_report: true,
+  visibility: true,
   scans_count: true,
   rules_count: true,
 }).strip();
@@ -62,7 +62,7 @@ const TagDetailSchema = schemas.TagDefinitionDetailResponse.pick({
   severity: true,
   is_system: true,
   organization_id: true,
-  show_in_public_report: true,
+  visibility: true,
   scans_count: true,
   rules_count: true,
 })

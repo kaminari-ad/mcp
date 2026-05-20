@@ -604,7 +604,7 @@ describe("HttpApiGateway", () => {
         description: "",
         is_system: true,
         organization_id: null,
-        show_in_public_report: false,
+        visibility: "internal",
         severity: "high",
         scans_count: 0,
         rules_count: 0,
@@ -762,7 +762,17 @@ describe("HttpApiGateway", () => {
           await gw.createPolicySet({
             name: "x",
             description: "d",
-            entries: [{ tag_slug: "y", country_codes: [] }],
+            entries: [
+              {
+                rule_type: "tag",
+                tag_slug: "y",
+                iab_v3: null,
+                brand: null,
+                ai_category: null,
+                custom_taxonomy: null,
+                country_codes: [],
+              },
+            ],
           })
         ).isOk()
       ).toBe(true);
@@ -870,7 +880,7 @@ describe("HttpApiGateway", () => {
           severity: "high",
           is_system: true,
           organization_id: null,
-          show_in_public_report: true,
+          visibility: "public",
           // Detail endpoint includes `linked_rules` (custom rules
           // currently producing this tag). The MCP `getTagDefinition`
           // surfaces them in the tool output since v0.2.0.
