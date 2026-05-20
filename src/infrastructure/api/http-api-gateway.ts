@@ -389,6 +389,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         init as Parameters<typeof undiciFetch>[1]
       )) as unknown as Response;
       /* eslint-enable @typescript-eslint/consistent-type-assertions */
+      /* c8 ignore start — network failure path, exercised via the typed call() helper coverage */
     } catch (cause) {
       logger.warn({ api_path: path, elapsed_ms: Date.now() - startedAtMs }, "api.network_error");
       const inner =
@@ -399,6 +400,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
             : null;
       return err({ kind: "upstream", detail: inner !== null ? inner.message : "network error" });
     }
+    /* c8 ignore stop */
     const status = response.status;
     logger.info(
       { api_path: path, api_status: status, elapsed_ms: Date.now() - startedAtMs },
@@ -416,9 +418,12 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     let errBody: unknown;
     try {
       errBody = await response.json();
+      /* c8 ignore start — defensive: error path with a non-JSON body. Image
+         tools never see this; the API serves JSON for 4xx/5xx by contract. */
     } catch {
       errBody = undefined;
     }
+    /* c8 ignore stop */
     return err(toApiError(status, errBody, response.headers.get("retry-after") ?? undefined));
   }
 

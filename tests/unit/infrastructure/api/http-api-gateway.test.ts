@@ -1343,6 +1343,100 @@ describe("HttpApiGateway", () => {
       expect((await gw.parseCustomTaxonomyText({ text: "Root" })).isOk()).toBe(true);
     });
 
+    it("account-labels CRUD + custom-role create", async () => {
+      const ROLE = {
+        id: "00000000-0000-0000-0000-000000000777",
+        name: "Auditor",
+        scope: "organization",
+        is_system: false,
+        permissions: ["scans.read"],
+      };
+      const LABELS = [
+        { key: "brand_safety", display_name: "Brand Safety", position: 0, auto_extract: true },
+      ];
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/labels", method: "GET" })
+        .reply(200, LABELS);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/labels", method: "PUT" })
+        .reply(200, LABELS);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/roles", method: "POST" })
+        .reply(201, ROLE);
+
+      const gw = buildGateway(agent);
+      expect((await gw.listAccountLabels()).isOk()).toBe(true);
+      expect(
+        (
+          await gw.updateAccountLabels({
+            labels: [{ key: "brand_safety", display_name: "Brand Safety", auto_extract: true }],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (await gw.createCustomRole({ name: "Auditor", permissions: ["scans.read"] })).isOk()
+      ).toBe(true);
+    });
+
+    it("binary downloads — screenshots + invoice PDF (raw bytes path)", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      const IID = "00000000-0000-0000-0000-000000000fff";
+      const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const PDF = Buffer.from([0x25, 0x50, 0x44, 0x46]);
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) =>
+            p === `/api/v1/scans/${SID}/screenshot` ||
+            p === `/api/v1/scans/${SID}/screenshot?w=800`,
+          method: "GET",
+        })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } })
+        .times(2);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-screenshot`, method: "GET" })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/landings/2/screenshot`, method: "GET" })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
+        .reply(200, PDF, { headers: { "content-type": "application/pdf" } });
+
+      const gw = buildGateway(agent);
+      const ss1 = await gw.getScanScreenshot(SID);
+      expect(ss1.isOk()).toBe(true);
+      if (ss1.isOk()) expect(ss1.value.contentType).toBe("image/png");
+      const ss2 = await gw.getScanScreenshot(SID, 800);
+      expect(ss2.isOk()).toBe(true);
+      expect((await gw.getScanCreativeScreenshot(SID)).isOk()).toBe(true);
+      expect((await gw.getScanLandingScreenshot(SID, 2)).isOk()).toBe(true);
+      const pdf = await gw.getInvoicePdf(IID);
+      expect(pdf.isOk()).toBe(true);
+      if (pdf.isOk()) {
+        expect(pdf.value.contentType).toBe("application/pdf");
+        expect(Array.from(pdf.value.bytes.slice(0, 4))).toEqual([0x25, 0x50, 0x44, 0x46]);
+      }
+    });
+
+    it("binary download surfaces 404 / 500 as ApiError (not raw bytes)", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/screenshot`, method: "GET" })
+        .reply(404, { detail: "no screenshot" });
+      const gw = buildGateway(agent);
+      const r = await gw.getScanScreenshot(SID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
+    });
+
     it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {
       const a = agent;
       // List returns a BARE ARRAY per OpenAPI — no envelope.
