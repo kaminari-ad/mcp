@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 
+import { DEFAULT_OAUTH_SCOPES } from "./oauth-scope-catalogue.js";
 import { err, ok, type Result } from "./result.js";
 
 /**
@@ -54,6 +55,32 @@ export interface Config {
    * this is `undefined` (see CONTRIBUTING.md "Tenant isolation" §5).
    */
   readonly stdioApiKey: string | undefined;
+  /**
+   * Canonical MCP endpoint URL advertised as the `resource` field of
+   * the RFC 9728 protected-resource metadata document. Anthropic's
+   * Claude clients require this to match the URL the user enters in
+   * Claude exactly (including the path component).
+   */
+  readonly oauthProtectedResource: string;
+  /**
+   * Absolute URL where this server serves the protected-resource
+   * metadata JSON. Advertised back to clients via
+   * `WWW-Authenticate: Bearer resource_metadata="…"` on 401.
+   */
+  readonly oauthProtectedResourceMetadataUrl: string;
+  /**
+   * Issuer URL of the Authorization Server that mints access tokens
+   * accepted by this Resource Server. Advertised as the first (and
+   * only) entry of the metadata's `authorization_servers` array.
+   */
+  readonly oauthAuthorizationServerUrl: string;
+  /**
+   * Scopes the Resource Server advertises in both the metadata's
+   * `scopes_supported` field and the 401 `WWW-Authenticate scope=…`
+   * parameter. Defaults to {@link DEFAULT_OAUTH_SCOPES}; operators
+   * may override via `KAMINARI_AD_OAUTH_SCOPES` (space-separated).
+   */
+  readonly oauthScopes: readonly string[];
 }
 
 /**
@@ -83,6 +110,18 @@ const RawSchema = z.object({
   KAMINARI_AD_SESSION_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(1800),
   KAMINARI_AD_RATE_LIMIT_RPM: z.coerce.number().int().min(1).max(10_000).default(120),
   KAMINARI_AD_API_KEY: z.string().min(8).optional(),
+  // OAuth discovery (RFC 9728 protected-resource + RFC 8414 AS
+  // metadata). All three URLs default to the production deployment;
+  // local/staging operators override per-environment.
+  KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: z.string().url().default("https://mcp.kaminari.ad/mcp"),
+  KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL: z
+    .string()
+    .url()
+    .default("https://mcp.kaminari.ad/.well-known/oauth-protected-resource"),
+  KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL: z.string().url().default("https://app.kaminari.ad"),
+  // Space-separated scope list. We split on /\s+/ post-parse and drop
+  // empty tokens so accidental double-spaces don't corrupt the array.
+  KAMINARI_AD_OAUTH_SCOPES: z.string().optional(),
 });
 
 /**
@@ -103,6 +142,11 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
   const raw = parsed.data;
   const transport = raw.KAMINARI_AD_TRANSPORT;
   const logFormat = raw.KAMINARI_AD_LOG_FORMAT ?? (transport === "stdio" ? "pretty" : "json");
+  const oauthScopesRaw = raw.KAMINARI_AD_OAUTH_SCOPES;
+  const oauthScopes: readonly string[] =
+    oauthScopesRaw === undefined
+      ? DEFAULT_OAUTH_SCOPES
+      : Object.freeze(oauthScopesRaw.split(/\s+/).filter((s) => s.length > 0));
   return ok({
     transport,
     apiBaseUrl: raw.KAMINARI_AD_API_URL,
@@ -112,6 +156,10 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
     sessionTtlSec: raw.KAMINARI_AD_SESSION_TTL_SEC,
     rateLimitRpm: raw.KAMINARI_AD_RATE_LIMIT_RPM,
     stdioApiKey: raw.KAMINARI_AD_API_KEY,
+    oauthProtectedResource: raw.KAMINARI_AD_OAUTH_PROTECTED_RESOURCE,
+    oauthProtectedResourceMetadataUrl: raw.KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL,
+    oauthAuthorizationServerUrl: raw.KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL,
+    oauthScopes,
   });
 }
 

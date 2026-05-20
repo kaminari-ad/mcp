@@ -45,7 +45,9 @@ import type { SessionId } from "../../domain/value-objects/session-id.js";
 import { createHttpApiGateway } from "../../infrastructure/api/http-api-gateway.js";
 import type { Config } from "../../shared/config.js";
 import { initNewSession, type SessionEntry } from "./mcp-session-factory.js";
+import { respondWithProtectedResourceMetadata } from "./protected-resource-metadata-handler.js";
 import { resolveExistingSession } from "./session-resolver.js";
+import { buildBearerChallenge } from "./www-authenticate.js";
 
 export interface HttpRequestHandlerDeps {
   readonly config: Config;
@@ -68,10 +70,24 @@ export function createHttpRequestHandler(
   // close (see `mcp-session-factory.ts`).
   const liveSessions = new Map<SessionId, SessionEntry>();
 
+  // Pre-computed per process: the WWW-Authenticate challenge string
+  // is purely a function of `Config` (resource-metadata URL +
+  // scopes). Computing it once here avoids string-building on every
+  // unauthenticated request and matches rule #1 (the value is a const
+  // closure, not module-level mutable state).
+  const bearerChallenge = buildBearerChallenge(config);
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // Rule #16 — health probe carries no tenant data and needs no auth.
     if (req.method === "GET" && req.url === "/healthz") {
       writeJson(res, 200, { status: "ok" });
+      return;
+    }
+
+    // RFC 9728 protected-resource metadata. Same data-free, no-auth
+    // pattern as /healthz — see protected-resource-metadata-handler.ts.
+    if (req.method === "GET" && req.url === "/.well-known/oauth-protected-resource") {
+      respondWithProtectedResourceMetadata(res, config);
       return;
     }
 
@@ -83,11 +99,19 @@ export function createHttpRequestHandler(
       return;
     }
 
-    // Rule #6 — missing Authorization is rejected without touching the API.
+    // Rule #6 — missing Authorization is rejected without touching
+    // the API. The `WWW-Authenticate` header is required by the MCP
+    // authorization spec / Anthropic Claude clients to discover the
+    // RFC 9728 protected-resource metadata document.
     const authHeader = first(req.headers.authorization);
     const bearer = BearerToken.fromAuthorizationHeader(authHeader);
     if (bearer === undefined) {
-      writeJson(res, 401, { error: "Authorization Bearer token required" });
+      writeJson(
+        res,
+        401,
+        { error: "Authorization Bearer token required" },
+        { "www-authenticate": bearerChallenge }
+      );
       return;
     }
 

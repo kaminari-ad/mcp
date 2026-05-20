@@ -18,6 +18,23 @@ describe("loadConfig", () => {
     expect(cfg.sessionTtlSec).toBe(1800);
     expect(cfg.rateLimitRpm).toBe(120);
     expect(cfg.stdioApiKey).toBeUndefined();
+    // OAuth discovery defaults — pinned because Anthropic's directory
+    // clients require these URLs to match the user-entered MCP URL
+    // byte-for-byte.
+    expect(cfg.oauthProtectedResource).toBe("https://mcp.kaminari.ad/mcp");
+    expect(cfg.oauthProtectedResourceMetadataUrl).toBe(
+      "https://mcp.kaminari.ad/.well-known/oauth-protected-resource"
+    );
+    expect(cfg.oauthAuthorizationServerUrl).toBe("https://app.kaminari.ad");
+    expect(cfg.oauthScopes).toEqual([
+      "mcp:scans:read",
+      "mcp:scans:write",
+      "mcp:campaigns:read",
+      "mcp:campaigns:write",
+      "mcp:billing:read",
+      "mcp:webhooks:write",
+      "offline_access",
+    ]);
   });
 
   it("defaults logFormat to json in http mode", () => {
@@ -98,6 +115,37 @@ describe("loadConfig", () => {
 
   it("rejects too-short KAMINARI_AD_API_KEY", () => {
     const result = loadConfig({ KAMINARI_AD_API_KEY: "abc" });
+    expect(result.isErr()).toBe(true);
+  });
+
+  it("parses OAuth discovery overrides", () => {
+    const result = loadConfig({
+      KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: "https://mcp.example.test/mcp",
+      KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL:
+        "https://mcp.example.test/.well-known/oauth-protected-resource",
+      KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL: "https://idp.example.test",
+      KAMINARI_AD_OAUTH_SCOPES: "mcp:scans:read offline_access",
+    });
+    expect(result.isOk()).toBe(true);
+    const cfg = result._unsafeUnwrap();
+    expect(cfg.oauthProtectedResource).toBe("https://mcp.example.test/mcp");
+    expect(cfg.oauthProtectedResourceMetadataUrl).toBe(
+      "https://mcp.example.test/.well-known/oauth-protected-resource"
+    );
+    expect(cfg.oauthAuthorizationServerUrl).toBe("https://idp.example.test");
+    expect(cfg.oauthScopes).toEqual(["mcp:scans:read", "offline_access"]);
+  });
+
+  it("normalises whitespace in KAMINARI_AD_OAUTH_SCOPES (double spaces, tabs, empty tokens)", () => {
+    const result = loadConfig({
+      KAMINARI_AD_OAUTH_SCOPES: "  mcp:scans:read   offline_access\t ",
+    });
+    expect(result.isOk()).toBe(true);
+    expect(result._unsafeUnwrap().oauthScopes).toEqual(["mcp:scans:read", "offline_access"]);
+  });
+
+  it("rejects non-URL KAMINARI_AD_OAUTH_PROTECTED_RESOURCE", () => {
+    const result = loadConfig({ KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: "not-a-url" });
     expect(result.isErr()).toBe(true);
   });
 });
