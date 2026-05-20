@@ -62,6 +62,13 @@ import { getCustomRuleTool } from "./tools/custom-rules/get-custom-rule.tool.js"
 import { listCustomRulesTool } from "./tools/custom-rules/list-custom-rules.tool.js";
 import { testCustomRuleTool } from "./tools/custom-rules/test-custom-rule.tool.js";
 import { updateCustomRuleTool } from "./tools/custom-rules/update-custom-rule.tool.js";
+import { createCustomTaxonomyTool } from "./tools/custom-taxonomies/create-custom-taxonomy.tool.js";
+import { deleteCustomTaxonomyTool } from "./tools/custom-taxonomies/delete-custom-taxonomy.tool.js";
+import { getCustomTaxonomyTool } from "./tools/custom-taxonomies/get-custom-taxonomy.tool.js";
+import { listCustomTaxonomiesTool } from "./tools/custom-taxonomies/list-custom-taxonomies.tool.js";
+import { parseCustomTaxonomyTextTool } from "./tools/custom-taxonomies/parse-custom-taxonomy-text.tool.js";
+import { restoreCustomTaxonomyTool } from "./tools/custom-taxonomies/restore-custom-taxonomy.tool.js";
+import { updateCustomTaxonomyTool } from "./tools/custom-taxonomies/update-custom-taxonomy.tool.js";
 import { listEmulatorsTool } from "./tools/emulators/list-emulators.tool.js";
 import { listGeosTool } from "./tools/geos/list-geos.tool.js";
 import { listInvoicesTool } from "./tools/invoicing/list-invoices.tool.js";
@@ -163,6 +170,14 @@ export function registerAllTools(register: RegisterTool): void {
   register(updateCustomRuleTool);
   register(deleteCustomRuleTool);
   register(testCustomRuleTool);
+  // custom taxonomies (per-org classification trees)
+  register(listCustomTaxonomiesTool);
+  register(getCustomTaxonomyTool);
+  register(createCustomTaxonomyTool);
+  register(updateCustomTaxonomyTool);
+  register(deleteCustomTaxonomyTool);
+  register(restoreCustomTaxonomyTool);
+  register(parseCustomTaxonomyTextTool);
   // policy sets
   register(listPolicySetsTool);
   register(getPolicySetTool);

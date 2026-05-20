@@ -1252,6 +1252,97 @@ describe("HttpApiGateway", () => {
       ).toBe(true);
     });
 
+    it("custom-taxonomies CRUD + parse-text + restore", async () => {
+      const TID = "00000000-0000-0000-0000-000000000aa1";
+      const TAXON = {
+        id: TID,
+        organization_id: "00000000-0000-0000-0000-000000000010",
+        name: "Brand-safety",
+        slug: "brand-safety",
+        description: "",
+        is_active: true,
+        version: 1,
+        nodes: [
+          {
+            id: "00000000-0000-0000-0000-000000000aaa",
+            parent_id: null,
+            level: 1,
+            position: 0,
+            name: "Other",
+            description: "fallback",
+            is_default: true,
+          },
+        ],
+        created_at: "2026-05-20T00:00:00Z",
+        updated_at: "2026-05-20T00:00:00Z",
+      };
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies", method: "GET" })
+        .reply(200, [
+          {
+            id: TID,
+            name: "Brand-safety",
+            slug: "brand-safety",
+            description: "",
+            is_active: true,
+            version: 1,
+            node_count: 1,
+            created_at: "2026-05-20T00:00:00Z",
+            updated_at: "2026-05-20T00:00:00Z",
+          },
+        ]);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies", method: "POST" })
+        .reply(201, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "GET" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "PUT" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "DELETE" })
+        .reply(204, "");
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}/restore`, method: "POST" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies/parse-text", method: "POST" })
+        .reply(200, { nodes: [{ level: 1, name: "Root", description: "" }], warnings: [] });
+
+      const gw = buildGateway(agent);
+      expect((await gw.listCustomTaxonomies()).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createCustomTaxonomy({
+            name: "Brand-safety",
+            description: "",
+            nodes: [],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.getCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.updateCustomTaxonomy(TID, {
+            name: "Brand-safety",
+            description: "",
+            nodes: [],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.deleteCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect((await gw.restoreCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect((await gw.parseCustomTaxonomyText({ text: "Root" })).isOk()).toBe(true);
+    });
+
     it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {
       const a = agent;
       // List returns a BARE ARRAY per OpenAPI — no envelope.

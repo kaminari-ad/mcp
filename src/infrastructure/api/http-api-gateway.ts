@@ -52,10 +52,13 @@ import type {
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
   CreateCustomRuleRequest,
+  CreateCustomTaxonomyRequest,
   CreatePolicySetRequest,
   CreateScanRequest,
   CreateWebhookRequest,
   CustomRuleResponse,
+  CustomTaxonomyListItem,
+  CustomTaxonomyResponse,
   DeliveryAttemptResponse,
   EmulatorResponse,
   EventCatalogResponse,
@@ -72,6 +75,8 @@ import type {
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  ParseTaxonomyTextRequest,
+  ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
@@ -94,6 +99,7 @@ import type {
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
   UpdateCustomRuleRequest,
+  UpdateCustomTaxonomyRequest,
   UpdateOrgRequest,
   UpdatePolicySetRequest,
   UpdateTagDefinitionRequest,
@@ -120,6 +126,11 @@ import { parseCampaignPickerArray } from "./parsers/parse-campaign-picker.js";
 import { parseIntField } from "./parsers/parse-count-envelope.js";
 import { parseCustomRule } from "./parsers/parse-custom-rule.js";
 import { parseCustomRulePage } from "./parsers/parse-custom-rule-page.js";
+import {
+  parseCustomTaxonomy,
+  parseCustomTaxonomyList,
+  parseTaxonomyTextPreview,
+} from "./parsers/parse-custom-taxonomy.js";
 import { parseEmpty } from "./parsers/parse-empty.js";
 import { parseEmulatorList } from "./parsers/parse-emulator.js";
 import {
@@ -753,6 +764,61 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         "/api/v1/policy-sets/{policy_set_id}/request-approval",
         { params: { path: { policy_set_id: id } } },
         parseEmpty
+      );
+    },
+
+    // ── Custom taxonomies ─────────────────────────────────────────
+    async listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>> {
+      return call("GET", "/api/v1/custom-taxonomies", {}, parseCustomTaxonomyList);
+    },
+    async getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/custom-taxonomies/{taxonomy_id}",
+        { params: { path: { taxonomy_id: id } } },
+        parseCustomTaxonomy
+      );
+    },
+    async createCustomTaxonomy(
+      body: CreateCustomTaxonomyRequest
+    ): Promise<Result<CustomTaxonomyResponse, ApiError>> {
+      return call("POST", "/api/v1/custom-taxonomies", { body }, parseCustomTaxonomy);
+    },
+    async updateCustomTaxonomy(
+      id: string,
+      body: UpdateCustomTaxonomyRequest
+    ): Promise<Result<CustomTaxonomyResponse, ApiError>> {
+      return call(
+        "PUT",
+        "/api/v1/custom-taxonomies/{taxonomy_id}",
+        { params: { path: { taxonomy_id: id } }, body },
+        parseCustomTaxonomy
+      );
+    },
+    async deleteCustomTaxonomy(id: string): Promise<Result<null, ApiError>> {
+      return call(
+        "DELETE",
+        "/api/v1/custom-taxonomies/{taxonomy_id}",
+        { params: { path: { taxonomy_id: id } } },
+        parseEmpty
+      );
+    },
+    async restoreCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/custom-taxonomies/{taxonomy_id}/restore",
+        { params: { path: { taxonomy_id: id } } },
+        parseCustomTaxonomy
+      );
+    },
+    async parseCustomTaxonomyText(
+      body: ParseTaxonomyTextRequest
+    ): Promise<Result<ParseTaxonomyTextResponse, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/custom-taxonomies/parse-text",
+        { body },
+        parseTaxonomyTextPreview
       );
     },
 

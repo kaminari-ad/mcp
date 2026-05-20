@@ -29,10 +29,13 @@ import type {
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
   CreateCustomRuleRequest,
+  CreateCustomTaxonomyRequest,
   CreatePolicySetRequest,
   CreateScanRequest,
   CreateWebhookRequest,
   CustomRuleResponse,
+  CustomTaxonomyListItem,
+  CustomTaxonomyResponse,
   DeliveryAttemptResponse,
   EmulatorResponse,
   EventCatalogResponse,
@@ -48,6 +51,8 @@ import type {
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  ParseTaxonomyTextRequest,
+  ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
@@ -70,6 +75,7 @@ import type {
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
   UpdateCustomRuleRequest,
+  UpdateCustomTaxonomyRequest,
   UpdateOrgRequest,
   UpdatePolicySetRequest,
   UpdateTagDefinitionRequest,
@@ -175,6 +181,17 @@ type Call =
     }
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
+  | { readonly method: "listCustomTaxonomies" }
+  | { readonly method: "getCustomTaxonomy"; readonly id: string }
+  | { readonly method: "createCustomTaxonomy"; readonly body: CreateCustomTaxonomyRequest }
+  | {
+      readonly method: "updateCustomTaxonomy";
+      readonly id: string;
+      readonly body: UpdateCustomTaxonomyRequest;
+    }
+  | { readonly method: "deleteCustomTaxonomy"; readonly id: string }
+  | { readonly method: "restoreCustomTaxonomy"; readonly id: string }
+  | { readonly method: "parseCustomTaxonomyText"; readonly body: ParseTaxonomyTextRequest }
   | { readonly method: "listAlerts"; readonly filters: ListAlertsFilters }
   | {
       readonly method: "updateAlertStatus";
@@ -290,6 +307,13 @@ export interface FakeApiGatewayState {
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
+    listCustomTaxonomies?: Result<readonly CustomTaxonomyListItem[], ApiError>;
+    getCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    createCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    updateCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    deleteCustomTaxonomy?: Result<null, ApiError>;
+    restoreCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    parseCustomTaxonomyText?: Result<ParseTaxonomyTextResponse, ApiError>;
     listAlerts?: Result<PaginatedResponse<AlertResponse>, ApiError>;
     updateAlertStatus?: Result<null, ApiError>;
     getAlertStats?: Result<AlertStatsResponse, ApiError>;
@@ -463,6 +487,19 @@ const DEFAULT_API_KEY_CREATED: ApiKeyCreatedResponse = {
 const DEFAULT_CAMPAIGN_ARCHIVED: CampaignResponse = { ...DEFAULT_CAMPAIGN, is_archived: true };
 
 const DEFAULT_GROUP_PAUSED: CampaignGroupResponse = { ...DEFAULT_GROUP, schedule_paused: true };
+
+const DEFAULT_CUSTOM_TAXONOMY: CustomTaxonomyResponse = {
+  id: "00000000-0000-0000-0000-000000000aa1",
+  organization_id: "00000000-0000-0000-0000-000000000010",
+  name: "default",
+  slug: "default",
+  description: "",
+  is_active: true,
+  version: 1,
+  nodes: [],
+  created_at: "2026-05-20T00:00:00Z",
+  updated_at: "2026-05-20T00:00:00Z",
+};
 
 const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   slug: "default-tag",
@@ -978,6 +1015,60 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
       return state.responses.requestPolicySetApproval ?? ok<null, ApiError>(null);
+    },
+
+    // ── Custom taxonomies ──────────────────────────────────────
+    async listCustomTaxonomies() {
+      push({ method: "listCustomTaxonomies" });
+      await Promise.resolve();
+      return (
+        state.responses.listCustomTaxonomies ?? ok<readonly CustomTaxonomyListItem[], ApiError>([])
+      );
+    },
+    async getCustomTaxonomy(id) {
+      push({ method: "getCustomTaxonomy", id });
+      await Promise.resolve();
+      return (
+        state.responses.getCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async createCustomTaxonomy(body) {
+      push({ method: "createCustomTaxonomy", body });
+      await Promise.resolve();
+      return (
+        state.responses.createCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async updateCustomTaxonomy(id, body) {
+      push({ method: "updateCustomTaxonomy", id, body });
+      await Promise.resolve();
+      return (
+        state.responses.updateCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async deleteCustomTaxonomy(id) {
+      push({ method: "deleteCustomTaxonomy", id });
+      await Promise.resolve();
+      return state.responses.deleteCustomTaxonomy ?? ok<null, ApiError>(null);
+    },
+    async restoreCustomTaxonomy(id) {
+      push({ method: "restoreCustomTaxonomy", id });
+      await Promise.resolve();
+      return (
+        state.responses.restoreCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async parseCustomTaxonomyText(body) {
+      push({ method: "parseCustomTaxonomyText", body });
+      await Promise.resolve();
+      return (
+        state.responses.parseCustomTaxonomyText ??
+        ok<ParseTaxonomyTextResponse, ApiError>({ nodes: [], warnings: [] })
+      );
     },
 
     // ── Alerts ─────────────────────────────────────────────────

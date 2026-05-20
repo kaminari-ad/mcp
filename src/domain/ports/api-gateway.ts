@@ -429,6 +429,95 @@ export type UpdatePolicySetRequest = Pick<
   "name" | "description" | "entries"
 >;
 
+// ── Custom taxonomies ─────────────────────────────────────────────
+
+/**
+ * Per-org custom classification taxonomy. Slim summary used by the
+ * list endpoint (`GET /api/v1/custom-taxonomies`); the full tree is
+ * fetched separately via `getCustomTaxonomy` to keep the list page
+ * token-cheap for orgs with many taxonomies.
+ */
+export type CustomTaxonomyListItem = Pick<
+  S["CustomTaxonomyListItem"],
+  | "id"
+  | "name"
+  | "slug"
+  | "description"
+  | "is_active"
+  | "version"
+  | "node_count"
+  | "created_at"
+  | "updated_at"
+>;
+
+/**
+ * One node inside a custom taxonomy tree. ``parent_id`` is null for
+ * top-level nodes; ``level`` is 1-based; ``position`` is the
+ * 0-indexed sibling order. Exactly one node per taxonomy is marked
+ * ``is_default`` — that's the fallback for scans the LLM cannot
+ * confidently classify into the rest of the tree.
+ */
+export type TaxonomyNodeResponse = Pick<
+  S["TaxonomyNodeResponse"],
+  "id" | "parent_id" | "level" | "position" | "name" | "description" | "is_default"
+>;
+
+/**
+ * Full custom taxonomy with its tree. Returned by getCustomTaxonomy,
+ * createCustomTaxonomy, updateCustomTaxonomy, restoreCustomTaxonomy.
+ */
+export interface CustomTaxonomyResponse {
+  readonly id: string;
+  readonly organization_id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly description: string;
+  readonly is_active: boolean;
+  readonly version: number;
+  readonly nodes: readonly TaxonomyNodeResponse[];
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+/**
+ * Request shape for one node when creating or updating a taxonomy.
+ *
+ * ``client_id`` and ``parent_client_id`` are arbitrary strings the
+ * caller chooses to express the parent-child relationship in a flat
+ * array (the API stitches the tree from these). They never persist —
+ * after the request returns, ``id`` (UUID) is the canonical handle.
+ */
+export type TaxonomyNodeRequest = Pick<
+  S["TaxonomyNodeRequest"],
+  "client_id" | "parent_client_id" | "name" | "description" | "is_default"
+>;
+
+export type CreateCustomTaxonomyRequest = Pick<
+  S["CreateCustomTaxonomyRequest"],
+  "name" | "description" | "nodes"
+>;
+
+export type UpdateCustomTaxonomyRequest = Pick<
+  S["UpdateCustomTaxonomyRequest"],
+  "name" | "description" | "nodes"
+>;
+
+export type ParseTaxonomyTextRequest = Pick<S["ParseTaxonomyTextRequest"], "text">;
+
+/** One node parsed from free-form text — agents finish the tree by setting is_default + parent links. */
+export type ParsedTaxonomyNode = Pick<S["ParsedTaxonomyNode"], "level" | "name" | "description">;
+
+/**
+ * Result of `POST /api/v1/custom-taxonomies/parse-text`. Always a
+ * preview — nothing is persisted until the agent calls
+ * `createCustomTaxonomy` with the returned nodes (after picking a
+ * default). Warnings list any rows the parser had to skip / repair.
+ */
+export interface ParseTaxonomyTextResponse {
+  readonly nodes: readonly ParsedTaxonomyNode[];
+  readonly warnings: readonly string[];
+}
+
 // ── Alerts ────────────────────────────────────────────────────────
 
 /**
@@ -860,6 +949,23 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
+
+  // Custom taxonomies
+  listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>>;
+  getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  createCustomTaxonomy(
+    body: CreateCustomTaxonomyRequest
+  ): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  updateCustomTaxonomy(
+    id: string,
+    body: UpdateCustomTaxonomyRequest
+  ): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  deleteCustomTaxonomy(id: string): Promise<Result<null, ApiError>>;
+  restoreCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  parseCustomTaxonomyText(
+    body: ParseTaxonomyTextRequest
+  ): Promise<Result<ParseTaxonomyTextResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
 
