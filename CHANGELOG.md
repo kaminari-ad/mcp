@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OAuth 2.0 Protected Resource discovery.** The HTTP transport now
   serves `GET /.well-known/oauth-protected-resource` (RFC 9728) and
   returns `WWW-Authenticate: Bearer resource_metadata="…", scope="…"`
-  on every 401 response. The metadata document points at the
+  on unauthenticated `/mcp` requests (the 401s produced by the
+  Bearer-extraction layer). The metadata document points at the
   Kaminari Ad Authorization Server (`https://app.kaminari.ad` by
   default) and advertises the `mcp:*` scope catalogue. This is the
   discovery path Anthropic's Claude clients use when adding the

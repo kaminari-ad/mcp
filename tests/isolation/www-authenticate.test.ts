@@ -16,6 +16,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { jsonRpc, spinUpServer } from "./_helpers/spin-up-server.js";
 
+const EXPECTED_CHALLENGE =
+  'Bearer resource_metadata="https://mcp.kaminari.ad/.well-known/oauth-protected-resource", scope="mcp:scans:read mcp:scans:write mcp:campaigns:read mcp:campaigns:write mcp:billing:read mcp:webhooks:write offline_access"';
+
 describe("isolation: WWW-Authenticate Bearer challenge on 401", () => {
   let harness: Awaited<ReturnType<typeof spinUpServer>>;
 
@@ -29,13 +32,10 @@ describe("isolation: WWW-Authenticate Bearer challenge on 401", () => {
   it("missing Authorization → 401 + WWW-Authenticate header pointing at PRM", async () => {
     const res = await jsonRpc(harness.origin, {}, { jsonrpc: "2.0", method: "tools/list", id: 1 });
     expect(res.statusCode).toBe(401);
-    const header = res.headers["www-authenticate"];
-    expect(typeof header).toBe("string");
-    // Bearer scheme + resource_metadata pointer + scope list. The
-    // exact string is asserted to surface accidental drift.
-    expect(header).toBe(
-      'Bearer resource_metadata="https://mcp.kaminari.ad/.well-known/oauth-protected-resource", scope="mcp:scans:read mcp:scans:write mcp:campaigns:read mcp:campaigns:write mcp:billing:read mcp:webhooks:write offline_access"'
-    );
+    // Exact-match assertion (not toContain) so any accidental drift
+    // in the header — scope reordering, missing param, extra
+    // whitespace — fails loudly. Claude's discovery parser is strict.
+    expect(res.headers["www-authenticate"]).toBe(EXPECTED_CHALLENGE);
   });
 
   it("non-Bearer Authorization → 401 + same WWW-Authenticate", async () => {
@@ -45,9 +45,7 @@ describe("isolation: WWW-Authenticate Bearer challenge on 401", () => {
       { jsonrpc: "2.0", method: "tools/list", id: 1 }
     );
     expect(res.statusCode).toBe(401);
-    expect(res.headers["www-authenticate"]).toContain(
-      'resource_metadata="https://mcp.kaminari.ad/.well-known/oauth-protected-resource"'
-    );
+    expect(res.headers["www-authenticate"]).toBe(EXPECTED_CHALLENGE);
   });
 
   it("empty Bearer value → 401 + same WWW-Authenticate", async () => {
@@ -57,6 +55,6 @@ describe("isolation: WWW-Authenticate Bearer challenge on 401", () => {
       { jsonrpc: "2.0", method: "tools/list", id: 1 }
     );
     expect(res.statusCode).toBe(401);
-    expect(res.headers["www-authenticate"]).toContain('scope="mcp:scans:read');
+    expect(res.headers["www-authenticate"]).toBe(EXPECTED_CHALLENGE);
   });
 });
