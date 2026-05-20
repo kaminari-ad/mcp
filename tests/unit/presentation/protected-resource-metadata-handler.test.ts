@@ -9,9 +9,14 @@
  * lockfile.
  */
 
-import { describe, expect, it } from "vitest";
+import type { ServerResponse } from "node:http";
 
-import { buildProtectedResourceMetadata } from "../../../src/presentation/http/protected-resource-metadata-handler.js";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  buildProtectedResourceMetadata,
+  respondWithProtectedResourceMetadata,
+} from "../../../src/presentation/http/protected-resource-metadata-handler.js";
 import type { Config } from "../../../src/shared/config.js";
 
 function baseConfig(overrides: Partial<Config> = {}): Config {
@@ -72,5 +77,25 @@ describe("buildProtectedResourceMetadata", () => {
     const body = buildProtectedResourceMetadata(baseConfig({ oauthScopes: scopes }));
     expect(body["scopes_supported"]).toEqual(scopes);
     expect(body["scopes_supported"]).not.toBe(scopes);
+  });
+});
+
+describe("respondWithProtectedResourceMetadata", () => {
+  it("writes 200 + JSON body + 1h public Cache-Control", () => {
+    const writeHead = vi.fn();
+    const end = vi.fn();
+    const res = { writeHead, end } as unknown as ServerResponse;
+
+    respondWithProtectedResourceMetadata(res, baseConfig());
+
+    expect(writeHead).toHaveBeenCalledWith(200, {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=3600",
+    });
+    expect(end).toHaveBeenCalledOnce();
+    const written = end.mock.calls[0]?.[0] as string;
+    const parsed = JSON.parse(written) as Readonly<Record<string, unknown>>;
+    expect(parsed["resource"]).toBe("https://mcp.kaminari.ad/mcp");
+    expect(parsed["bearer_methods_supported"]).toEqual(["header"]);
   });
 });
