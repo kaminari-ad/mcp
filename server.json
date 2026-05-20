@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.kaminari-ad/mcp",
+  "title": "Kaminari Ad",
+  "description": "Real-device ad verification — scans, custom AI policy, antivirus vendor aggregation, webhooks. 83 tools to manage ad verification via AI agents.",
+  "websiteUrl": "https://kaminari.ad",
+  "repository": {
+    "url": "https://github.com/kaminari-ad/mcp",
+    "source": "github"
+  },
+  "version": "0.2.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@kaminari-ad/mcp",
+      "version": "0.2.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "KAMINARI_AD_API_KEY",
+          "description": "API key from app.kaminari.ad -> Settings -> API Keys",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "KAMINARI_AD_API_URL",
+          "description": "Optional API base URL override (default: https://app.kaminari.ad)",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

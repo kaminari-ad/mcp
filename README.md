@@ -1,13 +1,35 @@
 # `@kaminari-ad/mcp`
 
-Official Model Context Protocol (MCP) server for [Kaminari Ad](https://kaminari.ad) — the ad verification platform from the team behind [Kaminari.Click](https://kaminari.click).
+Official Model Context Protocol (MCP) server for [Kaminari Ad](https://kaminari.ad) — the ad verification platform from the team behind [Kaminari Click](https://kaminari.click).
 
 Lets AI agents (Cursor, Claude Desktop, Cline, and any MCP-compatible client) launch scans, inspect results, manage campaigns and policies, and read alerts directly against your Kaminari Ad workspace via your API key.
 
-[![npm](https://img.shields.io/npm/v/@kaminari-ad/mcp.svg)](https://www.npmjs.com/package/@kaminari-ad/mcp)
-[![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@kaminari-ad/mcp)](https://www.npmjs.com/package/@kaminari-ad/mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@kaminari-ad/mcp)](https://www.npmjs.com/package/@kaminari-ad/mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![node](https://img.shields.io/node/v/@kaminari-ad/mcp)](https://nodejs.org)
+[![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
 [![Provenance](https://img.shields.io/npm/v/@kaminari-ad/mcp?label=provenance&logo=github)](https://www.npmjs.com/package/@kaminari-ad/mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-listed-blue)](https://registry.modelcontextprotocol.io)
+
+## Install (one click)
+
+### Cursor
+
+<a href="https://kaminari.ad/mcp/install"><img alt="Install in Cursor" src="https://cursor.com/deeplink/mcp-install-dark.png" height="32" /></a>
+
+### Claude Desktop
+
+[**Download `kaminari-ad-mcp.mcpb`**](https://github.com/kaminari-ad/mcp/releases/latest/download/kaminari-ad-mcp.mcpb) → double-click to install. Claude Desktop shows a config form for your API key.
+
+### Claude Code (CLI)
+
+```bash
+claude mcp add kaminari-ad -- npx -y @kaminari-ad/mcp
+export KAMINARI_AD_API_KEY=your-key
+```
+
+Full installation docs — see [Quick start](#quick-start) below.
 
 ---
 
@@ -67,11 +89,11 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
 83 tools mirroring most of the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. Highlights:
 
 - **Account** (11) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `list_api_keys`, `create_api_key`, `revoke_api_key`
-- **Scans** (7) — `list_scans`, `get_scan`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `list_scan_tags`
+- **Scans** (6) — `list_scans`, `get_scan`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`
 - **Campaigns** (10) — `list_campaigns`, `list_campaigns_picker`, `get_campaign`, `create_campaign`, `update_campaign`, `archive_campaign`, `unarchive_campaign`, `cancel_campaign`, `run_campaign`, `list_campaign_runs`
 - **Campaign groups** (10) — list/get/create/update/run/cancel/archive/unarchive + `pause_campaign_group_schedule`, `resume_campaign_group_schedule`
 - **Runs** (3) — `get_run`, `list_run_scans`, `cancel_run` (use `list_campaign_runs` to enumerate runs of a campaign — the API has no standalone `/runs` index)
-- **Tags** (4) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`
+- **Tags** (5) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`, `list_scan_tags`
 - **Custom rules** (6) — `list_custom_rules`, `get_custom_rule`, `create_custom_rule`, `update_custom_rule`, `delete_custom_rule`, `test_custom_rule`
 - **Policy sets** (6) — `list_policy_sets`, `get_policy_set`, `create_policy_set`, `update_policy_set`, `delete_policy_set`, `request_policy_set_approval`
 - **Alerts** (3) — `list_alerts`, `update_alert_status`, `get_alert_stats`

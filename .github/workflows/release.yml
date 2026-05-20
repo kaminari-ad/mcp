@@ -156,11 +156,220 @@ jobs:
           body: |
             ## Install
 
+            **npm (stdio + HTTP):**
+
             ```bash
             npx -y @kaminari-ad/mcp@${{ github.ref_name }}
             ```
 
-            Add to your Cursor / Claude Desktop config — see
-            [README](README.md#quick-start).
+            **Claude Desktop extension (one-click install):**
 
-            Full changelog: [CHANGELOG.md](CHANGELOG.md).
+            Download `kaminari-ad-mcp.mcpb` from this release and double-click.
+
+            Full configuration docs — see [README](README.md#install).
+            Full changelog — see [CHANGELOG.md](CHANGELOG.md).
+
+  # ──────────────────────────────────────────────────────────────────
+  # Claude Desktop extension (.mcpb) build + upload to GitHub Release.
+  #
+  # `needs: publish` — must run AFTER the npm publish job passes its
+  # full gate (lint / typecheck / tests / build / OIDC publish). This
+  # is intentional: we never want a `.mcpb` floating on a tag whose
+  # npm publish failed (users could install a desktop extension that
+  # exists nowhere on npm — confusing and unsupportable).
+  #
+  # No environment gate (unlike `publish`): the .mcpb is a build
+  # artefact, not a credential-bearing publish.
+  # ──────────────────────────────────────────────────────────────────
+  publish-mcpb:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install
+        run: npm ci --legacy-peer-deps --ignore-scripts
+
+      - name: Verify tag matches package.json version
+        # Belt-and-suspenders: `publish` already verifies this, but
+        # since this job depends only on `publish`'s `success`
+        # conclusion (not its file artefacts), repeating the check
+        # locally lets the upload step trust `package.json`.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: git tag '$GITHUB_REF_NAME' (-> $TAG_VERSION) != package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - name: Build single-file bundle for .mcpb
+        # tsup.mcpb.config.ts inlines all runtime deps into one ESM
+        # file — Claude Desktop extracts the .mcpb and runs
+        # `node server/index.js` with no further install step.
+        run: npm run build:mcpb-bundle
+
+      - name: Verify single-file bundle size
+        # Separate from the packed-archive gate further down: this
+        # catches accidental dep bloat before the .mcpb pack stage.
+        run: npm run check:mcpb-bundle-size
+
+      - name: Prepare mcpb-bundle/ directory
+        run: |
+          mkdir -p mcpb-bundle/server
+          cp dist-mcpb/index.js mcpb-bundle/server/index.js
+
+      - name: Write manifest.json from package.json
+        # Generated inline (not a checked-in file) so the version
+        # stays in lockstep with package.json — no extra bump to keep
+        # in sync. Mirrors the structure of @anthropic-ai/mcpb's
+        # manifest-version 0.3 schema; user_config drives the
+        # config form that Claude Desktop shows during install.
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const manifest = {
+              manifest_version: '0.3',
+              name: 'kaminari-ad-mcp',
+              display_name: 'Kaminari Ad',
+              version: pkg.version,
+              description: pkg.description,
+              author: { name: 'Kaminari Ad', email: 'hello@kaminari.ad', url: 'https://kaminari.ad' },
+              license: 'MIT',
+              homepage: 'https://kaminari.ad/mcp',
+              documentation: 'https://github.com/kaminari-ad/mcp#readme',
+              repository: { type: 'git', url: 'https://github.com/kaminari-ad/mcp.git' },
+              privacy_policies: ['https://kaminari.ad/privacy'],
+              keywords: ['ad-verification', 'malvertising', 'cursor', 'claude', 'kaminari'],
+              server: {
+                type: 'node',
+                entry_point: 'server/index.js',
+                mcp_config: {
+                  command: 'node',
+                  args: ['\${__dirname}/server/index.js'],
+                  env: {
+                    KAMINARI_AD_API_KEY: '\${user_config.api_key}',
+                    KAMINARI_AD_API_URL: '\${user_config.api_url}'
+                  }
+                }
+              },
+              user_config: {
+                terms_accepted: {
+                  type: 'boolean',
+                  title: 'I agree to Kaminari Ad Terms of Service',
+                  description: 'https://kaminari.ad/user-agreement',
+                  required: true,
+                  default: false
+                },
+                api_key: {
+                  type: 'string',
+                  title: 'Kaminari Ad API Key',
+                  description: 'Generate at app.kaminari.ad -> Settings -> API Keys',
+                  sensitive: true,
+                  required: true
+                },
+                api_url: {
+                  type: 'string',
+                  title: 'API URL',
+                  description: 'Leave default unless on a self-hosted deployment.',
+                  required: false,
+                  default: 'https://app.kaminari.ad'
+                }
+              },
+              compatibility: {
+                platforms: ['darwin', 'win32', 'linux'],
+                runtimes: { node: '>=22.19.0' }
+              }
+            };
+            fs.writeFileSync('mcpb-bundle/manifest.json', JSON.stringify(manifest, null, 2));
+            console.log('manifest.json written for version ' + pkg.version);
+          "
+
+      - name: Pack .mcpb
+        # Pinned mcpb version — unpinned `@latest` could ship a
+        # breaking CLI change that fails our release. Bump
+        # deliberately, after verifying the new version locally.
+        run: |
+          cd mcpb-bundle
+          npx -y @anthropic-ai/mcpb@2.1.2 pack .
+          mv ./*.mcpb kaminari-ad-mcp.mcpb
+          ls -lh kaminari-ad-mcp.mcpb
+
+      - name: Verify bundle size (< 20 MB)
+        # 25 MB is GitHub's per-release-asset CDN limit; 20 MB is our
+        # ceiling for headroom + good Claude Desktop UX. If this trips,
+        # audit deps in src/ for over-inclusive imports — the bundle
+        # should be ~1-3 MB given the dep tree.
+        run: |
+          SIZE=$(stat -c%s mcpb-bundle/kaminari-ad-mcp.mcpb)
+          MB=$((SIZE / 1024 / 1024))
+          echo "Bundle size: ${MB} MB (${SIZE} bytes)"
+          if [ "$MB" -gt 20 ]; then
+            echo "ERROR: bundle exceeds 20 MB"
+            exit 1
+          fi
+
+      - name: Smoke test
+        # Unpack and run the bundle in stdio mode with an `initialize`
+        # JSON-RPC request. Verifies the bundle starts and the server
+        # is reachable.
+        #
+        # Three reliability guards:
+        #   1. `timeout 10s` — stdio transport blocks until peer
+        #      closes; without a hard timeout the job would hang to
+        #      its 15-minute ceiling on any startup glitch.
+        #   2. NO `|| true` on the node invocation — a non-zero exit
+        #      from the server (e.g. unhandled crash during bundle
+        #      load) must fail the step. `set -e` propagates it.
+        #   3. The parser tolerates timeout-induced truncation: if
+        #      `serverInfo` is missing the step exits non-zero.
+        #
+        # KAMINARI_AD_API_KEY is required to pass the stdio API-key
+        # precheck in stdio-bootstrap.ts (>= 8 chars).
+        run: |
+          set -e
+          mkdir -p /tmp/mcpb-test && cd /tmp/mcpb-test
+          unzip -q "$GITHUB_WORKSPACE/mcpb-bundle/kaminari-ad-mcp.mcpb"
+          INIT='{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}},"id":0}'
+          OUT=$(echo "$INIT" | KAMINARI_AD_API_KEY=ci-smoketest-key-1234 timeout 10s node server/index.js 2>/dev/null) || OUT="$OUT"
+          echo "$OUT" | node -e "
+            let d='';
+            process.stdin.on('data', c => d += c);
+            process.stdin.on('end', () => {
+              const lines = d.trim().split('\n').filter(Boolean);
+              if (lines.length === 0) {
+                console.error('FAIL: no stdout from server');
+                process.exit(1);
+              }
+              const last = lines[lines.length - 1];
+              let r;
+              try { r = JSON.parse(last); } catch (e) {
+                console.error('FAIL: last stdout line not valid JSON:', last);
+                process.exit(1);
+              }
+              if (!r.result || !r.result.serverInfo) {
+                console.error('FAIL: no serverInfo in response');
+                console.error(d);
+                process.exit(1);
+              }
+              console.log('OK: serverInfo.name =', r.result.serverInfo.name, '| version =', r.result.serverInfo.version);
+            });
+          "
+
+      - name: Create GitHub Release (no-op if publish job created it first)
+        run: gh release create ${{ github.ref_name }} --generate-notes || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload .mcpb to GitHub Release
+        run: gh release upload ${{ github.ref_name }} mcpb-bundle/kaminari-ad-mcp.mcpb --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -6,6 +6,7 @@
         audit license-check \
         gen-api-types \
         install-hooks \
+        mcpb \
         docker-build docker-shell
 
 # ──────────────────────────────────────────────────────────────────────
@@ -64,8 +65,20 @@ install:
 build:
 	$(RUN) npm run build
 
+mcpb:
+	$(RUN) npm run build:mcpb-bundle
+	@echo ""
+	@echo "Single-file bundle: dist-mcpb/index.js"
+	@echo "To pack a .mcpb file locally:"
+	@echo "  mkdir -p mcpb-bundle/server"
+	@echo "  cp dist-mcpb/index.js mcpb-bundle/server/index.js"
+	@echo "  # create mcpb-bundle/manifest.json (see release.yml for the spec)"
+	@echo "  cd mcpb-bundle && npx -y @anthropic-ai/mcpb@2.1.2 pack ."
+	@echo ""
+	@echo "Full .mcpb is built in CI on tag release — see .github/workflows/release.yml"
+
 clean:
-	$(RUN) rm -rf dist coverage .tsbuildinfo
+	$(RUN) rm -rf dist dist-mcpb mcpb-bundle coverage .tsbuildinfo *.mcpb
 
 # ── Quality ───────────────────────────────────────────────────────────
 

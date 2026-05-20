@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-05-20
+
+Minor release — adds one-click install paths for Cursor and Claude
+Desktop. No tool surface change, no breaking API behaviour change.
+
+### Added
+
+- **Claude Desktop `.mcpb` extension bundle.** Each tag release now
+  builds a single-file `kaminari-ad-mcp.mcpb` (via the new
+  `tsup.mcpb.config.ts` + `mcpb pack`) and uploads it to the GitHub
+  Release. Stable download URL:
+  <https://github.com/kaminari-ad/mcp/releases/latest/download/kaminari-ad-mcp.mcpb>.
+  Double-click installs into Claude Desktop with a config form for
+  the API key and a ToS-acceptance checkbox.
+- **Cursor one-click install badge.** README and the Kaminari Ad
+  marketing site link the official Cursor "Install in Cursor" badge
+  to a trampoline page (`https://kaminari.ad/mcp/install`) that
+  redirects to the `cursor://anysphere.cursor-deeplink/mcp/install`
+  URL with the npx-based stdio config pre-encoded.
+- **`server.json`** for [registry.modelcontextprotocol.io][mcp-reg]
+  listing. Surface (npm stdio package, env vars) mirrors what the
+  README documents.
+
+[mcp-reg]: https://registry.modelcontextprotocol.io
+
 ## [0.2.1] - 2026-05-18
 
 Patch release — clear Node-version error message, correct `engines`
