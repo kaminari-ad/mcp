@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **OAuth 2.0 Protected Resource discovery.** The HTTP transport now
+  serves `GET /.well-known/oauth-protected-resource` (RFC 9728) and
+  returns `WWW-Authenticate: Bearer resource_metadata="…", scope="…"`
+  on unauthenticated `/mcp` requests (the 401s produced by the
+  Bearer-extraction layer). The metadata document points at the
+  Kaminari Ad Authorization Server (`https://app.kaminari.ad` by
+  default) and advertises the `mcp:*` scope catalogue. This is the
+  discovery path Anthropic's Claude clients use when adding the
+  server as a directory connector. API-key authentication remains
+  fully supported — OAuth Bearer tokens are an additive, parallel
+  flavour for agents that prefer per-app consent + revocation.
+- **Operator config:** `KAMINARI_AD_OAUTH_PROTECTED_RESOURCE`,
+  `KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL`,
+  `KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL`, and
+  `KAMINARI_AD_OAUTH_SCOPES` (space-separated) for staging/local
+  overrides. Defaults match the production deployment.
+
 ## [0.3.0] - 2026-05-20
 
 Major-feature release — full parity with the API surface added in

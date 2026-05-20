@@ -19,11 +19,14 @@ describe("isolation: missing Authorization", () => {
     await harness.close();
   });
 
-  it("rejects POST /mcp without Authorization (401, no API call)", async () => {
+  it("rejects POST /mcp without Authorization (401, no API call, WWW-Authenticate set)", async () => {
     // No `intercept` registered → if MCP tried to call the API, undici
     // would reject (MockAgent has disableNetConnect).
     const res = await jsonRpc(harness.origin, {}, { jsonrpc: "2.0", method: "tools/list", id: 1 });
     expect(res.statusCode).toBe(401);
+    // Required by the MCP authorization spec / Anthropic Claude
+    // clients to discover the RFC 9728 metadata document.
+    expect(res.headers["www-authenticate"]).toMatch(/^Bearer resource_metadata=/);
   });
 
   it("rejects POST /mcp with non-Bearer Authorization", async () => {

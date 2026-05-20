@@ -22,10 +22,15 @@ pre-commit:
     no-secrets-quick:
       # Belt-and-suspenders quick scan; ESLint plugin-no-secrets does the
       # real work, this catches `.env` / `.pem` / `id_rsa` style files.
+      # ``.env.example`` is a documented template and explicitly
+      # allow-listed — it never holds real secrets.
       glob: "*"
       run: |
         for f in {staged_files}; do
           case "$f" in
+            *.env.example|.env.example)
+              continue
+              ;;
             *.env|*.env.*|*id_rsa*|*.pem|*.key|*.p12|*.pfx)
               echo "Refusing to commit potential secret: $f"
               exit 1

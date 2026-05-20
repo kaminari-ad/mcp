@@ -82,6 +82,33 @@ For cloud agents or clients without a local Node runtime, point at the hosted en
 }
 ```
 
+### 2c. OAuth 2.0 (Claude directory, third-party agents)
+
+The hosted server publishes RFC 9728 protected-resource metadata at
+[`https://mcp.kaminari.ad/.well-known/oauth-protected-resource`](https://mcp.kaminari.ad/.well-known/oauth-protected-resource)
+and points at the Kaminari Ad Authorization Server
+(`https://app.kaminari.ad`). Any unauthenticated request to `/mcp`
+returns a `WWW-Authenticate: Bearer resource_metadata="…"` header so
+spec-compliant MCP clients (Claude.ai, Claude Code, third-party
+agents) can complete an OAuth 2.0 authorization-code flow with PKCE
+S256 + Dynamic Client Registration (RFC 7591).
+
+```bash
+# Discovery — works without any credential
+curl -sk https://mcp.kaminari.ad/.well-known/oauth-protected-resource
+
+# Triggering the WWW-Authenticate hint
+curl -isk https://mcp.kaminari.ad/mcp -X POST \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+**API keys remain the recommended path for CLIs and one-off
+scripting** — OAuth is only for interactive agents that want per-app
+consent and per-app revocation. Both Bearer flavours hit the same
+`/mcp` endpoint; the server forwards the token verbatim to the API,
+which decides which credential type minted it.
+
 ---
 
 ## Tools
