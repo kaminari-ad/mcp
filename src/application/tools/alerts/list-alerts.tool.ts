@@ -13,9 +13,11 @@ import type { ToolError } from "../_shared/tool-result.js";
 const ListAlertsInputShape = {
   campaign_id: z.string().uuid().optional().describe("Filter to one campaign's alerts."),
   status: z
-    .enum(["open", "ack", "resolved", "ignored"])
+    .enum(["open", "acknowledged", "resolved", "dismissed"])
     .optional()
-    .describe("Filter by alert status."),
+    .describe(
+      "Filter by alert status. Open = unhandled; acknowledged = seen by an operator; resolved = closed; dismissed = closed without action."
+    ),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
 } as const;
@@ -26,7 +28,7 @@ export type ListAlertsOutput = PaginatedResponse<AlertResponse>;
 export const listAlertsTool: Tool<ListAlertsInputShape, ListAlertsOutput> = {
   name: "list_alerts",
   description:
-    "List violation alerts (one per scan + violating-tag combo) with offer URL, tag, country, status, scan back-reference.",
+    "List violation alerts (one per scan + violating rule combo) with offer URL, country, status, scan back-reference, and the kind-aware fields `rule_type` (tag / iab_v3 / brand / ai_category / custom_taxonomy) + `matched_value` (the canonical text the scan matched against).",
   annotations: {
     title: "List Alerts",
     readOnlyHint: true,

@@ -23,6 +23,12 @@ import type { ToolError } from "../_shared/tool-result.js";
 const ListPolicySetsInputShape = {
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
+  visibility: z
+    .enum(["private", "public"])
+    .optional()
+    .describe(
+      "Narrow to one scope. `private` = org-owned only, `public` = Kaminari Ad-curated sets visible to every org. Omit the filter to see BOTH combined."
+    ),
 } as const;
 type ListPolicySetsInputShape = typeof ListPolicySetsInputShape;
 
@@ -31,7 +37,7 @@ export type ListPolicySetsOutput = PaginatedResponse<PolicySetListItemResponse>;
 export const listPolicySetsTool: Tool<ListPolicySetsInputShape, ListPolicySetsOutput> = {
   name: "list_policy_sets",
   description:
-    "Paginated list of policy sets: named collections of (tag, country-list) entries that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them.",
+    "Paginated list of policy sets: named collections of violation rules (tag / IAB V3 / brand / AI category / custom-taxonomy entries) that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them. Use `visibility=public` to discover Kaminari Ad-curated sets.",
   annotations: {
     title: "List Policy Sets",
     readOnlyHint: true,
@@ -41,7 +47,11 @@ export const listPolicySetsTool: Tool<ListPolicySetsInputShape, ListPolicySetsOu
   },
   inputSchema: z.object(ListPolicySetsInputShape),
   handler: async (input, ctx): Promise<Result<ListPolicySetsOutput, ToolError>> => {
-    const result = await ctx.api.listPolicySets({ page: input.page, limit: input.limit });
+    const result = await ctx.api.listPolicySets({
+      page: input.page,
+      limit: input.limit,
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+    });
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);
   },

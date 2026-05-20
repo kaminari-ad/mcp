@@ -20,7 +20,7 @@ export type GetPolicySetOutput = PolicySetResponse;
 export const getPolicySetTool: Tool<GetPolicySetInputShape, GetPolicySetOutput> = {
   name: "get_policy_set",
   description:
-    "Get one policy set by UUID with its complete list of entries (tag-slug + applicable country codes).",
+    "Get one policy set by UUID with its complete list of entries (each entry is one of five rule kinds — tag / iab_v3 / brand / ai_category / custom_taxonomy — plus applicable country codes).",
   annotations: {
     title: "Get Policy Set",
     readOnlyHint: true,

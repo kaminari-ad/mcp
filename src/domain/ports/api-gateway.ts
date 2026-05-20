@@ -287,7 +287,7 @@ export type TagDefinitionResponse = Pick<
   | "severity"
   | "is_system"
   | "organization_id"
-  | "show_in_public_report"
+  | "visibility"
   | "scans_count"
   | "rules_count"
 >;
@@ -321,7 +321,7 @@ export interface TagDefinitionDetailResponse extends TagDefinitionResponse {
 
 export type UpdateTagDefinitionRequest = Pick<
   S["UpdateTagDefinitionRequest"],
-  "display_name" | "description" | "show_in_public_report" | "severity"
+  "display_name" | "description" | "visibility" | "severity"
 >;
 
 // ── Custom rules ──────────────────────────────────────────────────
@@ -393,9 +393,30 @@ export type PolicySetListItemResponse = Pick<
   "id" | "name" | "description" | "organization_id" | "visibility" | "is_approved" | "created_at"
 >;
 
+/**
+ * Sum-type policy rule. Discriminated by ``rule_type``; exactly one
+ * value-block is populated per row:
+ *
+ *   - ``tag``             -> ``tag_slug``
+ *   - ``iab_v3``          -> ``iab_v3`` (IAB Content Taxonomy V3 prefix, tier1..4)
+ *   - ``brand``           -> ``brand`` (case-insensitive equality)
+ *   - ``ai_category``     -> ``ai_category`` (freeform LLM-generated prefix)
+ *   - ``custom_taxonomy`` -> ``custom_taxonomy`` (per-org node prefix)
+ *
+ * The remaining blocks are ``null``. Agents that only care about one
+ * kind can branch on ``rule_type`` and ignore the rest. ``country_codes``
+ * narrows the rule to specific ISO countries; an empty list means all.
+ */
 export type PolicyEntryResponse = Pick<
   S["PolicyEntryResponse"],
-  "id" | "tag_slug" | "country_codes"
+  | "id"
+  | "rule_type"
+  | "tag_slug"
+  | "iab_v3"
+  | "brand"
+  | "ai_category"
+  | "custom_taxonomy"
+  | "country_codes"
 >;
 
 export type CreatePolicySetRequest = Pick<
@@ -408,8 +429,122 @@ export type UpdatePolicySetRequest = Pick<
   "name" | "description" | "entries"
 >;
 
+// ── Custom taxonomies ─────────────────────────────────────────────
+
+/**
+ * Per-org custom classification taxonomy. Slim summary used by the
+ * list endpoint (`GET /api/v1/custom-taxonomies`); the full tree is
+ * fetched separately via `getCustomTaxonomy` to keep the list page
+ * token-cheap for orgs with many taxonomies.
+ */
+export type CustomTaxonomyListItem = Pick<
+  S["CustomTaxonomyListItem"],
+  | "id"
+  | "name"
+  | "slug"
+  | "description"
+  | "is_active"
+  | "version"
+  | "node_count"
+  | "created_at"
+  | "updated_at"
+>;
+
+/**
+ * One node inside a custom taxonomy tree. ``parent_id`` is null for
+ * top-level nodes; ``level`` is 1-based; ``position`` is the
+ * 0-indexed sibling order. Exactly one node per taxonomy is marked
+ * ``is_default`` — that's the fallback for scans the LLM cannot
+ * confidently classify into the rest of the tree.
+ */
+export type TaxonomyNodeResponse = Pick<
+  S["TaxonomyNodeResponse"],
+  "id" | "parent_id" | "level" | "position" | "name" | "description" | "is_default"
+>;
+
+/**
+ * Full custom taxonomy with its tree. Returned by getCustomTaxonomy,
+ * createCustomTaxonomy, updateCustomTaxonomy, restoreCustomTaxonomy.
+ *
+ * `nodes` is narrowed to the agent-facing `TaxonomyNodeResponse`
+ * Pick. The OpenAPI envelope already lists the full schema; we keep
+ * the same field set on the wire and a thinner public type.
+ *
+ * The non-`nodes` fields use `Pick<S["CustomTaxonomyResponse"], …>`
+ * so a future API rename / removal fails this file at `tsc`
+ * immediately on the next regen.
+ */
+export type CustomTaxonomyResponse = Pick<
+  S["CustomTaxonomyResponse"],
+  | "id"
+  | "organization_id"
+  | "name"
+  | "slug"
+  | "description"
+  | "is_active"
+  | "version"
+  | "created_at"
+  | "updated_at"
+> & {
+  readonly nodes: readonly TaxonomyNodeResponse[];
+};
+
+/**
+ * Request shape for one node when creating or updating a taxonomy.
+ *
+ * ``client_id`` and ``parent_client_id`` are arbitrary strings the
+ * caller chooses to express the parent-child relationship in a flat
+ * array (the API stitches the tree from these). They never persist —
+ * after the request returns, ``id`` (UUID) is the canonical handle.
+ */
+export type TaxonomyNodeRequest = Pick<
+  S["TaxonomyNodeRequest"],
+  "client_id" | "parent_client_id" | "name" | "description" | "is_default"
+>;
+
+export type CreateCustomTaxonomyRequest = Pick<
+  S["CreateCustomTaxonomyRequest"],
+  "name" | "description" | "nodes"
+>;
+
+export type UpdateCustomTaxonomyRequest = Pick<
+  S["UpdateCustomTaxonomyRequest"],
+  "name" | "description" | "nodes"
+>;
+
+export type ParseTaxonomyTextRequest = Pick<S["ParseTaxonomyTextRequest"], "text">;
+
+/** One node parsed from free-form text — agents finish the tree by setting is_default + parent links. */
+export type ParsedTaxonomyNode = Pick<S["ParsedTaxonomyNode"], "level" | "name" | "description">;
+
+/**
+ * Result of `POST /api/v1/custom-taxonomies/parse-text`. Always a
+ * preview — nothing is persisted until the agent calls
+ * `createCustomTaxonomy` with the returned nodes (after picking a
+ * default). Warnings list any rows the parser had to skip / repair.
+ *
+ * `nodes` is narrowed to the agent-facing `ParsedTaxonomyNode` Pick;
+ * `warnings` keeps the upstream `string[]` shape.
+ */
+export type ParseTaxonomyTextResponse = Pick<S["ParseTaxonomyTextResponse"], "warnings"> & {
+  readonly nodes: readonly ParsedTaxonomyNode[];
+};
+
 // ── Alerts ────────────────────────────────────────────────────────
 
+/**
+ * Alert row.
+ *
+ * `rule_type` is the kind of policy rule that triggered the alert
+ * (one of: ``tag``, ``iab_v3``, ``brand``, ``ai_category``,
+ * ``custom_taxonomy``). `matched_value` is the canonical text the
+ * scan matched against the rule (e.g. tag display name, IAB tier
+ * path, brand string, taxonomy node path) — null only for legacy
+ * rows produced before COOP-13940 P3.
+ *
+ * `tag_slug` / `tag_display_name` remain populated for legacy
+ * tag-kind alerts; for non-tag kinds inspect `matched_value`.
+ */
 export type AlertResponse = Pick<
   S["AlertResponse"],
   | "id"
@@ -417,6 +552,8 @@ export type AlertResponse = Pick<
   | "campaign_id"
   | "policy_set_id"
   | "violation_rule_id"
+  | "rule_type"
+  | "matched_value"
   | "tag_slug"
   | "tag_display_name"
   | "country_code"
@@ -643,6 +780,13 @@ export type SetCampaignOverridesRequest = Pick<
 
 // ── Filters (query params, not body schemas) ──────────────────────
 
+/**
+ * Filters for `GET /api/v1/scans`. All filter fields are optional;
+ * the API applies a 7-day rolling window on `date_from` if no
+ * temporal filter is set. `label_*` is a dynamic key family — the
+ * gateway whitelists every `label_<key>` from the caller's
+ * label-definitions on the request and forwards them verbatim.
+ */
 export interface ListScansFilters {
   readonly status?: string;
   readonly country_code?: string;
@@ -650,9 +794,19 @@ export interface ListScansFilters {
   readonly scan_id?: string;
   readonly date_from?: string;
   readonly date_to?: string;
+  readonly timezone?: string;
+  readonly run_id?: string;
+  readonly campaign_id?: string;
+  readonly group_id?: string;
   readonly tag?: string;
+  readonly ai_category?: string;
+  readonly iab_v3_category?: string;
+  readonly iab_category?: string;
+  readonly brand?: string;
   readonly page: number;
   readonly limit: number;
+  /** Dynamic per-org label filters: `label_<key>=<value>`. */
+  readonly [labelKey: `label_${string}`]: string | number | undefined;
 }
 
 export interface ListAlertsFilters {
@@ -662,6 +816,12 @@ export interface ListAlertsFilters {
   readonly limit: number;
 }
 
+/**
+ * Filters for `GET /api/v1/billing/usage`. ``date_from`` /
+ * ``date_to`` accept ISO 8601 *datetime* strings (with timezone
+ * offset) — the API treats them as inclusive bounds. Plain dates
+ * (YYYY-MM-DD) also work; the API normalises to UTC midnight.
+ */
 export interface ListUsageFilters {
   readonly date_from?: string;
   readonly date_to?: string;
@@ -670,11 +830,87 @@ export interface ListUsageFilters {
   readonly limit: number;
 }
 
+/** Possible values for ``ListBalanceHistoryFilters.type``. */
+export type BalanceTransactionType =
+  | "initial_balance"
+  | "top_up_manual"
+  | "usage_charge"
+  | "subscription_renewal"
+  | "subscription_upgrade"
+  | "admin_adjustment"
+  | "refund"
+  | "invoice_settlement"
+  | "crypto_top_up";
+
 export interface ListBalanceHistoryFilters {
   readonly date_from?: string;
   readonly date_to?: string;
+  /** Multi-select: pass several values to OR them. */
+  readonly type?: readonly BalanceTransactionType[];
   readonly page: number;
   readonly limit: number;
+}
+
+/** Possible values for ``ListInvoicesFilters.type`` and ``status``. */
+export type InvoiceType = "proforma" | "final";
+export type InvoiceStatus = "draft" | "issued" | "paid" | "voided" | "overdue";
+
+/**
+ * Filters for `GET /api/v1/invoices`. The OpenAPI spec also lists
+ * `organization_id` as a query — it is intentionally NOT exposed via
+ * MCP because the public `/api/v1` is always org-scoped to the
+ * caller's Bearer token. Cross-tenant queries belong on
+ * `/api/admin/*`, which MCP does not consume.
+ */
+export interface ListInvoicesFilters extends PageFilters {
+  readonly type?: InvoiceType;
+  readonly status?: InvoiceStatus;
+}
+
+export interface ListWebhookDeliveriesFilters extends PageFilters {
+  readonly success?: boolean;
+  /** ISO 8601 datetime (inclusive). */
+  readonly from_ts?: string;
+  readonly to_ts?: string;
+}
+
+export interface ListTagsFilters {
+  readonly category?: string;
+}
+
+// ── Account labels ────────────────────────────────────────────────
+
+export type LabelDefinitionResponse = Pick<
+  S["LabelDefinitionResponse"],
+  "key" | "display_name" | "position" | "auto_extract"
+>;
+
+/**
+ * Item shape used inside ``UpdateLabelDefinitionsRequest.labels`` —
+ * the API derives ``position`` from array order on update.
+ */
+export type LabelDefinitionItem = Pick<
+  S["LabelDefinitionItem"],
+  "key" | "display_name" | "auto_extract"
+>;
+
+export type UpdateLabelDefinitionsRequest = Pick<S["UpdateLabelDefinitionsRequest"], "labels">;
+
+// ── Custom roles (write side) ─────────────────────────────────────
+
+export type CreateCustomRoleRequest = Pick<S["CreateCustomRoleRequest"], "name" | "permissions">;
+
+// ── Binary downloads ──────────────────────────────────────────────
+
+/**
+ * Raw bytes + content-type returned from a binary endpoint
+ * (`GET /scans/.../screenshot`, `GET /invoices/.../pdf`). The bytes
+ * stay opaque to the gateway — tools base64-encode them inline when
+ * building the MCP `image` / `resource` content block.
+ */
+export interface BinaryDownload {
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
 }
 
 export interface PageFilters {
@@ -684,6 +920,34 @@ export interface PageFilters {
 
 export interface ListCampaignsFilters extends PageFilters {
   readonly group_id?: string;
+  readonly archived?: boolean;
+  readonly q?: string;
+}
+
+/**
+ * Filters for `GET /api/v1/campaigns/picker` (NOT paginated). The
+ * picker returns a bare array capped by `limit` and tuned for
+ * autocomplete UIs.
+ */
+export interface ListCampaignsPickerFilters {
+  readonly archived?: boolean;
+  readonly group_id?: string;
+  readonly q?: string;
+  readonly limit?: number;
+}
+
+/**
+ * Filters for `GET /api/v1/policy-sets` (list).
+ *
+ * `visibility` narrows the result to one scope:
+ *   - `private` — org-owned sets only;
+ *   - `public`  — Kaminari Ad-curated sets visible to every org.
+ *
+ * Omit the field to get **both** combined (the API treats absence as
+ * "no filter"). There is no explicit `all` value on the API side.
+ */
+export interface ListPolicySetsFilters extends PageFilters {
+  readonly visibility?: "private" | "public";
 }
 
 /**
@@ -743,7 +1007,9 @@ export interface ApiGateway {
    * autocomplete / combobox UIs. Returns a bare array (not paginated)
    * — the API treats picker as a non-paginated lookup table.
    */
-  listCampaignsPicker(): Promise<Result<readonly CampaignPickerItem[], ApiError>>;
+  listCampaignsPicker(
+    filters?: ListCampaignsPickerFilters
+  ): Promise<Result<readonly CampaignPickerItem[], ApiError>>;
 
   // Runs
   getRun(id: string): Promise<Result<RunResponse, ApiError>>;
@@ -779,7 +1045,7 @@ export interface ApiGateway {
   resumeCampaignGroupSchedule(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
 
   // Tag definitions
-  listTags(): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
+  listTags(filters?: ListTagsFilters): Promise<Result<readonly TagDefinitionResponse[], ApiError>>;
   getTagDefinition(slug: string): Promise<Result<TagDefinitionDetailResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   updateTagDefinition(
@@ -803,7 +1069,7 @@ export interface ApiGateway {
 
   // Policy sets
   listPolicySets(
-    filters: PageFilters
+    filters: ListPolicySetsFilters
   ): Promise<Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>>;
   getPolicySet(id: string): Promise<Result<PolicySetResponse, ApiError>>;
   createPolicySet(body: CreatePolicySetRequest): Promise<Result<PolicySetResponse, ApiError>>;
@@ -812,6 +1078,44 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
+
+  // Account labels
+  listAccountLabels(): Promise<Result<readonly LabelDefinitionResponse[], ApiError>>;
+  /** Replace the org's full label set; returns the new list. */
+  updateAccountLabels(
+    body: UpdateLabelDefinitionsRequest
+  ): Promise<Result<readonly LabelDefinitionResponse[], ApiError>>;
+
+  // Custom roles (write side)
+  createCustomRole(body: CreateCustomRoleRequest): Promise<Result<RoleResponse, ApiError>>;
+
+  // Binary downloads
+  /** Returns raw PNG bytes (and the inferred content-type from the response). */
+  getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
+  getScanCreativeScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
+  getScanLandingScreenshot(
+    scanId: string,
+    landingOrd: number,
+    w?: number
+  ): Promise<Result<BinaryDownload, ApiError>>;
+  getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>>;
+
+  // Custom taxonomies
+  listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>>;
+  getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  createCustomTaxonomy(
+    body: CreateCustomTaxonomyRequest
+  ): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  updateCustomTaxonomy(
+    id: string,
+    body: UpdateCustomTaxonomyRequest
+  ): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  deleteCustomTaxonomy(id: string): Promise<Result<null, ApiError>>;
+  restoreCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>>;
+  parseCustomTaxonomyText(
+    body: ParseTaxonomyTextRequest
+  ): Promise<Result<ParseTaxonomyTextResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
 
@@ -839,7 +1143,7 @@ export interface ApiGateway {
   listWebhookEventTypes(): Promise<Result<EventCatalogResponse, ApiError>>;
   listWebhookDeliveries(
     endpointId: string,
-    filters: PageFilters
+    filters: ListWebhookDeliveriesFilters
   ): Promise<Result<PaginatedResponse<DeliveryAttemptResponse>, ApiError>>;
   replayWebhookDelivery(attemptId: string): Promise<Result<null, ApiError>>;
   bulkReplayWebhook(
@@ -856,7 +1160,9 @@ export interface ApiGateway {
   ): Promise<Result<PaginatedResponse<BalanceTransactionResponse>, ApiError>>;
 
   // Invoicing
-  listInvoices(filters: PageFilters): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>>;
+  listInvoices(
+    filters: ListInvoicesFilters
+  ): Promise<Result<PaginatedResponse<InvoiceResponse>, ApiError>>;
 
   // Alert notifications
   listAlertDestinations(): Promise<

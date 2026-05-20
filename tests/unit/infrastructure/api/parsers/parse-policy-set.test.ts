@@ -19,7 +19,12 @@ const VALID = {
   entries: [
     {
       id: "00000000-0000-0000-0000-000000000999",
+      rule_type: "tag",
       tag_slug: "malware",
+      iab_v3: null,
+      brand: null,
+      ai_category: null,
+      custom_taxonomy: null,
       country_codes: ["US", "DE"],
     },
   ],

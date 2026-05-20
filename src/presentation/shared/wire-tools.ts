@@ -90,11 +90,34 @@ export function wireToolsIntoMcpServer(server: McpServer, ctxProvider: ToolConte
 }
 
 function toolOkToMcpResult(value: unknown): CallToolResult {
+  // Binary tools (screenshots, invoice PDFs) return a `{ content: [...] }`
+  // shape directly so they can attach an `image` / `resource` block to
+  // the CallToolResult instead of a JSON-text block. We detect that
+  // shape and pass it through unchanged. This is the only place tools
+  // can short-circuit the default text serialization.
+  if (isMcpContentEnvelope(value)) {
+    return value;
+  }
   const isPlainObject = value !== null && typeof value === "object" && !Array.isArray(value);
   return {
     content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
     ...(isPlainObject ? { structuredContent: value as Record<string, unknown> } : {}),
   };
+}
+
+function isBinaryBlockType(type: string): boolean {
+  return type === "image" || type === "audio" || type === "resource";
+}
+
+function isMcpContentEnvelope(value: unknown): value is CallToolResult {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const v = value as { content?: unknown };
+  if (!Array.isArray(v.content) || v.content.length === 0) return false;
+  return v.content.every((block) => {
+    if (block === null || typeof block !== "object") return false;
+    const type = (block as { type?: unknown }).type;
+    return typeof type === "string" && isBinaryBlockType(type);
+  });
 }
 
 function toolErrorToMcpResult(error: ToolError): CallToolResult {

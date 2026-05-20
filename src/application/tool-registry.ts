@@ -14,14 +14,17 @@
 
 import type { RegisterTool } from "./tools/_shared/tool.js";
 import { createApiKeyTool } from "./tools/account/create-api-key.tool.js";
+import { createCustomRoleTool } from "./tools/account/create-custom-role.tool.js";
 import { getAccountTool } from "./tools/account/get-account.tool.js";
 import { inviteUserTool } from "./tools/account/invite-user.tool.js";
+import { listAccountLabelsTool } from "./tools/account/list-account-labels.tool.js";
 import { listApiKeysTool } from "./tools/account/list-api-keys.tool.js";
 import { listOrgRolesTool } from "./tools/account/list-org-roles.tool.js";
 import { listOrgUsersTool } from "./tools/account/list-org-users.tool.js";
 import { removeUserTool } from "./tools/account/remove-user.tool.js";
 import { revokeApiKeyTool } from "./tools/account/revoke-api-key.tool.js";
 import { transferOwnershipTool } from "./tools/account/transfer-ownership.tool.js";
+import { updateAccountLabelsTool } from "./tools/account/update-account-labels.tool.js";
 import { updateOrgTool } from "./tools/account/update-org.tool.js";
 import { updateUserRoleTool } from "./tools/account/update-user-role.tool.js";
 import { deleteAlertDestinationTool } from "./tools/alert-notifications/delete-alert-destination.tool.js";
@@ -62,8 +65,16 @@ import { getCustomRuleTool } from "./tools/custom-rules/get-custom-rule.tool.js"
 import { listCustomRulesTool } from "./tools/custom-rules/list-custom-rules.tool.js";
 import { testCustomRuleTool } from "./tools/custom-rules/test-custom-rule.tool.js";
 import { updateCustomRuleTool } from "./tools/custom-rules/update-custom-rule.tool.js";
+import { createCustomTaxonomyTool } from "./tools/custom-taxonomies/create-custom-taxonomy.tool.js";
+import { deleteCustomTaxonomyTool } from "./tools/custom-taxonomies/delete-custom-taxonomy.tool.js";
+import { getCustomTaxonomyTool } from "./tools/custom-taxonomies/get-custom-taxonomy.tool.js";
+import { listCustomTaxonomiesTool } from "./tools/custom-taxonomies/list-custom-taxonomies.tool.js";
+import { parseCustomTaxonomyTextTool } from "./tools/custom-taxonomies/parse-custom-taxonomy-text.tool.js";
+import { restoreCustomTaxonomyTool } from "./tools/custom-taxonomies/restore-custom-taxonomy.tool.js";
+import { updateCustomTaxonomyTool } from "./tools/custom-taxonomies/update-custom-taxonomy.tool.js";
 import { listEmulatorsTool } from "./tools/emulators/list-emulators.tool.js";
 import { listGeosTool } from "./tools/geos/list-geos.tool.js";
+import { getInvoicePdfTool } from "./tools/invoicing/get-invoice-pdf.tool.js";
 import { listInvoicesTool } from "./tools/invoicing/list-invoices.tool.js";
 import { createPolicySetTool } from "./tools/policy-sets/create-policy-set.tool.js";
 import { deletePolicySetTool } from "./tools/policy-sets/delete-policy-set.tool.js";
@@ -78,6 +89,9 @@ import { cancelScanTool } from "./tools/scans/cancel-scan.tool.js";
 import { createBulkScansTool } from "./tools/scans/create-bulk-scans.tool.js";
 import { createScanTool } from "./tools/scans/create-scan.tool.js";
 import { getScanTool } from "./tools/scans/get-scan.tool.js";
+import { getScanCreativeScreenshotTool } from "./tools/scans/get-scan-creative-screenshot.tool.js";
+import { getScanLandingScreenshotTool } from "./tools/scans/get-scan-landing-screenshot.tool.js";
+import { getScanScreenshotTool } from "./tools/scans/get-scan-screenshot.tool.js";
 import { listScansTool } from "./tools/scans/list-scans.tool.js";
 import { recheckScansTool } from "./tools/scans/recheck-scans.tool.js";
 import { deleteTagDefinitionTool } from "./tools/tags/delete-tag-definition.tool.js";
@@ -111,6 +125,9 @@ export function registerAllTools(register: RegisterTool): void {
   register(removeUserTool);
   register(transferOwnershipTool);
   register(listOrgRolesTool);
+  register(createCustomRoleTool);
+  register(listAccountLabelsTool);
+  register(updateAccountLabelsTool);
   register(listApiKeysTool);
   register(createApiKeyTool);
   register(revokeApiKeyTool);
@@ -124,6 +141,9 @@ export function registerAllTools(register: RegisterTool): void {
   register(createBulkScansTool);
   register(createScanTool);
   register(recheckScansTool);
+  register(getScanScreenshotTool);
+  register(getScanCreativeScreenshotTool);
+  register(getScanLandingScreenshotTool);
   // campaigns
   register(getCampaignTool);
   register(listCampaignsTool);
@@ -163,6 +183,14 @@ export function registerAllTools(register: RegisterTool): void {
   register(updateCustomRuleTool);
   register(deleteCustomRuleTool);
   register(testCustomRuleTool);
+  // custom taxonomies (per-org classification trees)
+  register(listCustomTaxonomiesTool);
+  register(getCustomTaxonomyTool);
+  register(createCustomTaxonomyTool);
+  register(updateCustomTaxonomyTool);
+  register(deleteCustomTaxonomyTool);
+  register(restoreCustomTaxonomyTool);
+  register(parseCustomTaxonomyTextTool);
   // policy sets
   register(listPolicySetsTool);
   register(getPolicySetTool);
@@ -193,6 +221,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(listBalanceHistoryTool);
   // invoicing
   register(listInvoicesTool);
+  register(getInvoicePdfTool);
   // alert notifications
   register(listAlertDestinationsTool);
   register(deleteAlertDestinationTool);

@@ -45,6 +45,28 @@ describe("listPolicySetsTool", () => {
     expect(call.filters).toEqual({ page: 3, limit: 20 });
   });
 
+  it("forwards visibility filter when supplied", async () => {
+    const api = createFakeApiGateway();
+    await listPolicySetsTool.handler(
+      { page: 1, limit: 50, visibility: "public" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listPolicySets") throw new Error("wrong call");
+    expect(call.filters.visibility).toBe("public");
+  });
+
+  it("rejects unknown visibility values (e.g. 'all' is NOT on the API)", () => {
+    // The API enum is { private, public }; passing 'all' would 422.
+    // Agents that want both scopes must omit the filter entirely.
+    expect(() =>
+      listPolicySetsTool.inputSchema.parse({ page: 1, limit: 50, visibility: "all" })
+    ).toThrow();
+    expect(() =>
+      listPolicySetsTool.inputSchema.parse({ page: 1, limit: 50, visibility: "weird" })
+    ).toThrow();
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listPolicySets = err(makeApiError("forbidden", "x"));

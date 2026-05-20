@@ -39,6 +39,7 @@ import type {
   EventCatalogResponse,
   GroupActionResponse,
   InvoiceResponse,
+  LabelDefinitionResponse,
   OrgResponse,
   PolicyEntryResponse,
   RoleResponse,
@@ -143,6 +144,19 @@ const RoleSchema = schemas.RoleResponse.pick({
 
 export const parseRole = (raw: unknown): Result<RoleResponse, ApiError> =>
   parseWithSchema(RoleSchema, raw, "role") as Result<RoleResponse, ApiError>;
+
+const LabelDefinitionSchema = schemas.LabelDefinitionResponse.pick({
+  key: true,
+  display_name: true,
+  position: true,
+  auto_extract: true,
+}).strip();
+
+export const parseLabelDefinition = (raw: unknown): Result<LabelDefinitionResponse, ApiError> =>
+  parseWithSchema(LabelDefinitionSchema, raw, "label-definition") as Result<
+    LabelDefinitionResponse,
+    ApiError
+  >;
 
 const ApiKeyCreatedSchema = schemas.ApiKeyCreatedResponse.pick({
   id: true,
@@ -352,7 +366,12 @@ export const parseGroupAction = (raw: unknown): Result<GroupActionResponse, ApiE
 
 const PolicyEntrySchema = schemas.PolicyEntryResponse.pick({
   id: true,
+  rule_type: true,
   tag_slug: true,
+  iab_v3: true,
+  brand: true,
+  ai_category: true,
+  custom_taxonomy: true,
   country_codes: true,
 }).strip();
 

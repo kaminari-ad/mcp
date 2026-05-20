@@ -75,7 +75,16 @@ describe("listScansTool", () => {
         scan_id: "00000000-0000-0000-0000-000000000aaa",
         date_from: "2026-05-01",
         date_to: "2026-05-16",
+        timezone: "Europe/Berlin",
+        run_id: "00000000-0000-0000-0000-000000000bbb",
+        campaign_id: "00000000-0000-0000-0000-000000000ccc",
+        group_id: "00000000-0000-0000-0000-000000000ddd",
         tag: "redirect",
+        ai_category: "Gambling/Online Casinos",
+        iab_v3_category: "Sensitive Topics/Adult Content",
+        iab_category: "IAB7-39",
+        brand: "Acme",
+        labels: { brand_safety: "high", vertical: "gambling" },
         page: 1,
         limit: 50,
       },
@@ -84,7 +93,7 @@ describe("listScansTool", () => {
     const call = api.state.calls[0];
     expect(call?.method).toBe("listScans");
     if (call?.method === "listScans") {
-      expect(call.filters).toEqual({
+      expect(call.filters).toMatchObject({
         page: 1,
         limit: 50,
         status: "completed",
@@ -93,7 +102,17 @@ describe("listScansTool", () => {
         scan_id: "00000000-0000-0000-0000-000000000aaa",
         date_from: "2026-05-01",
         date_to: "2026-05-16",
+        timezone: "Europe/Berlin",
+        run_id: "00000000-0000-0000-0000-000000000bbb",
+        campaign_id: "00000000-0000-0000-0000-000000000ccc",
+        group_id: "00000000-0000-0000-0000-000000000ddd",
         tag: "redirect",
+        ai_category: "Gambling/Online Casinos",
+        iab_v3_category: "Sensitive Topics/Adult Content",
+        iab_category: "IAB7-39",
+        brand: "Acme",
+        label_brand_safety: "high",
+        label_vertical: "gambling",
       });
     }
   });

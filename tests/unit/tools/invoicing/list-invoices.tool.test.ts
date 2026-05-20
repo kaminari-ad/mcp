@@ -17,6 +17,23 @@ describe("listInvoicesTool", () => {
     if (call?.method !== "listInvoices") throw new Error("wrong");
     expect(call.filters).toEqual({ page: 2, limit: 10 });
   });
+
+  it("forwards type + status filters", async () => {
+    const api = createFakeApiGateway();
+    await listInvoicesTool.handler(
+      { page: 1, limit: 50, type: "final", status: "paid" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listInvoices") throw new Error("wrong");
+    expect(call.filters.type).toBe("final");
+    expect(call.filters.status).toBe("paid");
+  });
+
+  it("rejects invalid status / type enum values", () => {
+    expect(() => listInvoicesTool.inputSchema.parse({ status: "weird" })).toThrow();
+    expect(() => listInvoicesTool.inputSchema.parse({ type: "weird" })).toThrow();
+  });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listInvoices = err(makeApiError("forbidden", "x"));

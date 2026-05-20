@@ -489,15 +489,45 @@ describe("parseGroupAction", () => {
 });
 
 describe("parsePolicyEntry", () => {
-  it("Ok valid", () => {
+  it("Ok valid (tag rule)", () => {
     const r = parsePolicyEntry({
       id: UUID_A,
+      rule_type: "tag",
       tag_slug: "malware",
+      iab_v3: null,
+      brand: null,
+      ai_category: null,
+      custom_taxonomy: null,
       country_codes: ["US", "DE"],
     });
     expect(r._unsafeUnwrap().country_codes).toEqual(["US", "DE"]);
+    expect(r._unsafeUnwrap().rule_type).toBe("tag");
+  });
+  it("Ok valid (iab_v3 rule)", () => {
+    const r = parsePolicyEntry({
+      id: UUID_A,
+      rule_type: "iab_v3",
+      tag_slug: null,
+      iab_v3: { tier1: "Sensitive Topics", tier2: null, tier3: null, tier4: null },
+      brand: null,
+      ai_category: null,
+      custom_taxonomy: null,
+      country_codes: [],
+    });
+    expect(r._unsafeUnwrap().rule_type).toBe("iab_v3");
+    expect(r._unsafeUnwrap().iab_v3?.tier1).toBe("Sensitive Topics");
   });
   it("rejects on missing id", () => {
-    expect(parsePolicyEntry({ tag_slug: "malware", country_codes: [] }).isErr()).toBe(true);
+    expect(
+      parsePolicyEntry({
+        rule_type: "tag",
+        tag_slug: "malware",
+        iab_v3: null,
+        brand: null,
+        ai_category: null,
+        custom_taxonomy: null,
+        country_codes: [],
+      }).isErr()
+    ).toBe(true);
   });
 });

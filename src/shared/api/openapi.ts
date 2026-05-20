@@ -238,6 +238,10 @@ export interface paths {
     /**
      * List Scans
      * @description List scans with filters. Comma-separated values for multi-select.
+     *
+     *     ``iab_category`` is the legacy filter name and is honoured for one
+     *     release as a synonym of ``ai_category`` so older API clients keep
+     *     working through the rename window.
      */
     get: operations["list_scans_api_v1_scans_get"];
     put?: never;
@@ -1522,10 +1526,136 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/custom-taxonomies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Taxonomies
+     * @description List taxonomies for the authenticated org.
+     */
+    get: operations["list_taxonomies_api_v1_custom_taxonomies_get"];
+    put?: never;
+    /**
+     * Create Taxonomy
+     * @description Create a new taxonomy with its tree.
+     */
+    post: operations["create_taxonomy_api_v1_custom_taxonomies_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-taxonomies/parse-text": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Parse Text
+     * @description Preview-parse pasted free-form text into a tree (no persistence).
+     */
+    post: operations["parse_text_api_v1_custom_taxonomies_parse_text_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-taxonomies/{taxonomy_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Taxonomy
+     * @description Get a taxonomy with its full tree.
+     */
+    get: operations["get_taxonomy_api_v1_custom_taxonomies__taxonomy_id__get"];
+    /**
+     * Update Taxonomy
+     * @description Replace the full tree atomically and bump ``version``.
+     */
+    put: operations["update_taxonomy_api_v1_custom_taxonomies__taxonomy_id__put"];
+    post?: never;
+    /**
+     * Delete Taxonomy
+     * @description Soft-delete (is_active=false). History rows preserved.
+     */
+    delete: operations["delete_taxonomy_api_v1_custom_taxonomies__taxonomy_id__delete"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-taxonomies/{taxonomy_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore Taxonomy
+     * @description Re-activate a previously soft-deleted taxonomy.
+     */
+    post: operations["restore_taxonomy_api_v1_custom_taxonomies__taxonomy_id__restore_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * AiCategoryRequest
+     * @description The freeform AI-category prefix carried by an ``ai_category`` rule.
+     *
+     *     ``tier1`` is required; deeper tiers tighten the prefix. Unlike
+     *     ``iab_v3`` rules, the API does NOT validate the path against any
+     *     canonical tree — the AI category field on a scan is freeform per
+     *     classification. The only structural rule is "no gaps":
+     *     ``tier3`` requires ``tier2``, ``tier4`` requires ``tier3``.
+     */
+    AiCategoryRequest: {
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
+     * AiCategoryResponse
+     * @description Freeform AI category tiers (legacy ``iab_v3`` semantics).
+     */
+    AiCategoryResponse: {
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
     /**
      * AlertNotificationDestinationResponse
      * @description Public projection of one configured destination.
@@ -1598,6 +1728,15 @@ export interface components {
     /**
      * AlertResponse
      * @description Alert returned by API endpoints.
+     *
+     *     ``rule_type`` discriminates the underlying violation rule
+     *     (``tag`` / ``iab_v3`` / ``brand`` / ``ai_category`` / ``custom_taxonomy``).
+     *     ``matched_value`` carries the human-readable rendering of what
+     *     actually matched (the IAB breadcrumb, brand string, etc.) — for
+     *     ``tag`` rules the value is the tag slug itself and ``matched_value``
+     *     is therefore ``None``. Together they let API + MCP consumers render
+     *     kind-aware copy without re-deriving from synthetic ``tag_slug``
+     *     keys (e.g. ``custom_taxonomy:sections:Finance > Lending``).
      */
     AlertResponse: {
       /**
@@ -1645,6 +1784,13 @@ export interface components {
       offer_url: string;
       /** Tag Display Name */
       tag_display_name: string;
+      /**
+       * Rule Type
+       * @default tag
+       */
+      rule_type: string;
+      /** Matched Value */
+      matched_value?: string | null;
     };
     /**
      * AlertStatsResponse
@@ -2179,6 +2325,24 @@ export interface components {
       target: string;
     };
     /**
+     * CreateCustomTaxonomyRequest
+     * @description Top-level body for taxonomy creation.
+     */
+    CreateCustomTaxonomyRequest: {
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /**
+       * Nodes
+       * @default []
+       */
+      nodes: components["schemas"]["TaxonomyNodeRequest"][];
+    };
+    /**
      * CreatePolicySetRequest
      * @description Request body for POST /policy-sets.
      */
@@ -2267,6 +2431,102 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * CustomTaxonomyListItem
+     * @description Lightweight list-row projection (no nodes — clients open detail view).
+     */
+    CustomTaxonomyListItem: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Slug */
+      slug: string;
+      /** Description */
+      description: string;
+      /** Is Active */
+      is_active: boolean;
+      /** Version */
+      version: number;
+      /** Node Count */
+      node_count: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * CustomTaxonomyRefRequest
+     * @description Reference to one node-prefix inside a per-org custom taxonomy.
+     *
+     *     ``taxonomy_id`` is checked at use-case time against the caller's
+     *     org (cross-BC ownership reader); ``tier1`` is required; deeper
+     *     tiers tighten the prefix. Tier values are NOT validated against
+     *     the taxonomy tree at write time — eval-time mismatch simply
+     *     means the rule never fires (safe).
+     */
+    CustomTaxonomyRefRequest: {
+      /**
+       * Taxonomy Id
+       * Format: uuid
+       */
+      taxonomy_id: string;
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
+     * CustomTaxonomyResponse
+     * @description Aggregate metadata + the full node tree.
+     */
+    CustomTaxonomyResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Name */
+      name: string;
+      /** Slug */
+      slug: string;
+      /** Description */
+      description: string;
+      /** Is Active */
+      is_active: boolean;
+      /** Version */
+      version: number;
+      /** Nodes */
+      nodes: components["schemas"]["TaxonomyNodeResponse"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
     };
     /**
      * DeliveryAttemptResponse
@@ -2432,10 +2692,30 @@ export interface components {
       detail?: components["schemas"]["ValidationError"][];
     };
     /**
-     * IabCategoryResponse
-     * @description IAB Content Taxonomy category tiers.
+     * IabV3CategoryResponse
+     * @description Canonical IAB Content Taxonomy V3 category tiers (validated).
      */
-    IabCategoryResponse: {
+    IabV3CategoryResponse: {
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
+     * IabV3PolicyCategoryRequest
+     * @description The validated IAB V3 prefix for an ``iab_v3`` rule.
+     *
+     *     ``tier1`` is required (the canonical V3 tier1 name); deeper tiers
+     *     are optional and form a prefix at evaluation time. Path validity
+     *     against the canonical V3 tree is enforced by the
+     *     :class:`IabV3TaxonomyReader` in the use case: non-canonical paths
+     *     are rejected before they reach the repository.
+     */
+    IabV3PolicyCategoryRequest: {
       /** Tier1 */
       tier1: string;
       /** Tier2 */
@@ -2652,6 +2932,11 @@ export interface components {
     /**
      * OrgResponse
      * @description Organization details returned to clients.
+     *
+     *     ``status`` is the canonical lifecycle field (Phase 0 of COOP-14061).
+     *     ``is_active`` remains as a computed backward-compat field — UI
+     *     clients still reading the old boolean stay green for one release;
+     *     drop it after every consumer has migrated to ``status``.
      */
     OrgResponse: {
       /**
@@ -2666,14 +2951,39 @@ export interface components {
        * Format: uuid
        */
       owner_id: string;
-      /** Is Active */
-      is_active: boolean;
+      status: components["schemas"]["OrganizationStatus"];
       /**
        * Created At
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Is Active
+       * @description Backward-compat: True iff status == ACTIVE.
+       */
+      readonly is_active: boolean;
     };
+    /**
+     * OrganizationStatus
+     * @description Lifecycle state of an :class:`Organization`.
+     *
+     *     * ``PENDING_EMAIL_VERIFICATION`` — self-service signup, owner has
+     *       not clicked the verification link yet.
+     *     * ``PENDING_ADMIN_APPROVAL`` — email verified, awaiting admin
+     *       approval (gated by ``signup_admin_approval_required`` flag).
+     *     * ``ACTIVE`` — fully usable; users can log in, scans run, billing
+     *       meters tick.
+     *     * ``SUSPENDED`` — admin froze the org (formerly ``is_active=False``).
+     *     * ``REJECTED`` — admin denied a self-service signup; soft-delete
+     *       for audit trail; permanent unless an admin explicitly unblocks.
+     * @enum {string}
+     */
+    OrganizationStatus:
+      | "pending_email_verification"
+      | "pending_admin_approval"
+      | "active"
+      | "suspended"
+      | "rejected";
     /** PaginatedResponse[AlertResponse] */
     PaginatedResponse_AlertResponse_: {
       /** Items */
@@ -2818,18 +3128,120 @@ export interface components {
       pages: number;
     };
     /**
+     * ParseTaxonomyTextRequest
+     * @description Body for the paste-import preview endpoint.
+     */
+    ParseTaxonomyTextRequest: {
+      /** Text */
+      text: string;
+    };
+    /**
+     * ParseTaxonomyTextResponse
+     * @description Flat node list + warnings ("inconsistent indentation", "depth > 4 truncated").
+     */
+    ParseTaxonomyTextResponse: {
+      /** Nodes */
+      nodes: components["schemas"]["ParsedTaxonomyNode"][];
+      /** Warnings */
+      warnings: string[];
+    };
+    /**
+     * ParsedTaxonomyNode
+     * @description One parsed node from the paste-import preview.
+     *
+     *     No identifiers — clients allocate ``client_id``s locally before
+     *     submitting via :class:`CreateCustomTaxonomyRequest`.
+     */
+    ParsedTaxonomyNode: {
+      /** Level */
+      level: number;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+    };
+    /**
+     * PolicyEntryAiCategoryResponse
+     * @description The freeform AI-category prefix on an ``ai_category`` rule.
+     */
+    PolicyEntryAiCategoryResponse: {
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
+     * PolicyEntryCustomTaxonomyResponse
+     * @description The custom-taxonomy node prefix on a ``custom_taxonomy`` rule.
+     */
+    PolicyEntryCustomTaxonomyResponse: {
+      /**
+       * Taxonomy Id
+       * Format: uuid
+       */
+      taxonomy_id: string;
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
+     * PolicyEntryIabV3Response
+     * @description The validated IAB V3 prefix on an ``iab_v3`` rule.
+     */
+    PolicyEntryIabV3Response: {
+      /** Tier1 */
+      tier1: string;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+    };
+    /**
      * PolicyEntryRequest
      * @description A single entry in a policy set creation/update request.
+     *
+     *     Sum type discriminated by :attr:`rule_type`. The validator below
+     *     enforces that exactly the value-block matching ``rule_type`` is
+     *     populated; the API layer additionally checks the IAB V3 prefix
+     *     against the canonical taxonomy and validates ``custom_taxonomy``
+     *     ownership against the caller's organization.
      */
     PolicyEntryRequest: {
+      /**
+       * Rule Type
+       * @default tag
+       * @enum {string}
+       */
+      rule_type: "tag" | "iab_v3" | "brand" | "ai_category" | "custom_taxonomy";
       /** Tag Slug */
-      tag_slug: string;
+      tag_slug?: string | null;
+      iab_v3?: components["schemas"]["IabV3PolicyCategoryRequest"] | null;
+      /** Brand */
+      brand?: string | null;
+      ai_category?: components["schemas"]["AiCategoryRequest"] | null;
+      custom_taxonomy?: components["schemas"]["CustomTaxonomyRefRequest"] | null;
       /** Country Codes */
       country_codes?: string[];
     };
     /**
      * PolicyEntryResponse
      * @description A single entry in a policy set response.
+     *
+     *     Sum type — exactly one value-block is populated per row depending
+     *     on :attr:`rule_type` (``tag`` / ``iab_v3`` / ``brand`` /
+     *     ``ai_category`` / ``custom_taxonomy``). The other blocks are
+     *     ``null`` and should be ignored by the client.
      */
     PolicyEntryResponse: {
       /**
@@ -2837,8 +3249,15 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Rule Type */
+      rule_type: string;
       /** Tag Slug */
-      tag_slug: string;
+      tag_slug?: string | null;
+      iab_v3?: components["schemas"]["PolicyEntryIabV3Response"] | null;
+      /** Brand */
+      brand?: string | null;
+      ai_category?: components["schemas"]["PolicyEntryAiCategoryResponse"] | null;
+      custom_taxonomy?: components["schemas"]["PolicyEntryCustomTaxonomyResponse"] | null;
       /** Country Codes */
       country_codes: string[];
     };
@@ -3199,13 +3618,18 @@ export interface components {
     };
     /**
      * ScanClassificationResponse
-     * @description Classification result for a scan — IAB categories + brand.
+     * @description Classification result for a scan — AI category + IAB V3 + brand + custom taxonomies.
      */
     ScanClassificationResponse: {
       /** Brand */
       brand?: string | null;
-      iab_v2?: components["schemas"]["IabCategoryResponse"] | null;
-      iab_v3?: components["schemas"]["IabCategoryResponse"] | null;
+      ai_category?: components["schemas"]["AiCategoryResponse"] | null;
+      iab_v3?: components["schemas"]["IabV3CategoryResponse"] | null;
+      /**
+       * Custom Taxonomies
+       * @default []
+       */
+      custom_taxonomies: components["schemas"]["ScanTaxonomyClassificationResponse"][];
     };
     /**
      * ScanResponse
@@ -3344,6 +3768,45 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * ScanTaxonomyClassificationResponse
+     * @description One per-(scan, custom-taxonomy) classification.
+     *
+     *     Mirrors the ``scan_taxonomy_classifications`` row + adds the
+     *     taxonomy ``name`` and ``slug`` so the UI can render the block
+     *     without a second round-trip. ``leaf_node_id`` is included for
+     *     click-to-filter integrations on the scan list page; ``used_default``
+     *     is a UI hint that the AI fell back to the default leaf rather
+     *     than picking a specific category.
+     */
+    ScanTaxonomyClassificationResponse: {
+      /**
+       * Taxonomy Id
+       * Format: uuid
+       */
+      taxonomy_id: string;
+      /** Taxonomy Name */
+      taxonomy_name: string;
+      /** Taxonomy Slug */
+      taxonomy_slug: string;
+      /** Taxonomy Version */
+      taxonomy_version: number;
+      /** Leaf Node Id */
+      leaf_node_id: string | null;
+      /** Tier1 */
+      tier1: string | null;
+      /** Tier2 */
+      tier2?: string | null;
+      /** Tier3 */
+      tier3?: string | null;
+      /** Tier4 */
+      tier4?: string | null;
+      /**
+       * Used Default
+       * @default false
+       */
+      used_default: boolean;
     };
     /**
      * ScanTileResponse
@@ -3520,8 +3983,8 @@ export interface components {
       is_system: boolean;
       /** Organization Id */
       organization_id: string | null;
-      /** Show In Public Report */
-      show_in_public_report: boolean;
+      /** Visibility */
+      visibility: string;
       /** Severity */
       severity: string;
       /** Scans Count */
@@ -3534,6 +3997,10 @@ export interface components {
     /**
      * TagDefinitionWithStatsResponse
      * @description Tag definition enriched with scans and rules counts.
+     *
+     *     ``visibility`` is one of ``hidden`` / ``internal`` / ``public``
+     *     (see :class:`TagVisibility`). ``scans_count`` is scoped to the
+     *     caller's organization.
      */
     TagDefinitionWithStatsResponse: {
       /** Slug */
@@ -3550,8 +4017,8 @@ export interface components {
       is_system: boolean;
       /** Organization Id */
       organization_id: string | null;
-      /** Show In Public Report */
-      show_in_public_report: boolean;
+      /** Visibility */
+      visibility: string;
       /** Severity */
       severity: string;
       /** Scans Count */
@@ -3572,6 +4039,67 @@ export interface components {
      * @enum {string}
      */
     TagSeverity: "high" | "medium" | "low";
+    /**
+     * TagVisibility
+     * @description Visibility tier for a tag definition.
+     * @enum {string}
+     */
+    TagVisibility: "hidden" | "internal" | "public";
+    /**
+     * TaxonomyNodeRequest
+     * @description One node in the create/update body.
+     *
+     *     ``client_id`` is a free-form string the client uses to reference this
+     *     node from sibling children's ``parent_client_id``. ``parent_client_id``
+     *     is None for tier-1 roots. The server replaces both fields with fresh
+     *     UUIDs before persisting.
+     */
+    TaxonomyNodeRequest: {
+      /** Client Id */
+      client_id: string;
+      /** Parent Client Id */
+      parent_client_id?: string | null;
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default: boolean;
+    };
+    /**
+     * TaxonomyNodeResponse
+     * @description One node as returned by the API.
+     *
+     *     Server-side UUIDs are exposed because clients persist them locally
+     *     and re-send them on update (parent_id wiring). A leaf node where
+     *     ``is_default`` is true is the one the LLM falls back to when no
+     *     other tier matches.
+     */
+    TaxonomyNodeResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Parent Id */
+      parent_id: string | null;
+      /** Level */
+      level: number;
+      /** Position */
+      position: number;
+      /** Name */
+      name: string;
+      /** Description */
+      description: string;
+      /** Is Default */
+      is_default: boolean;
+    };
     /**
      * TestWebhookRequest
      * @description Which event type's sample payload to send.
@@ -3680,6 +4208,28 @@ export interface components {
       is_active?: boolean | null;
     };
     /**
+     * UpdateCustomTaxonomyRequest
+     * @description Atomic replace-tree update.
+     *
+     *     The whole tree is replaced; clients send the desired final state.
+     *     The server bumps ``version`` so historical
+     *     ``scan_taxonomy_classifications`` can be tied back to a snapshot.
+     */
+    UpdateCustomTaxonomyRequest: {
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /**
+       * Nodes
+       * @default []
+       */
+      nodes: components["schemas"]["TaxonomyNodeRequest"][];
+    };
+    /**
      * UpdateLabelDefinitionsRequest
      * @description Request body to replace all label definitions for an organization.
      */
@@ -3719,8 +4269,7 @@ export interface components {
       display_name?: string | null;
       /** Description */
       description?: string | null;
-      /** Show In Public Report */
-      show_in_public_report?: boolean | null;
+      visibility?: components["schemas"]["TagVisibility"] | null;
       severity?: components["schemas"]["TagSeverity"] | null;
     };
     /**
@@ -3816,6 +4365,11 @@ export interface components {
     /**
      * UserResponse
      * @description User details returned to clients.
+     *
+     *     The ``organization_*`` and ``role_id`` fields are additive
+     *     (introduced in COOP-14061 follow-up) — older clients ignore
+     *     them while admin SPA (and self-service "team members" pages)
+     *     need them for filtering, linking, and editing.
      */
     UserResponse: {
       /**
@@ -3827,8 +4381,20 @@ export interface components {
       email: string;
       /** Name */
       name: string;
+      /**
+       * Role Id
+       * Format: uuid
+       */
+      role_id: string;
       /** Role Name */
       role_name: string;
+      /**
+       * Organization Id
+       * Format: uuid
+       */
+      organization_id: string;
+      /** Organization Name */
+      organization_name: string;
       /** Is Active */
       is_active: boolean;
       /**
@@ -4318,6 +4884,8 @@ export interface operations {
         campaign_id?: string | null;
         group_id?: string | null;
         tag?: string | null;
+        ai_category?: string | null;
+        iab_v3_category?: string | null;
         iab_category?: string | null;
         brand?: string | null;
         page?: number;
@@ -6724,6 +7292,227 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["DemoInquiryAcknowledgement"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_taxonomies_api_v1_custom_taxonomies_get: {
+    parameters: {
+      query?: {
+        include_inactive?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomTaxonomyListItem"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_taxonomy_api_v1_custom_taxonomies_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateCustomTaxonomyRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomTaxonomyResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  parse_text_api_v1_custom_taxonomies_parse_text_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ParseTaxonomyTextRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ParseTaxonomyTextResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_taxonomy_api_v1_custom_taxonomies__taxonomy_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taxonomy_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomTaxonomyResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  update_taxonomy_api_v1_custom_taxonomies__taxonomy_id__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taxonomy_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateCustomTaxonomyRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomTaxonomyResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  delete_taxonomy_api_v1_custom_taxonomies__taxonomy_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taxonomy_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  restore_taxonomy_api_v1_custom_taxonomies__taxonomy_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taxonomy_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

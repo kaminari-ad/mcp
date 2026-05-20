@@ -17,6 +17,8 @@ const AlertSchema = schemas.AlertResponse.pick({
   campaign_id: true,
   policy_set_id: true,
   violation_rule_id: true,
+  rule_type: true,
+  matched_value: true,
   tag_slug: true,
   tag_display_name: true,
   country_code: true,

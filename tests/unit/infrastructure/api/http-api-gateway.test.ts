@@ -604,7 +604,7 @@ describe("HttpApiGateway", () => {
         description: "",
         is_system: true,
         organization_id: null,
-        show_in_public_report: false,
+        visibility: "internal",
         severity: "high",
         scans_count: 0,
         rules_count: 0,
@@ -762,7 +762,17 @@ describe("HttpApiGateway", () => {
           await gw.createPolicySet({
             name: "x",
             description: "d",
-            entries: [{ tag_slug: "y", country_codes: [] }],
+            entries: [
+              {
+                rule_type: "tag",
+                tag_slug: "y",
+                iab_v3: null,
+                brand: null,
+                ai_category: null,
+                custom_taxonomy: null,
+                country_codes: [],
+              },
+            ],
           })
         ).isOk()
       ).toBe(true);
@@ -870,7 +880,7 @@ describe("HttpApiGateway", () => {
           severity: "high",
           is_system: true,
           organization_id: null,
-          show_in_public_report: true,
+          visibility: "public",
           // Detail endpoint includes `linked_rules` (custom rules
           // currently producing this tag). The MCP `getTagDefinition`
           // surfaces them in the tool output since v0.2.0.
@@ -1240,6 +1250,223 @@ describe("HttpApiGateway", () => {
           })
         ).isOk()
       ).toBe(true);
+    });
+
+    it("custom-taxonomies CRUD + parse-text + restore", async () => {
+      const TID = "00000000-0000-0000-0000-000000000aa1";
+      const TAXON = {
+        id: TID,
+        organization_id: "00000000-0000-0000-0000-000000000010",
+        name: "Brand-safety",
+        slug: "brand-safety",
+        description: "",
+        is_active: true,
+        version: 1,
+        nodes: [
+          {
+            id: "00000000-0000-0000-0000-000000000aaa",
+            parent_id: null,
+            level: 1,
+            position: 0,
+            name: "Other",
+            description: "fallback",
+            is_default: true,
+          },
+        ],
+        created_at: "2026-05-20T00:00:00Z",
+        updated_at: "2026-05-20T00:00:00Z",
+      };
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies", method: "GET" })
+        .reply(200, [
+          {
+            id: TID,
+            name: "Brand-safety",
+            slug: "brand-safety",
+            description: "",
+            is_active: true,
+            version: 1,
+            node_count: 1,
+            created_at: "2026-05-20T00:00:00Z",
+            updated_at: "2026-05-20T00:00:00Z",
+          },
+        ]);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies", method: "POST" })
+        .reply(201, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "GET" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "PUT" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}`, method: "DELETE" })
+        .reply(204, "");
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/custom-taxonomies/${TID}/restore`, method: "POST" })
+        .reply(200, TAXON);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-taxonomies/parse-text", method: "POST" })
+        .reply(200, { nodes: [{ level: 1, name: "Root", description: "" }], warnings: [] });
+
+      const gw = buildGateway(agent);
+      expect((await gw.listCustomTaxonomies()).isOk()).toBe(true);
+      expect(
+        (
+          await gw.createCustomTaxonomy({
+            name: "Brand-safety",
+            description: "",
+            nodes: [],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.getCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect(
+        (
+          await gw.updateCustomTaxonomy(TID, {
+            name: "Brand-safety",
+            description: "",
+            nodes: [],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect((await gw.deleteCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect((await gw.restoreCustomTaxonomy(TID)).isOk()).toBe(true);
+      expect((await gw.parseCustomTaxonomyText({ text: "Root" })).isOk()).toBe(true);
+    });
+
+    it("account-labels CRUD + custom-role create", async () => {
+      const ROLE = {
+        id: "00000000-0000-0000-0000-000000000777",
+        name: "Auditor",
+        scope: "organization",
+        is_system: false,
+        permissions: ["scans.read"],
+      };
+      const LABELS = [
+        { key: "brand_safety", display_name: "Brand Safety", position: 0, auto_extract: true },
+      ];
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/labels", method: "GET" })
+        .reply(200, LABELS);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/labels", method: "PUT" })
+        .reply(200, LABELS);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/account/roles", method: "POST" })
+        .reply(201, ROLE);
+
+      const gw = buildGateway(agent);
+      expect((await gw.listAccountLabels()).isOk()).toBe(true);
+      expect(
+        (
+          await gw.updateAccountLabels({
+            labels: [{ key: "brand_safety", display_name: "Brand Safety", auto_extract: true }],
+          })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (await gw.createCustomRole({ name: "Auditor", permissions: ["scans.read"] })).isOk()
+      ).toBe(true);
+    });
+
+    it("binary downloads — screenshots + invoice PDF (raw bytes path)", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      const IID = "00000000-0000-0000-0000-000000000fff";
+      const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const PDF = Buffer.from([0x25, 0x50, 0x44, 0x46]);
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) =>
+            p === `/api/v1/scans/${SID}/screenshot` ||
+            p === `/api/v1/scans/${SID}/screenshot?w=800`,
+          method: "GET",
+        })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } })
+        .times(2);
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-screenshot`, method: "GET" })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/landings/2/screenshot`, method: "GET" })
+        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
+        .reply(200, PDF, { headers: { "content-type": "application/pdf" } });
+
+      const gw = buildGateway(agent);
+      const ss1 = await gw.getScanScreenshot(SID);
+      expect(ss1.isOk()).toBe(true);
+      if (ss1.isOk()) expect(ss1.value.contentType).toBe("image/png");
+      const ss2 = await gw.getScanScreenshot(SID, 800);
+      expect(ss2.isOk()).toBe(true);
+      expect((await gw.getScanCreativeScreenshot(SID)).isOk()).toBe(true);
+      expect((await gw.getScanLandingScreenshot(SID, 2)).isOk()).toBe(true);
+      const pdf = await gw.getInvoicePdf(IID);
+      expect(pdf.isOk()).toBe(true);
+      if (pdf.isOk()) {
+        expect(pdf.value.contentType).toBe("application/pdf");
+        expect(Array.from(pdf.value.bytes.slice(0, 4))).toEqual([0x25, 0x50, 0x44, 0x46]);
+      }
+    });
+
+    it("binary download — 404 on screenshot is mapped to not-found", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/screenshot`, method: "GET" })
+        .reply(404, { detail: "no screenshot" });
+      const r = await buildGateway(agent).getScanScreenshot(SID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
+    });
+
+    it("binary download — 500 on creative-screenshot is mapped to upstream", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-screenshot`, method: "GET" })
+        .reply(500, { detail: "boom" });
+      const r = await buildGateway(agent).getScanCreativeScreenshot(SID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("upstream");
+    });
+
+    it("binary download — 404 on landing-screenshot is mapped to not-found", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/landings/0/screenshot`, method: "GET" })
+        .reply(404, { detail: "no landing screenshot" });
+      const r = await buildGateway(agent).getScanLandingScreenshot(SID, 0);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
+    });
+
+    it("binary download — 404 on invoice PDF is mapped to not-found", async () => {
+      const IID = "00000000-0000-0000-0000-000000000fff";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
+        .reply(404, { detail: "missing" });
+      const r = await buildGateway(agent).getInvoicePdf(IID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
     });
 
     it("listCampaignGroups / getCampaignGroup / createCampaignGroup / updateCampaignGroup", async () => {

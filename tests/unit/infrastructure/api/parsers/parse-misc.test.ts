@@ -77,7 +77,7 @@ describe("parseTag / parseTagDefinitionArray", () => {
     description: "",
     is_system: true,
     organization_id: null,
-    show_in_public_report: false,
+    visibility: "internal",
     severity: "high",
     scans_count: 0,
     rules_count: 0,

@@ -17,6 +17,7 @@ import type {
   ApiKeyResponse,
   BalanceTransactionResponse,
   BillingSummaryResponse,
+  BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
@@ -28,11 +29,15 @@ import type {
   CreateApiKeyRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
+  CreateCustomRoleRequest,
   CreateCustomRuleRequest,
+  CreateCustomTaxonomyRequest,
   CreatePolicySetRequest,
   CreateScanRequest,
   CreateWebhookRequest,
   CustomRuleResponse,
+  CustomTaxonomyListItem,
+  CustomTaxonomyResponse,
   DeliveryAttemptResponse,
   EmulatorResponse,
   EventCatalogResponse,
@@ -40,14 +45,22 @@ import type {
   GroupActionResponse,
   InviteUserRequest,
   InvoiceResponse,
+  LabelDefinitionResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
+  ListCampaignsPickerFilters,
+  ListInvoicesFilters,
+  ListPolicySetsFilters,
   ListScansFilters,
+  ListTagsFilters,
   ListUsageFilters,
+  ListWebhookDeliveriesFilters,
   OrgResponse,
   PageFilters,
   PaginatedResponse,
+  ParseTaxonomyTextRequest,
+  ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
   RecheckRequest,
@@ -70,6 +83,8 @@ import type {
   UpdateCampaignGroupRequest,
   UpdateCampaignRequest,
   UpdateCustomRuleRequest,
+  UpdateCustomTaxonomyRequest,
+  UpdateLabelDefinitionsRequest,
   UpdateOrgRequest,
   UpdatePolicySetRequest,
   UpdateTagDefinitionRequest,
@@ -96,6 +111,26 @@ type Call =
   | { readonly method: "removeUser"; readonly userId: string }
   | { readonly method: "transferOwnership"; readonly userId: string }
   | { readonly method: "listOrgRoles" }
+  | { readonly method: "createCustomRole"; readonly body: CreateCustomRoleRequest }
+  | { readonly method: "listAccountLabels" }
+  | { readonly method: "updateAccountLabels"; readonly body: UpdateLabelDefinitionsRequest }
+  | {
+      readonly method: "getScanScreenshot";
+      readonly scanId: string;
+      readonly w: number | undefined;
+    }
+  | {
+      readonly method: "getScanCreativeScreenshot";
+      readonly scanId: string;
+      readonly w: number | undefined;
+    }
+  | {
+      readonly method: "getScanLandingScreenshot";
+      readonly scanId: string;
+      readonly landingOrd: number;
+      readonly w: number | undefined;
+    }
+  | { readonly method: "getInvoicePdf"; readonly invoiceId: string }
   | { readonly method: "listApiKeys" }
   | { readonly method: "createApiKey"; readonly body: CreateApiKeyRequest }
   | { readonly method: "revokeApiKey"; readonly id: string }
@@ -125,7 +160,10 @@ type Call =
       readonly campaignId: string;
       readonly filters: PageFilters;
     }
-  | { readonly method: "listCampaignsPicker" }
+  | {
+      readonly method: "listCampaignsPicker";
+      readonly filters: ListCampaignsPickerFilters | undefined;
+    }
   | { readonly method: "getRun"; readonly id: string }
   | { readonly method: "cancelRun"; readonly id: string }
   | {
@@ -147,7 +185,7 @@ type Call =
   | { readonly method: "unarchiveCampaignGroup"; readonly id: string }
   | { readonly method: "pauseCampaignGroupSchedule"; readonly id: string }
   | { readonly method: "resumeCampaignGroupSchedule"; readonly id: string }
-  | { readonly method: "listTags" }
+  | { readonly method: "listTags"; readonly filters: ListTagsFilters | undefined }
   | { readonly method: "getTagDefinition"; readonly slug: string }
   | {
       readonly method: "updateTagDefinition";
@@ -165,7 +203,7 @@ type Call =
     }
   | { readonly method: "deleteCustomRule"; readonly id: string }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
-  | { readonly method: "listPolicySets"; readonly filters: PageFilters }
+  | { readonly method: "listPolicySets"; readonly filters: ListPolicySetsFilters }
   | { readonly method: "getPolicySet"; readonly id: string }
   | { readonly method: "createPolicySet"; readonly body: CreatePolicySetRequest }
   | {
@@ -175,6 +213,17 @@ type Call =
     }
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
+  | { readonly method: "listCustomTaxonomies" }
+  | { readonly method: "getCustomTaxonomy"; readonly id: string }
+  | { readonly method: "createCustomTaxonomy"; readonly body: CreateCustomTaxonomyRequest }
+  | {
+      readonly method: "updateCustomTaxonomy";
+      readonly id: string;
+      readonly body: UpdateCustomTaxonomyRequest;
+    }
+  | { readonly method: "deleteCustomTaxonomy"; readonly id: string }
+  | { readonly method: "restoreCustomTaxonomy"; readonly id: string }
+  | { readonly method: "parseCustomTaxonomyText"; readonly body: ParseTaxonomyTextRequest }
   | { readonly method: "listAlerts"; readonly filters: ListAlertsFilters }
   | {
       readonly method: "updateAlertStatus";
@@ -201,7 +250,7 @@ type Call =
   | {
       readonly method: "listWebhookDeliveries";
       readonly endpointId: string;
-      readonly filters: PageFilters;
+      readonly filters: ListWebhookDeliveriesFilters;
     }
   | { readonly method: "replayWebhookDelivery"; readonly attemptId: string }
   | {
@@ -213,7 +262,7 @@ type Call =
   | { readonly method: "listUsage"; readonly filters: ListUsageFilters }
   | { readonly method: "getUsageSummary" }
   | { readonly method: "listBalanceHistory"; readonly filters: ListBalanceHistoryFilters }
-  | { readonly method: "listInvoices"; readonly filters: PageFilters }
+  | { readonly method: "listInvoices"; readonly filters: ListInvoicesFilters }
   | { readonly method: "listAlertDestinations" }
   | { readonly method: "deleteAlertDestination"; readonly id: string }
   | {
@@ -239,6 +288,13 @@ export interface FakeApiGatewayState {
     removeUser?: Result<null, ApiError>;
     transferOwnership?: Result<null, ApiError>;
     listOrgRoles?: Result<readonly RoleResponse[], ApiError>;
+    createCustomRole?: Result<RoleResponse, ApiError>;
+    listAccountLabels?: Result<readonly LabelDefinitionResponse[], ApiError>;
+    updateAccountLabels?: Result<readonly LabelDefinitionResponse[], ApiError>;
+    getScanScreenshot?: Result<BinaryDownload, ApiError>;
+    getScanCreativeScreenshot?: Result<BinaryDownload, ApiError>;
+    getScanLandingScreenshot?: Result<BinaryDownload, ApiError>;
+    getInvoicePdf?: Result<BinaryDownload, ApiError>;
     listApiKeys?: Result<readonly ApiKeyResponse[], ApiError>;
     createApiKey?: Result<ApiKeyCreatedResponse, ApiError>;
     revokeApiKey?: Result<null, ApiError>;
@@ -290,6 +346,13 @@ export interface FakeApiGatewayState {
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
+    listCustomTaxonomies?: Result<readonly CustomTaxonomyListItem[], ApiError>;
+    getCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    createCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    updateCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    deleteCustomTaxonomy?: Result<null, ApiError>;
+    restoreCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
+    parseCustomTaxonomyText?: Result<ParseTaxonomyTextResponse, ApiError>;
     listAlerts?: Result<PaginatedResponse<AlertResponse>, ApiError>;
     updateAlertStatus?: Result<null, ApiError>;
     getAlertStats?: Result<AlertStatsResponse, ApiError>;
@@ -464,6 +527,27 @@ const DEFAULT_CAMPAIGN_ARCHIVED: CampaignResponse = { ...DEFAULT_CAMPAIGN, is_ar
 
 const DEFAULT_GROUP_PAUSED: CampaignGroupResponse = { ...DEFAULT_GROUP, schedule_paused: true };
 
+const DEFAULT_ROLE: RoleResponse = {
+  id: "00000000-0000-0000-0000-000000000007",
+  name: "viewer",
+  scope: "organization",
+  is_system: true,
+  permissions: ["scans.read"],
+};
+
+const DEFAULT_CUSTOM_TAXONOMY: CustomTaxonomyResponse = {
+  id: "00000000-0000-0000-0000-000000000aa1",
+  organization_id: "00000000-0000-0000-0000-000000000010",
+  name: "default",
+  slug: "default",
+  description: "",
+  is_active: true,
+  version: 1,
+  nodes: [],
+  created_at: "2026-05-20T00:00:00Z",
+  updated_at: "2026-05-20T00:00:00Z",
+};
+
 const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   slug: "default-tag",
   category: "c",
@@ -473,7 +557,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   severity: "medium",
   is_system: true,
   organization_id: null,
-  show_in_public_report: false,
+  visibility: "internal",
   scans_count: 0,
   rules_count: 0,
   linked_rules: [],
@@ -610,6 +694,69 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "listOrgRoles" });
       await Promise.resolve();
       return state.responses.listOrgRoles ?? ok<readonly RoleResponse[], ApiError>([]);
+    },
+    async createCustomRole(body) {
+      push({ method: "createCustomRole", body });
+      await Promise.resolve();
+      return state.responses.createCustomRole ?? ok<RoleResponse, ApiError>(DEFAULT_ROLE);
+    },
+    async listAccountLabels() {
+      push({ method: "listAccountLabels" });
+      await Promise.resolve();
+      return (
+        state.responses.listAccountLabels ?? ok<readonly LabelDefinitionResponse[], ApiError>([])
+      );
+    },
+    async updateAccountLabels(body) {
+      push({ method: "updateAccountLabels", body });
+      await Promise.resolve();
+      return (
+        state.responses.updateAccountLabels ?? ok<readonly LabelDefinitionResponse[], ApiError>([])
+      );
+    },
+    async getScanScreenshot(scanId, w) {
+      push({ method: "getScanScreenshot", scanId, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getScanCreativeScreenshot(scanId, w) {
+      push({ method: "getScanCreativeScreenshot", scanId, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanCreativeScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getScanLandingScreenshot(scanId, landingOrd, w) {
+      push({ method: "getScanLandingScreenshot", scanId, landingOrd, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanLandingScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getInvoicePdf(invoiceId) {
+      push({ method: "getInvoicePdf", invoiceId });
+      await Promise.resolve();
+      return (
+        state.responses.getInvoicePdf ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+          contentType: "application/pdf",
+        })
+      );
     },
     async listApiKeys() {
       push({ method: "listApiKeys" });
@@ -757,8 +904,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         })
       );
     },
-    async listCampaignsPicker() {
-      push({ method: "listCampaignsPicker" });
+    async listCampaignsPicker(filters) {
+      push({ method: "listCampaignsPicker", filters });
       await Promise.resolve();
       return (
         state.responses.listCampaignsPicker ??
@@ -869,8 +1016,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     },
 
     // ── Tag definitions ────────────────────────────────────────
-    async listTags() {
-      push({ method: "listTags" });
+    async listTags(filters) {
+      push({ method: "listTags", filters });
       await Promise.resolve();
       return state.responses.listTags ?? ok<readonly TagDefinitionResponse[], ApiError>([]);
     },
@@ -978,6 +1125,60 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
       return state.responses.requestPolicySetApproval ?? ok<null, ApiError>(null);
+    },
+
+    // ── Custom taxonomies ──────────────────────────────────────
+    async listCustomTaxonomies() {
+      push({ method: "listCustomTaxonomies" });
+      await Promise.resolve();
+      return (
+        state.responses.listCustomTaxonomies ?? ok<readonly CustomTaxonomyListItem[], ApiError>([])
+      );
+    },
+    async getCustomTaxonomy(id) {
+      push({ method: "getCustomTaxonomy", id });
+      await Promise.resolve();
+      return (
+        state.responses.getCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async createCustomTaxonomy(body) {
+      push({ method: "createCustomTaxonomy", body });
+      await Promise.resolve();
+      return (
+        state.responses.createCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async updateCustomTaxonomy(id, body) {
+      push({ method: "updateCustomTaxonomy", id, body });
+      await Promise.resolve();
+      return (
+        state.responses.updateCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async deleteCustomTaxonomy(id) {
+      push({ method: "deleteCustomTaxonomy", id });
+      await Promise.resolve();
+      return state.responses.deleteCustomTaxonomy ?? ok<null, ApiError>(null);
+    },
+    async restoreCustomTaxonomy(id) {
+      push({ method: "restoreCustomTaxonomy", id });
+      await Promise.resolve();
+      return (
+        state.responses.restoreCustomTaxonomy ??
+        ok<CustomTaxonomyResponse, ApiError>(DEFAULT_CUSTOM_TAXONOMY)
+      );
+    },
+    async parseCustomTaxonomyText(body) {
+      push({ method: "parseCustomTaxonomyText", body });
+      await Promise.resolve();
+      return (
+        state.responses.parseCustomTaxonomyText ??
+        ok<ParseTaxonomyTextResponse, ApiError>({ nodes: [], warnings: [] })
+      );
     },
 
     // ── Alerts ─────────────────────────────────────────────────

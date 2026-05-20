@@ -11,16 +11,28 @@ describe("listUsageTool", () => {
     expect(listUsageTool.name).toBe("list_usage");
     expect(listUsageTool.annotations.readOnlyHint).toBe(true);
   });
-  it("forwards all optional filters", async () => {
+  it("forwards all optional filters (with ISO 8601 datetime bounds)", async () => {
     const api = createFakeApiGateway();
     await listUsageTool.handler(
-      { date_from: "2026-01-01", date_to: "2026-02-01", scan_id: SID, page: 1, limit: 50 },
+      {
+        date_from: "2026-01-01T00:00:00Z",
+        date_to: "2026-02-01T23:59:59Z",
+        scan_id: SID,
+        page: 1,
+        limit: 50,
+      },
       makeToolContext({ api })
     );
     const call = api.state.calls[0];
     if (call?.method !== "listUsage") throw new Error("wrong");
-    expect(call.filters.date_from).toBe("2026-01-01");
+    expect(call.filters.date_from).toBe("2026-01-01T00:00:00Z");
     expect(call.filters.scan_id).toBe(SID);
+  });
+
+  it("rejects plain ISO date in date_from (datetime is required after P3)", () => {
+    expect(() =>
+      listUsageTool.inputSchema.parse({ date_from: "2026-01-01", page: 1, limit: 50 })
+    ).toThrow();
   });
   it("omits optional filters when undefined", async () => {
     const api = createFakeApiGateway();
