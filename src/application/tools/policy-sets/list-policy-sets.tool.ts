@@ -24,10 +24,10 @@ const ListPolicySetsInputShape = {
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
   visibility: z
-    .enum(["private", "public", "all"])
+    .enum(["private", "public"])
     .optional()
     .describe(
-      "Filter by visibility scope: private = org-owned only (default if omitted); public = Kaminari.Ad-curated sets visible to every org; all = both."
+      "Narrow to one scope. `private` = org-owned only, `public` = Kaminari Ad-curated sets visible to every org. Omit the filter to see BOTH combined."
     ),
 } as const;
 type ListPolicySetsInputShape = typeof ListPolicySetsInputShape;
@@ -37,7 +37,7 @@ export type ListPolicySetsOutput = PaginatedResponse<PolicySetListItemResponse>;
 export const listPolicySetsTool: Tool<ListPolicySetsInputShape, ListPolicySetsOutput> = {
   name: "list_policy_sets",
   description:
-    "Paginated list of policy sets: named collections of violation rules (tag / IAB V3 / brand / AI category / custom-taxonomy entries) that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them. Use `visibility=public` to discover Kaminari.Ad-curated sets.",
+    "Paginated list of policy sets: named collections of violation rules (tag / IAB V3 / brand / AI category / custom-taxonomy entries) that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them. Use `visibility=public` to discover Kaminari Ad-curated sets.",
   annotations: {
     title: "List Policy Sets",
     readOnlyHint: true,

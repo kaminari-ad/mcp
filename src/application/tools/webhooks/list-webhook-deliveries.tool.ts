@@ -1,6 +1,6 @@
 /**
  * Tool: `list_webhook_deliveries` — paginated delivery-attempt log
- * for one webhook. Useful for debugging "did Kaminari.Ad try to call me?"
+ * for one webhook. Useful for debugging "did Kaminari Ad try to call me?"
  */
 
 import { z } from "zod";

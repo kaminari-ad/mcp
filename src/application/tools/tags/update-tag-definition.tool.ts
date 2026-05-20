@@ -54,6 +54,18 @@ export const updateTagDefinitionTool: Tool<
     if (input.description !== undefined) body.description = input.description;
     if (input.severity !== undefined) body.severity = input.severity;
     if (input.visibility !== undefined) body.visibility = input.visibility;
+    // Reject empty patches up-front so the agent gets a typed
+    // invalid-input error instead of an upstream 400 on an empty
+    // body. Zod can't enforce "at least one field set" through the
+    // ZodObject<RawShape> contract used by the SDK transport, so we
+    // do it here at the handler boundary.
+    if (Object.keys(body).length === 0) {
+      return err({
+        kind: "invalid-input",
+        message:
+          "update_tag_definition requires at least one field to change (display_name, description, severity, or visibility).",
+      });
+    }
     // API returns 204 No Content on success.
     const result = await ctx.api.updateTagDefinition(input.slug, body);
     if (result.isErr()) return err(mapApiError(result.error));

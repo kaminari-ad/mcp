@@ -50,6 +50,16 @@ describe("listWebhookDeliveriesTool", () => {
       })
     ).toThrow();
   });
+
+  it("rejects invalid webhook_id uuid + out-of-range page/limit", () => {
+    expect(() => listWebhookDeliveriesTool.inputSchema.parse({ webhook_id: "nope" })).toThrow();
+    expect(() =>
+      listWebhookDeliveriesTool.inputSchema.parse({ webhook_id: WID, limit: 201 })
+    ).toThrow();
+    expect(() =>
+      listWebhookDeliveriesTool.inputSchema.parse({ webhook_id: WID, page: 0 })
+    ).toThrow();
+  });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listWebhookDeliveries = err(makeApiError("not-found", "x"));

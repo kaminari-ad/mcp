@@ -1425,14 +1425,46 @@ describe("HttpApiGateway", () => {
       }
     });
 
-    it("binary download surfaces 404 / 500 as ApiError (not raw bytes)", async () => {
+    it("binary download — 404 on screenshot is mapped to not-found", async () => {
       const SID = "00000000-0000-0000-0000-000000000aaa";
       agent
         .get(ORIGIN)
         .intercept({ path: `/api/v1/scans/${SID}/screenshot`, method: "GET" })
         .reply(404, { detail: "no screenshot" });
-      const gw = buildGateway(agent);
-      const r = await gw.getScanScreenshot(SID);
+      const r = await buildGateway(agent).getScanScreenshot(SID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
+    });
+
+    it("binary download — 500 on creative-screenshot is mapped to upstream", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-screenshot`, method: "GET" })
+        .reply(500, { detail: "boom" });
+      const r = await buildGateway(agent).getScanCreativeScreenshot(SID);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("upstream");
+    });
+
+    it("binary download — 404 on landing-screenshot is mapped to not-found", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/landings/0/screenshot`, method: "GET" })
+        .reply(404, { detail: "no landing screenshot" });
+      const r = await buildGateway(agent).getScanLandingScreenshot(SID, 0);
+      expect(r.isErr()).toBe(true);
+      if (r.isErr()) expect(r.error.kind).toBe("not-found");
+    });
+
+    it("binary download — 404 on invoice PDF is mapped to not-found", async () => {
+      const IID = "00000000-0000-0000-0000-000000000fff";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
+        .reply(404, { detail: "missing" });
+      const r = await buildGateway(agent).getInvoicePdf(IID);
       expect(r.isErr()).toBe(true);
       if (r.isErr()) expect(r.error.kind).toBe("not-found");
     });

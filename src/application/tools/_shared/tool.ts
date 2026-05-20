@@ -38,7 +38,7 @@ export interface ToolAnnotations {
   readonly idempotentHint: boolean;
   /**
    * `false` ⇒ this tool only interacts with a single closed system
-   * (the caller's Kaminari.Ad organization). We always set `false`
+   * (the caller's Kaminari Ad organization). We always set `false`
    * — no tool here touches the public Internet or unknown systems.
    */
   readonly openWorldHint: boolean;

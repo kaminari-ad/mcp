@@ -1,5 +1,5 @@
 /**
- * Port: outbound calls to the Kaminari.Ad `/api/v1` surface.
+ * Port: outbound calls to the Kaminari Ad `/api/v1` surface.
  *
  * Tools depend on this interface, never on `undici`, `fetch`, or any
  * other HTTP detail. The concrete `HttpApiGateway` lives in
@@ -465,19 +465,29 @@ export type TaxonomyNodeResponse = Pick<
 /**
  * Full custom taxonomy with its tree. Returned by getCustomTaxonomy,
  * createCustomTaxonomy, updateCustomTaxonomy, restoreCustomTaxonomy.
+ *
+ * `nodes` is narrowed to the agent-facing `TaxonomyNodeResponse`
+ * Pick. The OpenAPI envelope already lists the full schema; we keep
+ * the same field set on the wire and a thinner public type.
+ *
+ * The non-`nodes` fields use `Pick<S["CustomTaxonomyResponse"], …>`
+ * so a future API rename / removal fails this file at `tsc`
+ * immediately on the next regen.
  */
-export interface CustomTaxonomyResponse {
-  readonly id: string;
-  readonly organization_id: string;
-  readonly name: string;
-  readonly slug: string;
-  readonly description: string;
-  readonly is_active: boolean;
-  readonly version: number;
+export type CustomTaxonomyResponse = Pick<
+  S["CustomTaxonomyResponse"],
+  | "id"
+  | "organization_id"
+  | "name"
+  | "slug"
+  | "description"
+  | "is_active"
+  | "version"
+  | "created_at"
+  | "updated_at"
+> & {
   readonly nodes: readonly TaxonomyNodeResponse[];
-  readonly created_at: string;
-  readonly updated_at: string;
-}
+};
 
 /**
  * Request shape for one node when creating or updating a taxonomy.
@@ -512,11 +522,13 @@ export type ParsedTaxonomyNode = Pick<S["ParsedTaxonomyNode"], "level" | "name" 
  * preview — nothing is persisted until the agent calls
  * `createCustomTaxonomy` with the returned nodes (after picking a
  * default). Warnings list any rows the parser had to skip / repair.
+ *
+ * `nodes` is narrowed to the agent-facing `ParsedTaxonomyNode` Pick;
+ * `warnings` keeps the upstream `string[]` shape.
  */
-export interface ParseTaxonomyTextResponse {
+export type ParseTaxonomyTextResponse = Pick<S["ParseTaxonomyTextResponse"], "warnings"> & {
   readonly nodes: readonly ParsedTaxonomyNode[];
-  readonly warnings: readonly string[];
-}
+};
 
 // ── Alerts ────────────────────────────────────────────────────────
 
@@ -920,13 +932,15 @@ export interface ListCampaignsPickerFilters {
 /**
  * Filters for `GET /api/v1/policy-sets` (list).
  *
- * `visibility` filters policy-set scope:
- *   - `private` — org-owned sets only (default API behaviour);
- *   - `public`  — Kaminari.Ad-curated sets visible to every org;
- *   - `all`     — both.
+ * `visibility` narrows the result to one scope:
+ *   - `private` — org-owned sets only;
+ *   - `public`  — Kaminari Ad-curated sets visible to every org.
+ *
+ * Omit the field to get **both** combined (the API treats absence as
+ * "no filter"). There is no explicit `all` value on the API side.
  */
 export interface ListPolicySetsFilters extends PageFilters {
-  readonly visibility?: "private" | "public" | "all";
+  readonly visibility?: "private" | "public";
 }
 
 /**

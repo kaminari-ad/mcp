@@ -63,11 +63,10 @@ const ParsedTaxonomyNodeSchema = schemas.ParsedTaxonomyNode.pick({
   description: true,
 }).strip();
 
-const ParseTaxonomyTextResponseSchema = z
-  .object({
-    nodes: z.array(ParsedTaxonomyNodeSchema),
-    warnings: z.array(z.string()),
-  })
+const ParseTaxonomyTextResponseSchema = schemas.ParseTaxonomyTextResponse.pick({
+  warnings: true,
+})
+  .extend({ nodes: z.array(ParsedTaxonomyNodeSchema) })
   .strip();
 
 export const parseCustomTaxonomyList = (

@@ -35,7 +35,7 @@ export type ToolError =
   | { readonly kind: "internal"; readonly message: string };
 
 /**
- * MCP content block variants used by Kaminari.Ad tools. The SDK
+ * MCP content block variants used by Kaminari Ad tools. The SDK
  * accepts more types (resource_link, audio, ...); we expose the subset
  * we actually use so reviewers see what's allowed.
  */

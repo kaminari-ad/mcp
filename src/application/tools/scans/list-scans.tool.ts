@@ -20,7 +20,7 @@ const ListScansInputShape = {
     .string()
     .optional()
     .describe(
-      "Comma-separated statuses to filter by. One of: pending, running, done, failed, cancelled."
+      "Comma-separated statuses to filter by. Lifecycle values: pending, running, crawled, checking, checking_async, completed, partial, failed, cancelled."
     ),
   country_code: z
     .string()

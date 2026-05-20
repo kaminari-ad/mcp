@@ -62,11 +62,29 @@ describe("updateTagDefinitionTool", () => {
       ).toBe(v);
     }
   });
-  it("maps error", async () => {
+
+  it("rejects empty patch with invalid-input (no upstream call)", async () => {
+    // Sending only `slug` with nothing to update is a programming
+    // error, not a meaningful API call — the guard short-circuits
+    // before reaching the gateway so the agent gets a typed
+    // `invalid-input` instead of an upstream 400/422.
+    const api = createFakeApiGateway();
+    const r = await updateTagDefinitionTool.handler({ slug: "x" }, makeToolContext({ api }));
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) expect(r.error.kind).toBe("invalid-input");
+    expect(api.state.calls).toHaveLength(0);
+  });
+
+  it("maps error from gateway when at least one field IS set", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateTagDefinition = err(makeApiError("forbidden", "x"));
     expect(
-      (await updateTagDefinitionTool.handler({ slug: "x" }, makeToolContext({ api }))).isErr()
+      (
+        await updateTagDefinitionTool.handler(
+          { slug: "x", display_name: "Y" },
+          makeToolContext({ api })
+        )
+      ).isErr()
     ).toBe(true);
   });
 });

@@ -25,7 +25,7 @@ export const requestPolicySetApprovalTool: Tool<
 > = {
   name: "request_policy_set_approval",
   description:
-    "Submit a private policy set for Kaminari.Ad team review so it can be marked PUBLIC and used by other organizations. The set must be complete and well-formed. Returns immediately; approval status is reflected on the policy set entity once the review completes.",
+    "Submit a private policy set for Kaminari Ad team review so it can be marked PUBLIC and used by other organizations. The set must be complete and well-formed. Returns immediately; approval status is reflected on the policy set entity once the review completes.",
   annotations: {
     title: "Request Policy Set Approval",
     readOnlyHint: false,

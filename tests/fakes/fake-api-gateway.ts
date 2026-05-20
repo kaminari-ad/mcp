@@ -51,6 +51,7 @@ import type {
   ListCampaignsFilters,
   ListCampaignsPickerFilters,
   ListInvoicesFilters,
+  ListPolicySetsFilters,
   ListScansFilters,
   ListTagsFilters,
   ListUsageFilters,
@@ -202,7 +203,7 @@ type Call =
     }
   | { readonly method: "deleteCustomRule"; readonly id: string }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
-  | { readonly method: "listPolicySets"; readonly filters: PageFilters }
+  | { readonly method: "listPolicySets"; readonly filters: ListPolicySetsFilters }
   | { readonly method: "getPolicySet"; readonly id: string }
   | { readonly method: "createPolicySet"; readonly body: CreatePolicySetRequest }
   | {

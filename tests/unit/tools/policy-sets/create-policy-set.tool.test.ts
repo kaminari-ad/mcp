@@ -30,12 +30,33 @@ describe("createPolicySetTool", () => {
     ).toThrow();
   });
 
-  it("rejects iab_v3 rule with missing iab_v3 block", () => {
+  it("rejects each rule kind with its value-block missing", () => {
+    // One rejection test per rule kind — guards the discriminated
+    // union doesn't silently let agents send a non-tag rule_type
+    // without the matching value-block.
+    const cases: readonly { rule_type: string }[] = [
+      { rule_type: "iab_v3" },
+      { rule_type: "brand" },
+      { rule_type: "ai_category" },
+      { rule_type: "custom_taxonomy" },
+    ];
+    for (const c of cases) {
+      expect(() =>
+        createPolicySetTool.inputSchema.parse({
+          name: "x",
+          description: "",
+          entries: [{ ...c, country_codes: [] }],
+        })
+      ).toThrow();
+    }
+  });
+
+  it("rejects tag rule with missing tag_slug", () => {
     expect(() =>
       createPolicySetTool.inputSchema.parse({
         name: "x",
         description: "",
-        entries: [{ rule_type: "iab_v3", country_codes: [] }],
+        entries: [{ rule_type: "tag", country_codes: [] }],
       })
     ).toThrow();
   });
