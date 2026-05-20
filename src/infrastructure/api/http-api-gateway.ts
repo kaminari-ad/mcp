@@ -40,6 +40,7 @@ import type {
   ApiKeyResponse,
   BalanceTransactionResponse,
   BillingSummaryResponse,
+  BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
@@ -51,6 +52,7 @@ import type {
   CreateApiKeyRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
+  CreateCustomRoleRequest,
   CreateCustomRuleRequest,
   CreateCustomTaxonomyRequest,
   CreatePolicySetRequest,
@@ -66,6 +68,7 @@ import type {
   GroupActionResponse,
   InviteUserRequest,
   InvoiceResponse,
+  LabelDefinitionResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
@@ -104,6 +107,7 @@ import type {
   UpdateCampaignRequest,
   UpdateCustomRuleRequest,
   UpdateCustomTaxonomyRequest,
+  UpdateLabelDefinitionsRequest,
   UpdateOrgRequest,
   UpdatePolicySetRequest,
   UpdateTagDefinitionRequest,
@@ -119,7 +123,7 @@ import type { Logger } from "../../domain/ports/logger.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import type { paths } from "../../shared/api/openapi.js";
-import { err, type Result } from "../../shared/result.js";
+import { err, ok, type Result } from "../../shared/result.js";
 import { toApiError } from "./error-mapping.js";
 import { parseAlertPage } from "./parsers/parse-alert.js";
 import { parseApiKeyList } from "./parsers/parse-api-key.js";
@@ -148,6 +152,7 @@ import {
   parseEventCatalog,
   parseGroupAction,
   parseInvoice,
+  parseLabelDefinition,
   parseOrg,
   parsePageOf,
   parseRole,
@@ -347,6 +352,76 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     return err(toApiError(status, error ?? data, response.headers.get("retry-after") ?? undefined));
   }
 
+  /**
+   * Direct binary GET — bypasses openapi-fetch (which always parses
+   * JSON). Used by screenshot / invoice-PDF tools. Same auth headers,
+   * same per-request dispatcher, same error mapping. Tools base64-
+   * encode the bytes when building the MCP `image` / `resource`
+   * content block.
+   */
+  async function binaryGet(
+    path: string,
+    query?: Readonly<Record<string, string | number>>
+  ): Promise<Result<BinaryDownload, ApiError>> {
+    const startedAtMs = Date.now();
+    const qs =
+      query && Object.keys(query).length > 0
+        ? `?${new URLSearchParams(
+            Object.fromEntries(Object.entries(query).map(([k, v]) => [k, String(v)]))
+          ).toString()}`
+        : "";
+    const url = `${baseUrl}${path}${qs}`;
+    let response: Response;
+    try {
+      const init: Record<string, unknown> = {
+        method: "GET",
+        headers: {
+          authorization: bearer.toAuthorizationHeader(),
+          accept: "image/*, application/pdf, application/octet-stream",
+          "user-agent": "kaminari-ad-mcp",
+          "x-request-id": requestId,
+        },
+      };
+      if (dispatcher !== undefined) init["dispatcher"] = dispatcher;
+      /* eslint-disable @typescript-eslint/consistent-type-assertions */
+      response = (await undiciFetch(
+        url,
+        init as Parameters<typeof undiciFetch>[1]
+      )) as unknown as Response;
+      /* eslint-enable @typescript-eslint/consistent-type-assertions */
+    } catch (cause) {
+      logger.warn({ api_path: path, elapsed_ms: Date.now() - startedAtMs }, "api.network_error");
+      const inner =
+        cause instanceof Error && cause.cause instanceof Error
+          ? cause.cause
+          : cause instanceof Error
+            ? cause
+            : null;
+      return err({ kind: "upstream", detail: inner !== null ? inner.message : "network error" });
+    }
+    const status = response.status;
+    logger.info(
+      { api_path: path, api_status: status, elapsed_ms: Date.now() - startedAtMs },
+      "api.done"
+    );
+    if (status >= 200 && status < 300) {
+      const buf = await response.arrayBuffer();
+      return ok<BinaryDownload, ApiError>({
+        bytes: new Uint8Array(buf),
+        contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      });
+    }
+    // Error responses come back as JSON; try to parse, fall back to
+    // status-only ApiError.
+    let errBody: unknown;
+    try {
+      errBody = await response.json();
+    } catch {
+      errBody = undefined;
+    }
+    return err(toApiError(status, errBody, response.headers.get("retry-after") ?? undefined));
+  }
+
   return {
     // ── Account ───────────────────────────────────────────────────
     async getAccount(): Promise<Result<OrgResponse, ApiError>> {
@@ -390,6 +465,42 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
     async listOrgRoles(): Promise<Result<readonly RoleResponse[], ApiError>> {
       return call("GET", "/api/v1/account/roles", {}, parseArrayOf(parseRole));
+    },
+    async createCustomRole(body: CreateCustomRoleRequest): Promise<Result<RoleResponse, ApiError>> {
+      return call("POST", "/api/v1/account/roles", { body }, parseRole);
+    },
+    async listAccountLabels(): Promise<Result<readonly LabelDefinitionResponse[], ApiError>> {
+      return call("GET", "/api/v1/account/labels", {}, parseArrayOf(parseLabelDefinition));
+    },
+    async updateAccountLabels(
+      body: UpdateLabelDefinitionsRequest
+    ): Promise<Result<readonly LabelDefinitionResponse[], ApiError>> {
+      return call("PUT", "/api/v1/account/labels", { body }, parseArrayOf(parseLabelDefinition));
+    },
+    async getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/screenshot`, w !== undefined ? { w } : undefined);
+    },
+    async getScanCreativeScreenshot(
+      scanId: string,
+      w?: number
+    ): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(
+        `/api/v1/scans/${scanId}/creative-screenshot`,
+        w !== undefined ? { w } : undefined
+      );
+    },
+    async getScanLandingScreenshot(
+      scanId: string,
+      landingOrd: number,
+      w?: number
+    ): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(
+        `/api/v1/scans/${scanId}/landings/${String(landingOrd)}/screenshot`,
+        w !== undefined ? { w } : undefined
+      );
+    },
+    async getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`);
     },
     async listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
       return call("GET", "/api/v1/account/api-keys", {}, parseApiKeyList);

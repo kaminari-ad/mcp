@@ -17,6 +17,7 @@ import type {
   ApiKeyResponse,
   BalanceTransactionResponse,
   BillingSummaryResponse,
+  BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
@@ -28,6 +29,7 @@ import type {
   CreateApiKeyRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
+  CreateCustomRoleRequest,
   CreateCustomRuleRequest,
   CreateCustomTaxonomyRequest,
   CreatePolicySetRequest,
@@ -43,6 +45,7 @@ import type {
   GroupActionResponse,
   InviteUserRequest,
   InvoiceResponse,
+  LabelDefinitionResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
@@ -80,6 +83,7 @@ import type {
   UpdateCampaignRequest,
   UpdateCustomRuleRequest,
   UpdateCustomTaxonomyRequest,
+  UpdateLabelDefinitionsRequest,
   UpdateOrgRequest,
   UpdatePolicySetRequest,
   UpdateTagDefinitionRequest,
@@ -106,6 +110,26 @@ type Call =
   | { readonly method: "removeUser"; readonly userId: string }
   | { readonly method: "transferOwnership"; readonly userId: string }
   | { readonly method: "listOrgRoles" }
+  | { readonly method: "createCustomRole"; readonly body: CreateCustomRoleRequest }
+  | { readonly method: "listAccountLabels" }
+  | { readonly method: "updateAccountLabels"; readonly body: UpdateLabelDefinitionsRequest }
+  | {
+      readonly method: "getScanScreenshot";
+      readonly scanId: string;
+      readonly w: number | undefined;
+    }
+  | {
+      readonly method: "getScanCreativeScreenshot";
+      readonly scanId: string;
+      readonly w: number | undefined;
+    }
+  | {
+      readonly method: "getScanLandingScreenshot";
+      readonly scanId: string;
+      readonly landingOrd: number;
+      readonly w: number | undefined;
+    }
+  | { readonly method: "getInvoicePdf"; readonly invoiceId: string }
   | { readonly method: "listApiKeys" }
   | { readonly method: "createApiKey"; readonly body: CreateApiKeyRequest }
   | { readonly method: "revokeApiKey"; readonly id: string }
@@ -263,6 +287,13 @@ export interface FakeApiGatewayState {
     removeUser?: Result<null, ApiError>;
     transferOwnership?: Result<null, ApiError>;
     listOrgRoles?: Result<readonly RoleResponse[], ApiError>;
+    createCustomRole?: Result<RoleResponse, ApiError>;
+    listAccountLabels?: Result<readonly LabelDefinitionResponse[], ApiError>;
+    updateAccountLabels?: Result<readonly LabelDefinitionResponse[], ApiError>;
+    getScanScreenshot?: Result<BinaryDownload, ApiError>;
+    getScanCreativeScreenshot?: Result<BinaryDownload, ApiError>;
+    getScanLandingScreenshot?: Result<BinaryDownload, ApiError>;
+    getInvoicePdf?: Result<BinaryDownload, ApiError>;
     listApiKeys?: Result<readonly ApiKeyResponse[], ApiError>;
     createApiKey?: Result<ApiKeyCreatedResponse, ApiError>;
     revokeApiKey?: Result<null, ApiError>;
@@ -495,6 +526,14 @@ const DEFAULT_CAMPAIGN_ARCHIVED: CampaignResponse = { ...DEFAULT_CAMPAIGN, is_ar
 
 const DEFAULT_GROUP_PAUSED: CampaignGroupResponse = { ...DEFAULT_GROUP, schedule_paused: true };
 
+const DEFAULT_ROLE: RoleResponse = {
+  id: "00000000-0000-0000-0000-000000000007",
+  name: "viewer",
+  scope: "organization",
+  is_system: true,
+  permissions: ["scans.read"],
+};
+
 const DEFAULT_CUSTOM_TAXONOMY: CustomTaxonomyResponse = {
   id: "00000000-0000-0000-0000-000000000aa1",
   organization_id: "00000000-0000-0000-0000-000000000010",
@@ -654,6 +693,69 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "listOrgRoles" });
       await Promise.resolve();
       return state.responses.listOrgRoles ?? ok<readonly RoleResponse[], ApiError>([]);
+    },
+    async createCustomRole(body) {
+      push({ method: "createCustomRole", body });
+      await Promise.resolve();
+      return state.responses.createCustomRole ?? ok<RoleResponse, ApiError>(DEFAULT_ROLE);
+    },
+    async listAccountLabels() {
+      push({ method: "listAccountLabels" });
+      await Promise.resolve();
+      return (
+        state.responses.listAccountLabels ?? ok<readonly LabelDefinitionResponse[], ApiError>([])
+      );
+    },
+    async updateAccountLabels(body) {
+      push({ method: "updateAccountLabels", body });
+      await Promise.resolve();
+      return (
+        state.responses.updateAccountLabels ?? ok<readonly LabelDefinitionResponse[], ApiError>([])
+      );
+    },
+    async getScanScreenshot(scanId, w) {
+      push({ method: "getScanScreenshot", scanId, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getScanCreativeScreenshot(scanId, w) {
+      push({ method: "getScanCreativeScreenshot", scanId, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanCreativeScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getScanLandingScreenshot(scanId, landingOrd, w) {
+      push({ method: "getScanLandingScreenshot", scanId, landingOrd, w });
+      await Promise.resolve();
+      return (
+        state.responses.getScanLandingScreenshot ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+          contentType: "image/png",
+        })
+      );
+    },
+    async getInvoicePdf(invoiceId) {
+      push({ method: "getInvoicePdf", invoiceId });
+      await Promise.resolve();
+      return (
+        state.responses.getInvoicePdf ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+          contentType: "application/pdf",
+        })
+      );
     },
     async listApiKeys() {
       push({ method: "listApiKeys" });

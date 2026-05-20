@@ -859,6 +859,41 @@ export interface ListTagsFilters {
   readonly category?: string;
 }
 
+// ── Account labels ────────────────────────────────────────────────
+
+export type LabelDefinitionResponse = Pick<
+  S["LabelDefinitionResponse"],
+  "key" | "display_name" | "position" | "auto_extract"
+>;
+
+/**
+ * Item shape used inside ``UpdateLabelDefinitionsRequest.labels`` —
+ * the API derives ``position`` from array order on update.
+ */
+export type LabelDefinitionItem = Pick<
+  S["LabelDefinitionItem"],
+  "key" | "display_name" | "auto_extract"
+>;
+
+export type UpdateLabelDefinitionsRequest = Pick<S["UpdateLabelDefinitionsRequest"], "labels">;
+
+// ── Custom roles (write side) ─────────────────────────────────────
+
+export type CreateCustomRoleRequest = Pick<S["CreateCustomRoleRequest"], "name" | "permissions">;
+
+// ── Binary downloads ──────────────────────────────────────────────
+
+/**
+ * Raw bytes + content-type returned from a binary endpoint
+ * (`GET /scans/.../screenshot`, `GET /invoices/.../pdf`). The bytes
+ * stay opaque to the gateway — tools base64-encode them inline when
+ * building the MCP `image` / `resource` content block.
+ */
+export interface BinaryDownload {
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
+}
+
 export interface PageFilters {
   readonly page: number;
   readonly limit: number;
@@ -1022,6 +1057,27 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
+
+  // Account labels
+  listAccountLabels(): Promise<Result<readonly LabelDefinitionResponse[], ApiError>>;
+  /** Replace the org's full label set; returns the new list. */
+  updateAccountLabels(
+    body: UpdateLabelDefinitionsRequest
+  ): Promise<Result<readonly LabelDefinitionResponse[], ApiError>>;
+
+  // Custom roles (write side)
+  createCustomRole(body: CreateCustomRoleRequest): Promise<Result<RoleResponse, ApiError>>;
+
+  // Binary downloads
+  /** Returns raw PNG bytes (and the inferred content-type from the response). */
+  getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
+  getScanCreativeScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
+  getScanLandingScreenshot(
+    scanId: string,
+    landingOrd: number,
+    w?: number
+  ): Promise<Result<BinaryDownload, ApiError>>;
+  getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>>;
 
   // Custom taxonomies
   listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>>;
