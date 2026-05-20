@@ -28,7 +28,7 @@ export type ListAlertsOutput = PaginatedResponse<AlertResponse>;
 export const listAlertsTool: Tool<ListAlertsInputShape, ListAlertsOutput> = {
   name: "list_alerts",
   description:
-    "List violation alerts (one per scan + violating-tag combo) with offer URL, tag, country, status, scan back-reference.",
+    "List violation alerts (one per scan + violating rule combo) with offer URL, country, status, scan back-reference, and the kind-aware fields `rule_type` (tag / iab_v3 / brand / ai_category / custom_taxonomy) + `matched_value` (the canonical text the scan matched against).",
   annotations: {
     title: "List Alerts",
     readOnlyHint: true,

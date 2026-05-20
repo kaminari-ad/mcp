@@ -1,5 +1,5 @@
 /**
- * Port: outbound calls to the Kaminari Ad `/api/v1` surface.
+ * Port: outbound calls to the Kaminari.Ad `/api/v1` surface.
  *
  * Tools depend on this interface, never on `undici`, `fetch`, or any
  * other HTTP detail. The concrete `HttpApiGateway` lives in

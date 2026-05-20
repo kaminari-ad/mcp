@@ -37,7 +37,7 @@ export const BEARER_HASH_PREFIX_LEN = 8;
 const MAX_HEADER_LEN = 4096;
 
 /**
- * Opaque, self-redacting wrapper around a Kaminari Ad API key. Use
+ * Opaque, self-redacting wrapper around a Kaminari.Ad API key. Use
  * {@link BearerToken.fromAuthorizationHeader} on the wire-side and
  * {@link BearerToken.fromString} for stdio (`KAMINARI_AD_API_KEY`).
  */
@@ -70,7 +70,7 @@ export class BearerToken {
    * {@link toAuthorizationHeader}. We intentionally do NOT preserve
    * the inbound casing byte-for-byte:
    *
-   *   - The Kaminari Ad API accepts the canonical form.
+   *   - The Kaminari.Ad API accepts the canonical form.
    *   - Outbound canonicalization simplifies any future signature /
    *     proxy that re-hashes the header.
    *   - The TOKEN value itself is preserved exactly (the capture

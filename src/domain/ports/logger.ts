@@ -2,7 +2,7 @@
  * Structured logging port. The single thing `src/` is allowed to log
  * through; `console.*` is banned by ESLint.
  *
- * Field naming mirrors the Kaminari Ad api repo (`request_id`,
+ * Field naming mirrors the Kaminari.Ad api repo (`request_id`,
  * `tool_name`, `elapsed_ms`, `bearer_hash`, ...) so cross-system grep
  * works.
  *
