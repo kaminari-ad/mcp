@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-20
+
+Major-feature release — full parity with the API surface added in
+COOP-13940 Phase 3 (custom taxonomies + 5-kind policy rules + binary
+downloads). **Contains breaking changes for existing agents** —
+review the migration notes below before upgrading.
+
+### Breaking
+
+- **`update_tag_definition`**: input field `show_in_public_report`
+  (boolean) was removed; replaced by `visibility` (enum:
+  `hidden | internal | public`). Old payloads now fail zod
+  validation locally with a typed `invalid-input` error before
+  hitting the API. Migration: replace `show_in_public_report: true`
+  → `visibility: "public"`, and `show_in_public_report: false` →
+  `visibility: "internal"` (or `"hidden"` if you want the tag
+  fully suppressed).
+- **`list_alerts`**: `status` filter no longer accepts the legacy
+  values `"ack"` / `"ignored"`. The canonical four are
+  `"open"`, `"acknowledged"`, `"resolved"`, `"dismissed"`. Mapping:
+  `"ack"` → `"acknowledged"`, `"ignored"` → `"dismissed"`.
+- **`create_policy_set` / `update_policy_set`**: `entries[]` is now
+  a discriminated union over **five rule kinds**. Existing tag-only
+  callers MUST add `rule_type: "tag"` to every entry. Other kinds:
+  `"iab_v3"` (with `iab_v3: { tier1, tier2?, tier3?, tier4? }`),
+  `"brand"` (with `brand: string`), `"ai_category"` (with
+  `ai_category: { tier1, tier2?, tier3?, tier4? }`),
+  `"custom_taxonomy"` (with `custom_taxonomy: { taxonomy_id, tier1,
+  tier2?, tier3?, tier4? }`).
+  `country_codes` now accepts both ISO alpha-2 and alpha-3 (the
+  API normalises).
+
+### Added
+
+- **`custom_taxonomies` tool suite (7 tools).** Per-org
+  classification trees with an `is_default` fallback node:
+  `list_custom_taxonomies`, `get_custom_taxonomy`,
+  `create_custom_taxonomy`, `update_custom_taxonomy`,
+  `delete_custom_taxonomy` (soft-delete), `restore_custom_taxonomy`,
+  `parse_custom_taxonomy_text` (no-persistence preview).
+- **Account labels.** `list_account_labels` + `update_account_labels`
+  for the per-org metadata schema that backs `list_scans.labels`
+  filters. `update_account_labels` is hinted destructive — passing
+  `labels: []` wipes the catalogue.
+- **`create_custom_role`** for `/api/v1/account/roles` POST.
+- **Binary downloads** — `get_invoice_pdf` (MCP `resource` block),
+  `get_scan_screenshot`, `get_scan_creative_screenshot`,
+  `get_scan_landing_screenshot` (MCP `image` blocks). All four
+  return inline base64 with the API-supplied `mimeType` so agents
+  can save / forward without a second call.
+- **`list_alerts` rule_type + matched_value.** Each alert row now
+  carries `rule_type` (one of the five kinds) and `matched_value`
+  (the canonical text the scan matched against). Lets agents
+  branch on rule kind without re-fetching the scan.
+- **`list_policy_sets.visibility` filter.** Narrow to
+  `private` (org-owned) or `public` (Kaminari Ad-curated). Omit
+  the filter to see both combined.
+- **`list_scans` filters.** Added `run_id`, `campaign_id`,
+  `group_id`, `timezone`, `ai_category`, `iab_v3_category`,
+  `iab_category`, `brand`, plus a typed `labels` record that
+  expands to `label_<key>=<value>` query params (snake_case keys
+  enforced by zod).
+- **Misc query filters.** `list_campaigns` + `list_campaigns_picker`
+  gained `archived` / `q`; `list_invoices` gained `type` / `status`
+  enums; `list_balance_history` gained multi-select `type`;
+  `list_webhook_deliveries` gained `success` / `from_ts` / `to_ts`;
+  `list_usage` switched to ISO 8601 datetime bounds; `list_tags`
+  gained `category`.
+
+### Changed
+
+- **OpenAPI types regenerated.** `src/shared/api/openapi.ts` and
+  `src/shared/api/zod-schemas.ts` are rebuilt from the prod API and
+  capture every Phase 3 schema (custom-taxonomies, 5-kind
+  PolicyEntry, AlertResponse `rule_type` / `matched_value`, tag
+  visibility rename).
+- **Tool descriptions.** Policy-sets, alerts, and tag tools updated
+  to mention the new fields. `get_alert_stats` description uses the
+  canonical AlertStatus names.
+- **Branding.** All user-visible tool descriptions and JSDoc use the
+  canonical `Kaminari Ad` (with space) per the updated branding
+  rule. The dotted form `Kaminari.Ad` is deprecated.
+
+### Quality gates
+
+- 705 unit tests (was 623). Coverage 100% statements / 100% lines /
+  100% functions / 97.89% branches (gate is 95% branches). Every
+  new tool has at least 3 cases (success / api-error /
+  zod-rejection); policy-set tools cover all five rule kinds with
+  per-kind missing-block rejection tests.
+- All existing gates pass: lint, format, typecheck, tool-naming,
+  file-sizes (8 grandfathered, every new file <200 effective
+  lines), check-imports, check-shared-state,
+  check-no-handwritten-parsers.
+
 ## [0.2.2] - 2026-05-20
 
 Minor release — adds one-click install paths for Cursor and Claude
