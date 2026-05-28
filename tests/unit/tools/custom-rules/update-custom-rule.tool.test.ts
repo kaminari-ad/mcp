@@ -50,4 +50,31 @@ describe("updateCustomRuleTool", () => {
       (await updateCustomRuleTool.handler({ rule_id: RID }, makeToolContext({ api }))).isErr()
     ).toBe(true);
   });
+
+  it("surfaces API invalid-input with code as ToolError invalid-input + code", async () => {
+    // Mirror of the create-custom-rule contract: changing ``tag_slug``
+    // onto a system slug returns 422 with code
+    // ``checking.system_slug_reserved``. The code must reach the LLM
+    // agent through the MCP, not be dropped to "Invalid input".
+    const api = createFakeApiGateway();
+    api.state.responses.updateCustomRule = err(
+      makeApiError(
+        "invalid-input",
+        "Slug 'adblock_detected' is already used by a system tag.",
+        "checking.system_slug_reserved"
+      )
+    );
+    const result = await updateCustomRuleTool.handler(
+      { rule_id: RID, tag_slug: "adblock_detected" },
+      makeToolContext({ api })
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.kind).toBe("invalid-input");
+      if (result.error.kind === "invalid-input") {
+        expect(result.error.code).toBe("checking.system_slug_reserved");
+        expect(result.error.message).toContain("adblock_detected");
+      }
+    }
+  });
 });

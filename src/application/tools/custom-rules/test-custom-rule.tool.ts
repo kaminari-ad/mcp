@@ -13,8 +13,17 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const TestCustomRuleInputShape = {
-  rule_type: z.string().max(50).describe("Rule engine type (regex, substring, ...)."),
-  config: z.record(z.unknown()).describe("Rule-type-specific config to test."),
+  rule_type: z
+    .string()
+    .max(50)
+    .describe(
+      "Rule engine type. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `blacklist_domain`, `combo`, `llm`."
+    ),
+  config: z
+    .record(z.unknown())
+    .describe(
+      "Rule-type-specific config to test. Same shape as `create_custom_rule`'s `config`. NOTE: `test_custom_rule` evaluates the rule against a scan WITHOUT persisting it, so slug-collision validation does NOT run here — verify slugs against `list_tags` (`is_system=true`) before promoting to `create_custom_rule`."
+    ),
   target: z
     .string()
     .max(30)
