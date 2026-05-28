@@ -8,7 +8,11 @@ describe("createCustomRuleTool", () => {
   it("name + validates name length", () => {
     expect(createCustomRuleTool.name).toBe("create_custom_rule");
     expect(() =>
-      createCustomRuleTool.inputSchema.parse({ name: "", rule_type: "regex", config: {} })
+      createCustomRuleTool.inputSchema.parse({
+        name: "",
+        rule_type: "regexp_content",
+        config: {},
+      })
     ).toThrow();
   });
 
@@ -18,7 +22,7 @@ describe("createCustomRuleTool", () => {
     await createCustomRuleTool.handler(
       {
         name: "RX",
-        rule_type: "regex",
+        rule_type: "regexp_content",
         config: { pattern: "viagra" },
       },
       ctx
@@ -36,17 +40,17 @@ describe("createCustomRuleTool", () => {
     await createCustomRuleTool.handler(
       {
         name: "RX",
-        tag_slug: "ml.spam",
-        rule_type: "regex",
+        tag_slug: "ml_spam",
+        rule_type: "regexp_content",
         config: { pattern: "x" },
-        target: "html",
+        target: "page",
       },
       ctx
     );
     const call = api.state.calls[0];
     if (call?.method !== "createCustomRule") throw new Error("wrong");
-    expect(call.body.tag_slug).toBe("ml.spam");
-    expect(call.body.target).toBe("html");
+    expect(call.body.tag_slug).toBe("ml_spam");
+    expect(call.body.target).toBe("page");
   });
 
   it("maps error", async () => {
@@ -55,7 +59,7 @@ describe("createCustomRuleTool", () => {
     expect(
       (
         await createCustomRuleTool.handler(
-          { name: "RX", rule_type: "regex", config: {} },
+          { name: "RX", rule_type: "regexp_content", config: {} },
           makeToolContext({ api })
         )
       ).isErr()

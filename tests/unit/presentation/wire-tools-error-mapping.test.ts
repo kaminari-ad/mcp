@@ -82,9 +82,16 @@ describe("wire-tools: error mapping survives to CallToolResult", () => {
     expect(result.content).toHaveLength(1);
     const block = result.content[0];
     expect(block?.type).toBe("text");
-    expect(block?.text).toContain("Invalid input");
-    expect(block?.text).toContain("checking.system_slug_reserved");
-    expect(block?.text).toContain("adblock_detected");
+    // Exact format-string assertion — wire-tools.ts:143 produces
+    // ``Invalid input (<code>): <message>``. A regression that drops
+    // the parens or the code would still pass loose toContain checks,
+    // so we pin the full shape here. The trailing message is preserved
+    // verbatim from the API ``detail`` so agents see the original
+    // human-readable hint.
+    expect(block?.text).toBe(
+      "Invalid input (checking.system_slug_reserved): " +
+        "Slug 'adblock_detected' is already used by a system tag. Choose a different slug."
+    );
   });
 
   it("update_custom_rule with system slug rename surfaces the same chain", async () => {
@@ -115,7 +122,47 @@ describe("wire-tools: error mapping survives to CallToolResult", () => {
     expect(result.isError).toBe(true);
     const block = result.content[0];
     expect(block?.type).toBe("text");
-    expect(block?.text).toContain("Invalid input");
-    expect(block?.text).toContain("checking.system_slug_reserved");
+    expect(block?.text).toBe(
+      "Invalid input (checking.system_slug_reserved): " +
+        "Slug 'adblock_detected' is already used by a system tag. Choose a different slug."
+    );
+  });
+
+  it("create_custom_rule with LLM config.tags system slug surfaces the same chain", async () => {
+    // Mirror of the api-side test in
+    // ``test_create_custom_rule.py::test_refuses_system_slug_via_llm_config_tags``.
+    // LLM rules contribute slugs through ``config.tags`` keys; the
+    // API uses the same ``checking.system_slug_reserved`` code so the
+    // MCP-side format string is identical to the ``tag_slug`` path.
+    const api = createFakeApiGateway();
+    api.state.responses.createCustomRule = err(
+      makeApiError(
+        "invalid-input",
+        "Slug 'llm_adult' is already used by a system tag. Choose a different slug.",
+        "checking.system_slug_reserved"
+      )
+    );
+    const captured = makeRegistrationCaptureServer();
+    const ctx = makeToolContext({ api });
+    wireToolsIntoMcpServer(captured.server as never, () => ctx);
+
+    const handler = captured.handlers.get("create_custom_rule");
+    if (handler === undefined) throw new Error("create_custom_rule handler not registered");
+
+    const result = await handler(
+      {
+        name: "hijack via llm",
+        rule_type: "llm",
+        config: { tags: { llm_adult: "hijack" } },
+      },
+      {}
+    );
+
+    expect(result.isError).toBe(true);
+    const block = result.content[0];
+    expect(block?.text).toBe(
+      "Invalid input (checking.system_slug_reserved): " +
+        "Slug 'llm_adult' is already used by a system tag. Choose a different slug."
+    );
   });
 });

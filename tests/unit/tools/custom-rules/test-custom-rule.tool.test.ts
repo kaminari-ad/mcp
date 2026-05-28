@@ -14,7 +14,7 @@ describe("testCustomRuleTool", () => {
   it("forwards full body", async () => {
     const api = createFakeApiGateway();
     await testCustomRuleTool.handler(
-      { rule_type: "regex", config: { p: "x" }, target: "page", scan_id: SID },
+      { rule_type: "regexp_content", config: { p: "x" }, target: "page", scan_id: SID },
       makeToolContext({ api })
     );
     const call = api.state.calls[0];
@@ -27,7 +27,7 @@ describe("testCustomRuleTool", () => {
     expect(
       (
         await testCustomRuleTool.handler(
-          { rule_type: "regex", config: {}, target: "page", scan_id: SID },
+          { rule_type: "regexp_content", config: {}, target: "page", scan_id: SID },
           makeToolContext({ api })
         )
       ).isErr()
