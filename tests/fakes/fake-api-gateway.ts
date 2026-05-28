@@ -1408,15 +1408,16 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
   };
 }
 
-export function makeApiError(kind: ApiError["kind"], detail: string): ApiError {
+export function makeApiError(kind: ApiError["kind"], detail: string, code?: string): ApiError {
   switch (kind) {
     case "unauthorized":
-    case "forbidden":
     case "not-found":
     case "rate-limited":
-    case "invalid-input":
     case "upstream":
       return { kind, detail };
+    case "forbidden":
+    case "invalid-input":
+      return code === undefined ? { kind, detail } : { kind, detail, code };
   }
 }
 

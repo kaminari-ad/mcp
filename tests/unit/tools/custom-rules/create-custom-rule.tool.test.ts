@@ -8,7 +8,11 @@ describe("createCustomRuleTool", () => {
   it("name + validates name length", () => {
     expect(createCustomRuleTool.name).toBe("create_custom_rule");
     expect(() =>
-      createCustomRuleTool.inputSchema.parse({ name: "", rule_type: "regex", config: {} })
+      createCustomRuleTool.inputSchema.parse({
+        name: "",
+        rule_type: "regexp_content",
+        config: {},
+      })
     ).toThrow();
   });
 
@@ -18,7 +22,7 @@ describe("createCustomRuleTool", () => {
     await createCustomRuleTool.handler(
       {
         name: "RX",
-        rule_type: "regex",
+        rule_type: "regexp_content",
         config: { pattern: "viagra" },
       },
       ctx
@@ -36,17 +40,17 @@ describe("createCustomRuleTool", () => {
     await createCustomRuleTool.handler(
       {
         name: "RX",
-        tag_slug: "ml.spam",
-        rule_type: "regex",
+        tag_slug: "ml_spam",
+        rule_type: "regexp_content",
         config: { pattern: "x" },
-        target: "html",
+        target: "page",
       },
       ctx
     );
     const call = api.state.calls[0];
     if (call?.method !== "createCustomRule") throw new Error("wrong");
-    expect(call.body.tag_slug).toBe("ml.spam");
-    expect(call.body.target).toBe("html");
+    expect(call.body.tag_slug).toBe("ml_spam");
+    expect(call.body.target).toBe("page");
   });
 
   it("maps error", async () => {
@@ -55,10 +59,56 @@ describe("createCustomRuleTool", () => {
     expect(
       (
         await createCustomRuleTool.handler(
-          { name: "RX", rule_type: "regex", config: {} },
+          { name: "RX", rule_type: "regexp_content", config: {} },
           makeToolContext({ api })
         )
       ).isErr()
     ).toBe(true);
+  });
+
+  it("surfaces API invalid-input with code as ToolError invalid-input + code", async () => {
+    // API returns 422 + `code: checking.system_slug_reserved` when
+    // ``tag_slug`` collides with a built-in system tag. The MCP must
+    // forward the code so the LLM agent can branch programmatically
+    // (e.g. "pick another slug") instead of regexing the detail string.
+    const api = createFakeApiGateway();
+    api.state.responses.createCustomRule = err(
+      makeApiError(
+        "invalid-input",
+        "Slug 'adblock_detected' is already used by a system tag.",
+        "checking.system_slug_reserved"
+      )
+    );
+    const result = await createCustomRuleTool.handler(
+      {
+        name: "e2e-marker-rule",
+        tag_slug: "adblock_detected",
+        rule_type: "stopword_content",
+        config: { contains: ["x"] },
+      },
+      makeToolContext({ api })
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.kind).toBe("invalid-input");
+      if (result.error.kind === "invalid-input") {
+        expect(result.error.code).toBe("checking.system_slug_reserved");
+        expect(result.error.message).toContain("adblock_detected");
+      }
+    }
+  });
+
+  it("surfaces API forbidden error as ToolError forbidden", async () => {
+    // Completeness: confirms the create-custom-rule code path doesn't
+    // swallow a 403 (which the API can return for permission failures
+    // unrelated to slug collision).
+    const api = createFakeApiGateway();
+    api.state.responses.createCustomRule = err(makeApiError("forbidden", "no permission"));
+    const result = await createCustomRuleTool.handler(
+      { name: "RX", rule_type: "stopword_content", config: {} },
+      makeToolContext({ api })
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe("forbidden");
   });
 });

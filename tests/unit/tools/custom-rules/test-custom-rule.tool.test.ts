@@ -14,7 +14,7 @@ describe("testCustomRuleTool", () => {
   it("forwards full body", async () => {
     const api = createFakeApiGateway();
     await testCustomRuleTool.handler(
-      { rule_type: "regex", config: { p: "x" }, target: "page", scan_id: SID },
+      { rule_type: "regexp_content", config: { p: "x" }, target: "page", scan_id: SID },
       makeToolContext({ api })
     );
     const call = api.state.calls[0];
@@ -27,10 +27,32 @@ describe("testCustomRuleTool", () => {
     expect(
       (
         await testCustomRuleTool.handler(
-          { rule_type: "regex", config: {}, target: "page", scan_id: SID },
+          { rule_type: "regexp_content", config: {}, target: "page", scan_id: SID },
           makeToolContext({ api })
         )
       ).isErr()
     ).toBe(true);
+  });
+
+  it("surfaces API invalid-input error with kind", async () => {
+    // test_custom_rule is preview-only (no rule persistence), but its
+    // error-mapping pipeline is identical to create/update — assert
+    // that ``invalid-input`` survives the kind narrowing so agents
+    // can branch on it. Codes are NOT expected on this endpoint
+    // (no slug-collision validation runs in preview mode) but the
+    // kind contract is the same.
+    const api = createFakeApiGateway();
+    api.state.responses.testCustomRule = err(makeApiError("invalid-input", "bad regex pattern"));
+    const result = await testCustomRuleTool.handler(
+      { rule_type: "regexp_content", config: { pattern: "[" }, target: "page", scan_id: SID },
+      makeToolContext({ api })
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.kind).toBe("invalid-input");
+      if (result.error.kind === "invalid-input") {
+        expect(result.error.message).toContain("bad regex");
+      }
+    }
   });
 });
