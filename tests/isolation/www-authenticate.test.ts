@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { jsonRpc, spinUpServer } from "./_helpers/spin-up-server.js";
 
 const EXPECTED_CHALLENGE =
-  'Bearer resource_metadata="https://mcp.kaminari.ad/.well-known/oauth-protected-resource", scope="mcp:scans:read mcp:scans:write mcp:campaigns:read mcp:campaigns:write mcp:billing:read mcp:webhooks:write offline_access"';
+  'Bearer resource_metadata="https://mcp.kaminari.ad/.well-known/oauth-protected-resource", scope="mcp:account:read mcp:alert_notifications:read mcp:alert_notifications:write mcp:alerts:read mcp:alerts:write mcp:billing:read mcp:campaigns:read mcp:campaigns:write mcp:custom_rules:read mcp:custom_rules:write mcp:invoicing:read mcp:policies:read mcp:policies:write mcp:scans:read mcp:scans:write mcp:tags:read mcp:tags:write mcp:taxonomies:read mcp:taxonomies:write mcp:webhooks:read mcp:webhooks:write offline_access"';
 
 describe("isolation: WWW-Authenticate Bearer challenge on 401", () => {
   let harness: Awaited<ReturnType<typeof spinUpServer>>;
