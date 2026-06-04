@@ -12,11 +12,16 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
 
 const UpdateCampaignInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
+  url: z.string().url().optional().describe("New target URL (url-type campaigns)."),
+  ad_tag: z.string().optional().describe("New ad-tag HTML/JS (ad_tag-type campaigns)."),
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
+  group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
+  ...campaignConfigFields,
   labels: z.record(z.string()).optional().describe("Replace the label map."),
   policy_set_id: z
     .string()
@@ -45,10 +50,14 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
   handler: async (input, ctx): Promise<Result<UpdateCampaignOutput, ToolError>> => {
     const body = {
       ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.url !== undefined ? { url: input.url } : {}),
+      ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.country_codes !== undefined ? { country_codes: input.country_codes } : {}),
+      ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),
       ...(input.schedule_enabled !== undefined ? { schedule_enabled: input.schedule_enabled } : {}),
+      ...pickCampaignConfigBody(input),
     };
     const result = await ctx.api.updateCampaign(input.campaign_id, body);
     if (result.isErr()) return err(mapApiError(result.error));

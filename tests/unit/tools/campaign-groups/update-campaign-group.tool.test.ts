@@ -12,19 +12,24 @@ describe("updateCampaignGroupTool", () => {
     expect(() => updateCampaignGroupTool.inputSchema.parse({ group_id: "x" })).toThrow();
   });
 
-  it("forwards both fields when supplied", async () => {
+  it("forwards name when supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
-    await updateCampaignGroupTool.handler(
-      { group_id: GID, name: "renamed", schedule_paused: true },
-      ctx
-    );
+    await updateCampaignGroupTool.handler({ group_id: GID, name: "renamed" }, ctx);
     const call = api.state.calls[0];
     if (call?.method !== "updateCampaignGroup") throw new Error("wrong");
-    expect(call.body).toEqual({ name: "renamed", schedule_paused: true });
+    expect(call.body).toEqual({ name: "renamed" });
   });
 
-  it("forwards empty body when neither field supplied", async () => {
+  it("drops the phantom schedule_paused field at validation", () => {
+    const parsed = updateCampaignGroupTool.inputSchema.parse({
+      group_id: GID,
+      schedule_paused: true,
+    });
+    expect("schedule_paused" in parsed).toBe(false);
+  });
+
+  it("forwards empty body when no field supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
     await updateCampaignGroupTool.handler({ group_id: GID }, ctx);

@@ -13,11 +13,22 @@ import type { ToolError } from "../_shared/tool-result.js";
 const UpdateWebhookInputShape = {
   webhook_id: z.string().uuid().describe("Webhook UUID."),
   url: z.string().url().optional().describe("New endpoint URL."),
+  description: z.string().max(256).optional().describe("New human-readable label."),
   event_types: z
     .array(z.string())
     .max(50)
     .optional()
     .describe("Replace the subscribed-event-types list."),
+  campaign_ids: z
+    .array(z.string().uuid())
+    .optional()
+    .describe("Restrict deliveries to these campaign UUIDs (replaces the current set)."),
+  clear_campaign_ids: z
+    .boolean()
+    .optional()
+    .describe(
+      "Set true to remove the campaign restriction so the webhook fires for all campaigns."
+    ),
   is_active: z.boolean().optional().describe("Enable / disable delivery."),
 } as const;
 type UpdateWebhookInputShape = typeof UpdateWebhookInputShape;
@@ -39,7 +50,12 @@ export const updateWebhookTool: Tool<UpdateWebhookInputShape, UpdateWebhookOutpu
   handler: async (input, ctx): Promise<Result<UpdateWebhookOutput, ToolError>> => {
     const body = {
       ...(input.url !== undefined ? { url: input.url } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.event_types !== undefined ? { event_types: input.event_types } : {}),
+      ...(input.campaign_ids !== undefined ? { campaign_ids: input.campaign_ids } : {}),
+      ...(input.clear_campaign_ids !== undefined
+        ? { clear_campaign_ids: input.clear_campaign_ids }
+        : {}),
       ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
     };
     const result = await ctx.api.updateWebhook(input.webhook_id, body);

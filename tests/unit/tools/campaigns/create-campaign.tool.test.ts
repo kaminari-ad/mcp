@@ -55,6 +55,50 @@ describe("createCampaignTool", () => {
     );
   });
 
+  it("forwards emulator + proxy + schedule config", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Z",
+        campaign_type: "url",
+        url: "https://z.com",
+        country_codes: ["US"],
+        emulator_categories: [],
+        emulator_specific_ids: ["samsung_galaxy_s23_ultra_android16"],
+        emulator_mode: "all",
+        proxy_type: "mobile",
+        proxy_region: "CA",
+        schedule_type: "interval",
+        schedule_interval_seconds: 3600,
+        schedule_timezone: "UTC",
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.emulator_categories).toEqual([]);
+    expect(call.body.emulator_specific_ids).toEqual(["samsung_galaxy_s23_ultra_android16"]);
+    expect(call.body.emulator_mode).toBe("all");
+    expect(call.body.proxy_type).toBe("mobile");
+    expect(call.body.proxy_region).toBe("CA");
+    expect(call.body.schedule_type).toBe("interval");
+    expect(call.body.schedule_interval_seconds).toBe(3600);
+    expect(call.body.schedule_timezone).toBe("UTC");
+  });
+
+  it("rejects an invalid emulator_mode at validation", () => {
+    expect(() =>
+      createCampaignTool.inputSchema.parse({
+        name: "X",
+        campaign_type: "url",
+        url: "https://x.com",
+        country_codes: ["US"],
+        emulator_mode: "sometimes",
+      })
+    ).toThrow();
+  });
+
   it("maps invalid-input error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createCampaign = err(makeApiError("invalid-input", "bad"));

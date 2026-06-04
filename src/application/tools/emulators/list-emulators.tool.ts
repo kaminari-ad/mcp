@@ -1,8 +1,10 @@
 /**
  * Tool: `list_emulators` — the catalog of device/OS profiles for scans.
  *
- * Use this BEFORE `create_scan` / `create_campaign` to pick a valid
- * `emulator_id` (the `id` field of an entry).
+ * Use this BEFORE creating scans or campaigns to discover valid device
+ * profiles. For a single scan, pass an entry's `id` as `emulator_id`.
+ * For a campaign, pass the `category` in `emulator_categories` or the
+ * `id` in `emulator_specific_ids`.
  */
 
 import { z } from "zod";
@@ -24,7 +26,7 @@ export interface ListEmulatorsOutput {
 export const listEmulatorsTool: Tool<ListEmulatorsInputShape, ListEmulatorsOutput> = {
   name: "list_emulators",
   description:
-    "List every device/OS emulator profile available for scans (id, display name, category, browser). Use the `id` as `emulator_id` in `create_scan` / `create_campaign`.",
+    "List every device/OS emulator profile available for scans (id, display name, category, browser). For `create_scan`, use the `id` as `emulator_id`. For `create_campaign` / `update_campaign`, use the `category` in `emulator_categories` or the `id` in `emulator_specific_ids`.",
   annotations: {
     title: "List Emulators",
     readOnlyHint: true,

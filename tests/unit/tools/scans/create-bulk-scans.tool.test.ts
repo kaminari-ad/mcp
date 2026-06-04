@@ -55,6 +55,23 @@ describe("createBulkScansTool", () => {
     expect(call.body.url).toBe("https://x.com");
   });
 
+  it("forwards proxy targeting when supplied", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        url: "https://x.com",
+        country_codes: ["US"],
+        emulator_id: "default",
+        proxy: { proxy_type: "residential", region: "CA" },
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.proxy).toEqual({ proxy_type: "residential", region: "CA" });
+  });
+
   it("maps ApiError to ToolError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createBulkScans = err(makeApiError("forbidden", "billing suspended"));

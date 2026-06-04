@@ -12,6 +12,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { scanProxyField } from "./_scan-proxy-input.js";
 
 const CreateBulkScansInputShape = {
   url: z.string().url().optional().describe("Direct URL. EITHER `url` OR `ad_tag` is required."),
@@ -29,6 +30,7 @@ const CreateBulkScansInputShape = {
     .min(1)
     .max(100)
     .describe("Device/OS profile slug; same for every country in the batch."),
+  proxy: scanProxyField,
   labels: z
     .record(z.string())
     .optional()
@@ -59,6 +61,7 @@ export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScan
       emulator_id: input.emulator_id,
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
+      ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
     };
     const result = await ctx.api.createBulkScans(body);

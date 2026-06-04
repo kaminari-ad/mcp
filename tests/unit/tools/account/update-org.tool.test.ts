@@ -16,15 +16,10 @@ describe("updateOrgTool", () => {
     if (call?.method !== "updateOrg") throw new Error("wrong");
     expect(call.body).toEqual({ name: "New" });
   });
-  it("forwards both fields when supplied", async () => {
-    const api = createFakeApiGateway();
-    await updateOrgTool.handler(
-      { name: "x", settings: { theme: "dark" } },
-      makeToolContext({ api })
-    );
-    const call = api.state.calls[0];
-    if (call?.method !== "updateOrg") throw new Error("wrong");
-    expect(call.body).toEqual({ name: "x", settings: { theme: "dark" } });
+  it("drops an unknown settings field at validation (no longer supported)", () => {
+    const parsed = updateOrgTool.inputSchema.parse({ name: "x", settings: { theme: "dark" } });
+    expect(parsed).toEqual({ name: "x" });
+    expect("settings" in parsed).toBe(false);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

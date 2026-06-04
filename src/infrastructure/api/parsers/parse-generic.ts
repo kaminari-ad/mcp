@@ -126,6 +126,7 @@ const UserSchema = schemas.UserResponse.pick({
   id: true,
   email: true,
   name: true,
+  role_id: true,
   role_name: true,
   is_active: true,
   created_at: true,

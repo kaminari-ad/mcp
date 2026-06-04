@@ -1,7 +1,8 @@
 /**
- * Tool: `update_campaign_group` — rename or pause a group's scheduler.
+ * Tool: `update_campaign_group` — rename a campaign group.
  *
- * Pausing a group pauses every campaign inside it.
+ * Pausing/resuming a group's scheduler is a separate operation — use
+ * `pause_campaign_group_schedule` / `resume_campaign_group_schedule`.
  */
 
 import { z } from "zod";
@@ -15,10 +16,6 @@ import type { ToolError } from "../_shared/tool-result.js";
 const UpdateCampaignGroupInputShape = {
   group_id: z.string().uuid().describe("Group UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
-  schedule_paused: z
-    .boolean()
-    .optional()
-    .describe("Pause/resume the scheduler for every campaign in this group."),
 } as const;
 type UpdateCampaignGroupInputShape = typeof UpdateCampaignGroupInputShape;
 
@@ -30,7 +27,7 @@ export const updateCampaignGroupTool: Tool<
 > = {
   name: "update_campaign_group",
   description:
-    "Update a campaign group: rename, or pause/resume the scheduler (the pause cascades to every campaign in the group).",
+    "Rename a campaign group. To pause/resume its scheduler, use `pause_campaign_group_schedule` / `resume_campaign_group_schedule` instead.",
   annotations: {
     title: "Update Campaign Group",
     readOnlyHint: false,
@@ -42,7 +39,6 @@ export const updateCampaignGroupTool: Tool<
   handler: async (input, ctx): Promise<Result<UpdateCampaignGroupOutput, ToolError>> => {
     const body = {
       ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.schedule_paused !== undefined ? { schedule_paused: input.schedule_paused } : {}),
     };
     const result = await ctx.api.updateCampaignGroup(input.group_id, body);
     if (result.isErr()) return err(mapApiError(result.error));
