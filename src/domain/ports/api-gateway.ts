@@ -107,6 +107,8 @@ export type ScanBriefResponse = Pick<
   | "status"
   | "offer_url"
   | "screenshot_url"
+  | "report_url"
+  | "public_report_url"
   | "labels"
   | "elapsed_ms"
   | "campaign_id"
@@ -124,7 +126,15 @@ export type ScanBriefResponse = Pick<
  */
 export type ScanTileResponse = Pick<
   S["ScanTileResponse"],
-  "id" | "country_code" | "status" | "offer_url" | "screenshot_url" | "elapsed_ms" | "error"
+  | "id"
+  | "country_code"
+  | "status"
+  | "offer_url"
+  | "screenshot_url"
+  | "report_url"
+  | "public_report_url"
+  | "elapsed_ms"
+  | "error"
 >;
 
 /**
@@ -141,6 +151,8 @@ export type ScanResponse = Pick<
   | "status"
   | "offer_url"
   | "screenshot_url"
+  | "report_url"
+  | "public_report_url"
   | "ad_tag"
   | "creative_screenshot_url"
   | "page_title"

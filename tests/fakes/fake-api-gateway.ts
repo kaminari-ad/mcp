@@ -396,6 +396,8 @@ const DEFAULT_SCAN: ScanResponse = {
   status: "completed",
   offer_url: "https://offer.example",
   screenshot_url: "",
+  report_url: "https://app.kaminari.ad/scans/00000000-0000-0000-0000-000000000aaa",
+  public_report_url: "https://app.kaminari.ad/public/scans/00000000-0000-0000-0000-000000000aaa",
   ad_tag: null,
   creative_screenshot_url: "",
   page_title: "",
@@ -452,6 +454,8 @@ const DEFAULT_SCAN_TILE: ScanTileResponse = {
   status: "completed",
   offer_url: "https://offer.example",
   screenshot_url: "",
+  report_url: "https://app.kaminari.ad/scans/00000000-0000-0000-0000-000000000bbb",
+  public_report_url: "https://app.kaminari.ad/public/scans/00000000-0000-0000-0000-000000000bbb",
   elapsed_ms: 1234,
   error: "",
 };

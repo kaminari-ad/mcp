@@ -21,6 +21,7 @@ import { newRequestId } from "../../domain/value-objects/request-id.js";
 import { createHttpApiGateway } from "../../infrastructure/api/http-api-gateway.js";
 import { createPinoLogger } from "../../infrastructure/logging/pino-logger.js";
 import type { Config } from "../../shared/config.js";
+import { SERVER_INSTRUCTIONS } from "../../shared/server-instructions.js";
 import { NAME, VERSION } from "../../shared/version.js";
 import { declareEmptyResourcesAndPrompts } from "../shared/declare-empty-caps.js";
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
@@ -55,7 +56,10 @@ export async function bootstrapStdio(config: Config): Promise<number> {
   });
 
   const ctx = { api, logger: scopedLogger, requestId };
-  const server = new McpServer({ name: NAME, version: VERSION });
+  const server = new McpServer(
+    { name: NAME, version: VERSION },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
   wireToolsIntoMcpServer(server, () => ctx);
   declareEmptyResourcesAndPrompts(server);
 

@@ -11,6 +11,8 @@ const SCAN_BRIEF = {
   status: "completed" as const,
   offer_url: "https://offer.example",
   screenshot_url: "",
+  report_url: "https://app.kaminari.ad/scans/00000000-0000-0000-0000-000000000aaa",
+  public_report_url: "https://app.kaminari.ad/public/scans/00000000-0000-0000-0000-000000000aaa",
   labels: {},
   elapsed_ms: 100,
   campaign_id: null,

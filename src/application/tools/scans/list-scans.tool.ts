@@ -86,7 +86,7 @@ export type ListScansOutput = PaginatedResponse<ScanBriefResponse>;
 export const listScansTool: Tool<ListScansInputShape, ListScansOutput> = {
   name: "list_scans",
   description:
-    "List scans for the caller's organization with optional filters (status, country, URL substring, date range, run/campaign/group, tag, AI/IAB/brand category, dynamic labels). Returns a paginated envelope.",
+    "List scans for the caller's organization with optional filters (status, country, URL substring, date range, run/campaign/group, tag, AI/IAB/brand category, dynamic labels). Returns a paginated envelope; each scan carries an absolute screenshot URL plus report_url (auth dashboard) and public_report_url (shareable) deep-links — link users with those, never hand-build URLs.",
   annotations: {
     title: "List Scans",
     readOnlyHint: true,

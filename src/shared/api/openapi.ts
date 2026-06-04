@@ -3594,6 +3594,16 @@ export interface components {
        * @default
        */
       screenshot_url: string;
+      /**
+       * Report Url
+       * @default
+       */
+      report_url: string;
+      /**
+       * Public Report Url
+       * @default
+       */
+      public_report_url: string;
       /** Labels */
       labels?: {
         [key: string]: string;
@@ -3657,6 +3667,16 @@ export interface components {
        * @default
        */
       screenshot_url: string;
+      /**
+       * Report Url
+       * @default
+       */
+      report_url: string;
+      /**
+       * Public Report Url
+       * @default
+       */
+      public_report_url: string;
       /** Ad Tag */
       ad_tag?: string | null;
       /**
@@ -3832,6 +3852,16 @@ export interface components {
        * @default
        */
       screenshot_url: string;
+      /**
+       * Report Url
+       * @default
+       */
+      report_url: string;
+      /**
+       * Public Report Url
+       * @default
+       */
+      public_report_url: string;
       /**
        * Elapsed Ms
        * @default 0
