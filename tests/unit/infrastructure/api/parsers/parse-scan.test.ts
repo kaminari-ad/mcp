@@ -14,7 +14,10 @@ const VALID = {
   emulator_id: "default",
   status: "completed",
   offer_url: "https://example.com/offer",
-  screenshot_url: "https://example.com/s.png",
+  screenshot_url:
+    "https://app.kaminari.ad/api/v1/scans/00000000-0000-0000-0000-000000000bbb/screenshot",
+  report_url: "https://app.kaminari.ad/scans/00000000-0000-0000-0000-000000000bbb",
+  public_report_url: "https://app.kaminari.ad/public/scans/00000000-0000-0000-0000-000000000bbb",
   ad_tag: null,
   creative_screenshot_url: "",
   page_title: "Example",
@@ -32,6 +35,14 @@ describe("parseScan", () => {
     const r = parseScan(VALID);
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().country_code).toBe("US");
+  });
+  it("preserves the absolute report deep-links + screenshot URL", () => {
+    const v = parseScan(VALID)._unsafeUnwrap();
+    expect(v.report_url).toBe("https://app.kaminari.ad/scans/00000000-0000-0000-0000-000000000bbb");
+    expect(v.public_report_url).toBe(
+      "https://app.kaminari.ad/public/scans/00000000-0000-0000-0000-000000000bbb"
+    );
+    expect(v.screenshot_url).toContain("/api/v1/scans/");
   });
   it("Ok valid with null nullable fields", () => {
     const r = parseScan({
