@@ -28,6 +28,8 @@ const ScanTileSchema = schemas.ScanTileResponse.pick({
   status: true,
   offer_url: true,
   screenshot_url: true,
+  report_url: true,
+  public_report_url: true,
   elapsed_ms: true,
   error: true,
 }).strip();

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Ready-made scan report links.** `get_scan`, `list_scans`, and
+  `list_run_scans` now surface `report_url` (authenticated dashboard
+  report) and `public_report_url` (shareable, no-login) for every scan,
+  and `screenshot_url` / `creative_screenshot_url` are absolute URLs.
+  The agent links to a scan using these fields verbatim instead of
+  hand-building URLs (it previously guessed the apex host instead of the
+  `app.kaminari.ad` SPA host). A new MCP server `instructions` string
+  (advertised on both transports during `initialize`) reinforces the
+  rule: never construct scan/app URLs — use the ones the API returns.
 - **OAuth 2.0 Protected Resource discovery.** The HTTP transport now
   serves `GET /.well-known/oauth-protected-resource` (RFC 9728) and
   returns `WWW-Authenticate: Bearer resource_metadata="…", scope="…"`

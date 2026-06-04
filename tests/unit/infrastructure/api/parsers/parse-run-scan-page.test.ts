@@ -9,7 +9,9 @@ const VALID_TILE = {
   country_code: "US",
   status: "completed",
   offer_url: "https://offer.example",
-  screenshot_url: "/api/v1/scans/.../screenshot",
+  screenshot_url: `https://app.kaminari.ad/api/v1/scans/${UUID_A}/screenshot?w=400`,
+  report_url: `https://app.kaminari.ad/scans/${UUID_A}`,
+  public_report_url: `https://app.kaminari.ad/public/scans/${UUID_A}`,
   elapsed_ms: 1234,
   error: "",
 };
@@ -29,6 +31,8 @@ describe("parseRunScanPage", () => {
     const v = r._unsafeUnwrap();
     expect(v.items[0]?.country_code).toBe("US");
     expect(v.items[0]?.status).toBe("completed");
+    expect(v.items[0]?.report_url).toBe(`https://app.kaminari.ad/scans/${UUID_A}`);
+    expect(v.items[0]?.public_report_url).toBe(`https://app.kaminari.ad/public/scans/${UUID_A}`);
     expect(v.total).toBe(1);
     expect(v.page).toBe(1);
     expect(v.limit).toBe(50);

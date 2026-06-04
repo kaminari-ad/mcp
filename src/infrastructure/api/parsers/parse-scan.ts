@@ -18,6 +18,8 @@ const ScanSchema = schemas.ScanResponse.pick({
   status: true,
   offer_url: true,
   screenshot_url: true,
+  report_url: true,
+  public_report_url: true,
   ad_tag: true,
   creative_screenshot_url: true,
   page_title: true,

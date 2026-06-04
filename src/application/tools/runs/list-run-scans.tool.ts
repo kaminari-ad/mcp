@@ -27,7 +27,7 @@ export type ListRunScansOutput = PaginatedResponse<ScanTileResponse>;
 export const listRunScansTool: Tool<ListRunScansInputShape, ListRunScansOutput> = {
   name: "list_run_scans",
   description:
-    "List the tile-scan items produced by one run (status, country, offer URL, screenshot, elapsed ms, error). For full scan details (input URL, labels, classification, redirect chain) fetch a specific scan via `get_scan`.",
+    "List the tile-scan items produced by one run (status, country, offer URL, absolute screenshot URL, report_url + public_report_url deep-links, elapsed ms, error). Link users to a scan with the returned `report_url` (auth dashboard) or `public_report_url` (shareable) — never hand-build URLs. For full scan details (input URL, labels, classification, redirect chain) fetch a specific scan via `get_scan`.",
   annotations: {
     title: "List Run Scans",
     readOnlyHint: true,

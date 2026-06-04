@@ -26,6 +26,10 @@ describe("getScanTool", () => {
       method: "getScan",
       scanId: "00000000-0000-0000-0000-000000000aaa",
     });
+    // The agent links via the API-returned deep-links, never builds them.
+    const scan = result._unsafeUnwrap();
+    expect(scan.report_url).toContain("/scans/");
+    expect(scan.public_report_url).toContain("/public/scans/");
   });
 
   it("maps a 404 ApiError to ToolError not-found", async () => {

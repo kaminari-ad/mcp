@@ -25,6 +25,7 @@ import type { SessionStore } from "../../domain/ports/session-store.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import { parseSessionId, type SessionId } from "../../domain/value-objects/session-id.js";
+import { SERVER_INSTRUCTIONS } from "../../shared/server-instructions.js";
 import { NAME, VERSION } from "../../shared/version.js";
 import { declareEmptyResourcesAndPrompts } from "../shared/declare-empty-caps.js";
 import { wireToolsIntoMcpServer } from "../shared/wire-tools.js";
@@ -57,7 +58,10 @@ export interface InitNewSessionArgs {
  */
 export async function initNewSession(args: InitNewSessionArgs): Promise<SessionEntry> {
   const { reqLogger, liveSessions, sessions, bearer } = args;
-  const server = new McpServer({ name: NAME, version: VERSION });
+  const server = new McpServer(
+    { name: NAME, version: VERSION },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
 
   // `api` is the only field that MUST be overwritten before the first
   // SDK tool callback fires; the calling handler sets it back. The

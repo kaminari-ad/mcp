@@ -18,6 +18,8 @@ const ScanBriefSchema = schemas.ScanBriefResponse.pick({
   status: true,
   offer_url: true,
   screenshot_url: true,
+  report_url: true,
+  public_report_url: true,
   labels: true,
   elapsed_ms: true,
   campaign_id: true,
