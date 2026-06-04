@@ -126,21 +126,24 @@ describe("parseOrg", () => {
 });
 
 describe("parseUser", () => {
-  it("Ok valid", () => {
+  it("Ok valid + surfaces role_id", () => {
     const r = parseUser({
       id: UUID_A,
       email: "alice@example.com",
       name: "Alice",
+      role_id: UUID_B,
       role_name: "owner",
       is_active: true,
       created_at: TS,
     });
     expect(r._unsafeUnwrap().email).toBe("alice@example.com");
+    expect(r._unsafeUnwrap().role_id).toBe(UUID_B);
   });
-  it("rejects on missing required field (name)", () => {
+  it("rejects on missing required field (role_id)", () => {
     const r = parseUser({
       id: UUID_A,
       email: "alice@example.com",
+      name: "Alice",
       role_name: "owner",
       is_active: true,
       created_at: TS,

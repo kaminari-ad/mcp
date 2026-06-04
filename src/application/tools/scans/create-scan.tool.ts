@@ -12,6 +12,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { scanProxyField } from "./_scan-proxy-input.js";
 
 const CreateScanInputShape = {
   url: z
@@ -32,6 +33,7 @@ const CreateScanInputShape = {
     .min(1)
     .max(100)
     .describe("Device/OS profile slug; use `list_emulators` to discover valid values."),
+  proxy: scanProxyField,
   labels: z
     .record(z.string())
     .optional()
@@ -65,6 +67,7 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       emulator_id: input.emulator_id,
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
+      ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
       ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),

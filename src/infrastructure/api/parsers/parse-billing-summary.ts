@@ -20,6 +20,12 @@ const BillingSummarySchema = schemas.BillingSummaryResponse.pick({
   can_create_scan: true,
   billing_mode: true,
   block_reason: true,
+  current_plan_is_custom: true,
+  credit_limit_micros: true,
+  effective_minimum_balance_micros: true,
+  scheduled_next_plan_id: true,
+  scheduled_next_plan_name: true,
+  scheduled_effective_at: true,
 }).strip();
 
 export const parseBillingSummary = (raw: unknown): Result<BillingSummaryResponse, ApiError> =>

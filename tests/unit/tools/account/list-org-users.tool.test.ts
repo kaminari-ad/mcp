@@ -16,6 +16,7 @@ describe("listOrgUsersTool", () => {
         id: "00000000-0000-0000-0000-000000000001",
         email: "a@b",
         name: "A",
+        role_id: "00000000-0000-0000-0000-0000000003a1",
         role_name: "admin",
         is_active: true,
         created_at: "2026-01-01T00:00:00Z",
@@ -24,6 +25,7 @@ describe("listOrgUsersTool", () => {
     const r = await listOrgUsersTool.handler({}, makeToolContext({ api }));
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().total).toBe(1);
+    expect(r._unsafeUnwrap().items[0]?.role_id).toBe("00000000-0000-0000-0000-0000000003a1");
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

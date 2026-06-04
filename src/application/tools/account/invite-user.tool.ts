@@ -17,6 +17,10 @@ const InviteUserInputShape = {
     .uuid()
     .describe("UUID of the role to assign on accept. Get UUIDs from `list_org_roles`."),
   name: z.string().min(1).optional().describe("Optional display name for the invitee."),
+  timezone: z
+    .string()
+    .optional()
+    .describe("Optional IANA timezone for the invitee, e.g. 'Europe/Berlin'. Default: UTC."),
 } as const;
 type InviteUserInputShape = typeof InviteUserInputShape;
 
@@ -35,11 +39,12 @@ export const inviteUserTool: Tool<InviteUserInputShape, InviteUserOutput> = {
   },
   inputSchema: z.object(InviteUserInputShape),
   handler: async (input, ctx): Promise<Result<InviteUserOutput, ToolError>> => {
-    const body: { email: string; role_id: string; name?: string } = {
+    const body: { email: string; role_id: string; name?: string; timezone?: string } = {
       email: input.email,
       role_id: input.role_id,
     };
     if (input.name !== undefined) body.name = input.name;
+    if (input.timezone !== undefined) body.timezone = input.timezone;
     const result = await ctx.api.inviteUser(body);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok(result.value);

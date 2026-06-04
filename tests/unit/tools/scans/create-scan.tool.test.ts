@@ -53,6 +53,23 @@ describe("createScanTool", () => {
     expect(Object.keys(call.body).sort()).toEqual(["ad_tag", "country_code", "emulator_id"].sort());
   });
 
+  it("forwards proxy targeting when supplied", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://x.com",
+        country_code: "US",
+        emulator_id: "default",
+        proxy: { proxy_type: "mobile", city: "LA" },
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.proxy).toEqual({ proxy_type: "mobile", city: "LA" });
+  });
+
   it("forwards run_id when supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

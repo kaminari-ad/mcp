@@ -1,6 +1,5 @@
 /**
- * Tool: `update_org` — rename the caller's organization or patch its
- * settings JSON blob.
+ * Tool: `update_org` — rename the caller's organization.
  */
 
 import { z } from "zod";
@@ -13,10 +12,6 @@ import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateOrgInputShape = {
   name: z.string().min(1).max(200).optional().describe("New organization display name."),
-  settings: z
-    .record(z.unknown())
-    .optional()
-    .describe("Replacement settings object. Fields not supplied are left unchanged."),
 } as const;
 type UpdateOrgInputShape = typeof UpdateOrgInputShape;
 
@@ -24,8 +19,7 @@ export type UpdateOrgOutput = OrgResponse;
 
 export const updateOrgTool: Tool<UpdateOrgInputShape, UpdateOrgOutput> = {
   name: "update_org",
-  description:
-    "Update the caller's organization — display name and/or settings object. Only supplied fields are touched.",
+  description: "Update the caller's organization display name.",
   annotations: {
     title: "Update Organization",
     readOnlyHint: false,
@@ -37,7 +31,6 @@ export const updateOrgTool: Tool<UpdateOrgInputShape, UpdateOrgOutput> = {
   handler: async (input, ctx): Promise<Result<UpdateOrgOutput, ToolError>> => {
     const body = {
       ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.settings !== undefined ? { settings: input.settings } : {}),
     };
     const result = await ctx.api.updateOrg(body);
     if (result.isErr()) return err(mapApiError(result.error));

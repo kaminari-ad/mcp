@@ -25,6 +25,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL`, and
   `KAMINARI_AD_OAUTH_SCOPES` (space-separated) for staging/local
   overrides. Defaults match the production deployment.
+- **Campaign emulator/proxy/schedule parity.** `create_campaign` and
+  `update_campaign` now expose the full device + proxy + schedule
+  surface the API has always supported: `emulator_specific_ids`
+  (pin exact device slugs, e.g.
+  `samsung_galaxy_s23_ultra_android16`), `emulator_mode`
+  (`random` = 1 device per category, `all` = every device),
+  `proxy_type`/`proxy_region`/`proxy_city`/`proxy_isp`, and a real
+  schedule definition (`schedule_type` `weekly`/`interval`,
+  `schedule_weekly`, `schedule_interval_seconds`,
+  `schedule_timezone`). `update_campaign` additionally accepts `url`,
+  `ad_tag`, and `group_id`. Campaign read responses
+  (`get_campaign` / `list_campaigns`) now include `emulator_selection`,
+  the proxy fields, and the detailed schedule.
+- **Scan proxy targeting.** `create_scan` and `create_bulk_scans`
+  accept an optional `proxy` object (`proxy_type` + `region` / `city`
+  / `isp`).
+- **`update_webhook`** now accepts `description`, `campaign_ids`, and
+  `clear_campaign_ids` (relabel an endpoint or change its
+  campaign-restriction after creation).
+- **`get_billing_summary`** now surfaces `credit_limit_micros`,
+  `effective_minimum_balance_micros`, `current_plan_is_custom`, and
+  the scheduled-plan-change fields (`scheduled_next_plan_id`,
+  `scheduled_next_plan_name`, `scheduled_effective_at`).
+- **`invite_user`** accepts an optional `timezone`; `list_org_users`
+  now returns each member's `role_id` (so `update_user_role` no
+  longer needs a guessed UUID).
+
+### Removed
+
+- **Phantom tool inputs that the API silently ignored.**
+  `update_campaign_group` no longer advertises `schedule_paused`
+  (use `pause_campaign_group_schedule` /
+  `resume_campaign_group_schedule` instead), and `update_org` no
+  longer advertises `settings` (the API accepts only `name`). Both
+  were no-ops; removing them is non-breaking (unknown keys were
+  already stripped by input validation).
 
 ## [0.3.0] - 2026-05-20
 

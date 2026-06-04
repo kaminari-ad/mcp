@@ -71,7 +71,7 @@ export type OrgResponse = Pick<
 
 export type UserResponse = Pick<
   S["UserResponse"],
-  "id" | "email" | "name" | "role_name" | "is_active" | "created_at"
+  "id" | "email" | "name" | "role_id" | "role_name" | "is_active" | "created_at"
 >;
 
 export type RoleResponse = Pick<
@@ -91,7 +91,7 @@ export type ApiKeyCreatedResponse = Pick<
 
 export type UpdateOrgRequest = Pick<S["UpdateOrgRequest"], "name">;
 /** API source has `name: string` (defaulted to ""); we expose it as optional. */
-export type InviteUserRequest = Pick<S["InviteUserRequest"], "email" | "role_id"> & {
+export type InviteUserRequest = Pick<S["InviteUserRequest"], "email" | "role_id" | "timezone"> & {
   readonly name?: string;
 };
 export type UpdateUserRoleRequest = Pick<S["UpdateUserRoleRequest"], "role_id">;
@@ -169,15 +169,28 @@ export type ScanTagResponse = Pick<
 export type RecheckResponse = Pick<S["RecheckResponse"], "queued_count">;
 export type CancelPendingResponse = Pick<S["CancelPendingResponse"], "cancelled_count">;
 
+/**
+ * Proxy targeting for a scan. `proxy_type`/`region`/`city`/`isp` are
+ * required-with-default in the generated `ProxyTargetRequest`; we accept
+ * each key as independently optional so callers send only what they want
+ * and the API fills the rest with its defaults.
+ */
+interface ScanProxyTarget {
+  readonly proxy_type?: string | undefined;
+  readonly region?: string | undefined;
+  readonly city?: string | undefined;
+  readonly isp?: string | undefined;
+}
+
 export type CreateScanRequest = Pick<
   S["CreateScanRequest"],
   "url" | "ad_tag" | "country_code" | "emulator_id" | "labels" | "campaign_id" | "run_id"
->;
+> & { readonly proxy?: ScanProxyTarget };
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
   "url" | "ad_tag" | "country_codes" | "emulator_id" | "labels"
->;
+> & { readonly proxy?: ScanProxyTarget };
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
 
@@ -201,10 +214,18 @@ export type CampaignResponse = Pick<
   | "ad_tag"
   | "country_codes"
   | "group_id"
+  | "emulator_selection"
+  | "proxy_type"
+  | "proxy_region"
+  | "proxy_city"
+  | "proxy_isp"
   | "labels"
   | "policy_set_id"
   | "schedule_enabled"
   | "schedule_type"
+  | "schedule_weekly"
+  | "schedule_interval_seconds"
+  | "schedule_timezone"
   | "is_archived"
   | "created_at"
   | "last_run_at"
@@ -261,15 +282,51 @@ export type CreateCampaignRequest = Pick<
   | "ad_tag"
   | "country_codes"
   | "group_id"
-  | "emulator_categories"
   | "labels"
   | "policy_set_id"
   | "schedule_enabled"
->;
+> &
+  // emulator_mode + proxy_* are required-with-default in the generated
+  // type; surface them (and the rest of the config block) as optional so
+  // callers only send what they want and the API supplies its defaults.
+  Partial<
+    Pick<
+      S["CreateCampaignRequest"],
+      | "emulator_categories"
+      | "emulator_specific_ids"
+      | "emulator_mode"
+      | "proxy_type"
+      | "proxy_region"
+      | "proxy_city"
+      | "proxy_isp"
+      | "schedule_type"
+      | "schedule_weekly"
+      | "schedule_interval_seconds"
+      | "schedule_timezone"
+    >
+  >;
 
 export type UpdateCampaignRequest = Pick<
   S["UpdateCampaignRequest"],
-  "name" | "country_codes" | "labels" | "policy_set_id" | "schedule_enabled"
+  | "name"
+  | "url"
+  | "ad_tag"
+  | "country_codes"
+  | "group_id"
+  | "emulator_categories"
+  | "emulator_specific_ids"
+  | "emulator_mode"
+  | "proxy_type"
+  | "proxy_region"
+  | "proxy_city"
+  | "proxy_isp"
+  | "labels"
+  | "policy_set_id"
+  | "schedule_type"
+  | "schedule_weekly"
+  | "schedule_interval_seconds"
+  | "schedule_enabled"
+  | "schedule_timezone"
 >;
 
 export type CreateCampaignGroupRequest = Pick<S["CreateCampaignGroupRequest"], "name">;
@@ -645,7 +702,10 @@ export type CreateWebhookRequest = Pick<
 export type UpdateWebhookRequest = Pick<
   S["UpdateWebhookRequest"],
   "url" | "description" | "event_types" | "campaign_ids" | "is_active"
->;
+> &
+  // clear_campaign_ids is required-with-default in the generated type;
+  // surface it as optional so omitting it leaves the restriction as-is.
+  Partial<Pick<S["UpdateWebhookRequest"], "clear_campaign_ids">>;
 
 export type BulkReplayRequest = Pick<S["BulkReplayRequest"], "from_ts" | "to_ts">;
 
@@ -664,6 +724,12 @@ export type BillingSummaryResponse = Pick<
   | "is_suspended"
   | "can_create_scan"
   | "billing_mode"
+  | "current_plan_is_custom"
+  | "credit_limit_micros"
+  | "effective_minimum_balance_micros"
+  | "scheduled_next_plan_id"
+  | "scheduled_next_plan_name"
+  | "scheduled_effective_at"
 > & {
   /**
    * Why scans are blocked, if any.

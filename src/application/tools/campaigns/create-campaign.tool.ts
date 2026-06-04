@@ -13,6 +13,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
 
 const CreateCampaignInputShape = {
   name: z.string().min(1).max(200).describe("Display name (1-200 chars)."),
@@ -30,10 +31,7 @@ const CreateCampaignInputShape = {
     .uuid()
     .optional()
     .describe("Parent group UUID; defaults to the org's default group."),
-  emulator_categories: z
-    .array(z.string())
-    .optional()
-    .describe("Categories of device profiles to rotate through. Default: all available."),
+  ...campaignConfigFields,
   labels: z
     .record(z.string())
     .optional()
@@ -72,12 +70,10 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
-      ...(input.emulator_categories !== undefined
-        ? { emulator_categories: input.emulator_categories }
-        : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),
       ...(input.schedule_enabled !== undefined ? { schedule_enabled: input.schedule_enabled } : {}),
+      ...pickCampaignConfigBody(input),
     };
     const result = await ctx.api.createCampaign(body);
     if (result.isErr()) return err(mapApiError(result.error));

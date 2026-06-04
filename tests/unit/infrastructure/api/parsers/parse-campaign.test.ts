@@ -13,10 +13,18 @@ const VALID = {
   ad_tag: null,
   country_codes: ["US"],
   group_id: "00000000-0000-0000-0000-000000000111",
+  emulator_selection: { categories: ["android_phone"], specific_ids: [], mode: "random" },
+  proxy_type: "residential",
+  proxy_region: "",
+  proxy_city: "",
+  proxy_isp: "",
   labels: { k: "v" },
   policy_set_id: null,
   schedule_enabled: false,
   schedule_type: null,
+  schedule_weekly: null,
+  schedule_interval_seconds: null,
+  schedule_timezone: null,
   is_archived: false,
   created_at: "2026-01-01T00:00:00Z",
   last_run_at: null,
@@ -25,6 +33,12 @@ const VALID = {
 describe("parseCampaign", () => {
   it("Ok valid", () => {
     expect(parseCampaign(VALID).isOk()).toBe(true);
+  });
+  it("surfaces emulator_selection + proxy config", () => {
+    const c = parseCampaign(VALID)._unsafeUnwrap();
+    expect(c.emulator_selection.mode).toBe("random");
+    expect(c.emulator_selection.categories).toEqual(["android_phone"]);
+    expect(c.proxy_type).toBe("residential");
   });
   it("rejects on missing required (id)", () => {
     const { id: _omit, ...rest } = VALID;

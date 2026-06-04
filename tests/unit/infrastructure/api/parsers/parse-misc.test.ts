@@ -258,9 +258,22 @@ describe("parseBillingSummary", () => {
     can_create_scan: true,
     billing_mode: "prepaid",
     block_reason: null,
+    current_plan_is_custom: false,
+    credit_limit_micros: 5000000,
+    effective_minimum_balance_micros: 100000,
+    scheduled_next_plan_id: "00000000-0000-0000-0000-000000000def",
+    scheduled_next_plan_name: "Pro",
+    scheduled_effective_at: "2026-07-01T00:00:00Z",
   };
   it("Ok valid", () => {
     expect(parseBillingSummary(VALID).isOk()).toBe(true);
+  });
+  it("surfaces credit + scheduled-plan fields", () => {
+    const v = parseBillingSummary(VALID)._unsafeUnwrap();
+    expect(v.credit_limit_micros).toBe(5000000);
+    expect(v.effective_minimum_balance_micros).toBe(100000);
+    expect(v.scheduled_next_plan_name).toBe("Pro");
+    expect(v.current_plan_is_custom).toBe(false);
   });
   it("Ok with null nullables (no plan / no block reason)", () => {
     const r = parseBillingSummary({

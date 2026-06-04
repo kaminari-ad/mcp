@@ -36,6 +36,17 @@ describe("inviteUserTool", () => {
     expect(call.body).toEqual({ email: "new@x.com", role_id: ROLE_ID, name: "New User" });
   });
 
+  it("forwards optional timezone when supplied", async () => {
+    const api = createFakeApiGateway();
+    await inviteUserTool.handler(
+      { email: "new@x.com", role_id: ROLE_ID, timezone: "Europe/Berlin" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "inviteUser") throw new Error("wrong");
+    expect(call.body).toEqual({ email: "new@x.com", role_id: ROLE_ID, timezone: "Europe/Berlin" });
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.inviteUser = err(makeApiError("invalid-input", "dup"));
