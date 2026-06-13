@@ -30,7 +30,7 @@ stages:
   - arch_gates
   - security
   - test
-  - build
+  - package
   - publish
 
 # Single pipeline per commit. Without this rule GitLab creates BOTH
@@ -180,7 +180,7 @@ test:isolation:
 # ─────────────────────────────────────────────────────────────────────
 
 build:
-  stage: build
+  stage: package
   needs:
     - setup
     - lint
@@ -223,7 +223,7 @@ build:
 # `tests/integration/cli-smoke.test.ts` against the host-built
 # `dist/bin.js`, so this job only has to prove the Dockerfile builds.
 docker:build:
-  stage: build
+  stage: package
   needs:
     - setup
   image:
