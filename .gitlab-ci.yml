@@ -32,6 +32,7 @@ stages:
   - test
   - build
   - publish
+  - arranger
 
 # Single pipeline per commit. Without this rule GitLab creates BOTH
 # a branch (`push`) pipeline AND a detached `merge_request_event`
@@ -58,7 +59,7 @@ variables:
 # locally and tagged under the ECR name the child FROMs, so no ECR pull is
 # needed. Runs only when .arranger/** changes; allow_failure until proven green.
 arranger_image_build:
-  stage: build
+  stage: arranger
   image: docker:27
   services:
     - docker:27-dind
