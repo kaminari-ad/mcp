@@ -53,6 +53,28 @@ variables:
   NPM_CONFIG_UPDATE_NOTIFIER: "false"
   NPM_CONFIG_AUDIT: "false"
 
+# Builds the .arranger/ (Alpine, k8s) image the prod CodeBuild path uses, so a
+# build regression surfaces in CI rather than at deploy. The base is built
+# locally and tagged under the ECR name the child FROMs, so no ECR pull is
+# needed. Runs only when .arranger/** changes; allow_failure until proven green.
+arranger_image_build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  needs: []
+  before_script: []
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    MCP_BASE: 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      changes: [".arranger/**/*"]
+      allow_failure: true
+  script:
+    - docker build -f .arranger/Dockerfile.base -t "$MCP_BASE" .
+    - docker build -f .arranger/Dockerfile -t kaminariad-mcp-arranger .
+
 # ─────────────────────────────────────────────────────────────────────
 # 1. SETUP — npm ci, cache node_modules, emit lockfile-pinned artefact
 # ─────────────────────────────────────────────────────────────────────
