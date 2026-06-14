@@ -1,0 +1,29 @@
+FROM node:22-alpine
+
+ENV NPM_CONFIG_FUND=false
+ENV NPM_CONFIG_AUDIT=false
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+
+RUN addgroup \
+    --gid 19995 \
+    kaminariad && \
+    adduser \
+    --disabled-password \
+    --gecos "" \
+    --shell "/sbin/nologin" \
+    --uid 19995 \
+    --ingroup kaminariad \
+    kaminariad
+
+RUN apk update && \
+    apk add --no-cache \
+    curl \
+    wget \
+    ca-certificates \
+    openssl \
+    tini=~0.19&& \
+    mkdir -p /var/www/kaminariad-mcp && \
+    chown -R kaminariad:kaminariad /var/www/kaminariad-mcp
+
+USER kaminariad
+WORKDIR /var/www/kaminariad-mcp
