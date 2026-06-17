@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-17
+
 ### Added
 
 - **Ready-made scan report links.** `get_scan`, `list_scans`, and
@@ -70,6 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer advertises `settings` (the API accepts only `name`). Both
   were no-ops; removing them is non-breaking (unknown keys were
   already stripped by input validation).
+
+### Security
+
+- **Cleared the `audit:deps` gate (5 advisories).** `npm audit fix`
+  resolved form-data (high), vite (high), and `@babel/core`; `js-yaml`
+  is forced to `4.2.0` via `overrides` (transitive through the dev-only
+  `@redocly/openapi-core`). Runtime dependencies are unchanged.
 
 ## [0.3.0] - 2026-05-20
 
