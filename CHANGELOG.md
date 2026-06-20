@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-06-20
+
+### Security
+
+- **Bump `undici` 8.3.0 to 8.5.0** to clear the npm-audit gate after the
+  upstream disclosure of seven high-severity advisories (TLS validation
+  bypass, shared-cache disclosure, Set-Cookie SameSite downgrade, header
+  injection, WebSocket DoS). `undici` is a direct dependency.
+
+### Added
+
+- **Security response headers on the HTTP transport.** Every HTTP
+  response now carries `Strict-Transport-Security`,
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer`, and `Permissions-Policy`. These moved
+  off the upstream edge proxy so `mcp.kaminari.ad` is self-contained. No
+  CORS and no org-identifying headers are added (tenant-isolation rules).
+
+> `0.5.1` was tagged prematurely (before the version bump) and is
+> superseded by `0.5.2`; it was never published to npm.
+
 ## [0.5.0] - 2026-06-17
 
 ### Added
