@@ -46,6 +46,15 @@ export async function bootstrapHttp(config: Config): Promise<number> {
   const handle = createHttpRequestHandler({ config, logger, sessions, rateLimiter });
 
   const httpServer = createServer((req, res) => {
+    // Security headers (moved from the rnd edge so mcp.kaminari.ad is
+    // self-contained). Set on every response before handling; they persist
+    // through the handler's writeHead (distinct keys). No CORS / no
+    // org-identifying headers per CONTRIBUTING.md rules #8 / #12.
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     handle(req, res).catch((cause: unknown) => {
       logger.error(
         { error_message: cause instanceof Error ? cause.message : String(cause) },
