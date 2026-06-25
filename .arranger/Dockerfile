@@ -1,4 +1,7 @@
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base:v1.0.1 as deps
+# Three-stage assemble (no apk here — everything is in the bases):
+#   deps/build : kaminariad-mcp-base-dev (node + build tooling) install + tsup.
+#   runtime    : kaminariad-mcp-base-prod (lean node + tini) COPYs prod node_modules + dist.
+FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-dev:v1.1.0 AS deps
 
 COPY --chown=kaminariad:kaminariad package.json package-lock.json .npmrc ./
 
@@ -7,7 +10,7 @@ RUN npm ci \
     --ignore-scripts \
     --legacy-peer-deps
 
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base:v1.0.1 as build
+FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-dev:v1.1.0 AS build
 
 COPY --chown=kaminariad:kaminariad package.json package-lock.json .npmrc ./
 
@@ -20,7 +23,7 @@ COPY --chown=kaminariad:kaminariad src ./src
 
 RUN npx tsup --config tsup.config.ts
 
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base:v1.0.1 as runtime
+FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-prod:v1.1.0 AS runtime
 
 COPY --chown=kaminariad:kaminariad --from=deps /var/www/kaminariad-mcp/node_modules ./node_modules
 COPY --chown=kaminariad:kaminariad --from=build /var/www/kaminariad-mcp/dist ./dist
