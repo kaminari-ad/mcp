@@ -95,19 +95,19 @@ Conventional Commits. The first line is `<type>: <imperative summary>`:
 
 ## Tenant isolation (HTTP mode)
 
-The hosted `mcp.kaminari.ad` endpoint serves many organizations from one process. The HTTP transport, session store, and rate limiter must preserve these invariants:
+The hosted `mcp.kaminari.ad` endpoint serves many organizations from one process. The HTTP transport and rate limiter must preserve these invariants:
 
 1. **No module-level mutable state.** No `let`/`var` at module scope, no mutating `static` fields. ESLint and `scripts/check-no-shared-state.ts` enforce this; both have to be edited to bypass.
-2. **No caches indexed by tenant data.** Zero. The only mutable stores allowed are session and rate-limit, in `src/infrastructure/{session,rate-limit}/`. The session store is `Map<SessionId, {bearerHash, expiresAtMs}>` (keyed by MCP session id, values hold `sha256(bearer)` for binding); the rate limiter is `Map<bearerHash, LeakyBucket>`. Neither stores user ids, org ids, scan ids, or any tenant business data.
+2. **No caches indexed by tenant data.** Zero. The only mutable store allowed is the rate limiter, in `src/infrastructure/rate-limit/` — a `Map<bearerHash, LeakyBucket>` keyed by `sha256(bearer)`. It stores no user ids, org ids, scan ids, or any tenant business data.
 3. **`ApiGateway` is constructed per request** from that request's `Authorization`. There is no `globalApiGateway`.
 4. **Missing `Authorization` returns 401 without calling the API.** Test: `tests/isolation/missing_auth.test.ts`.
 5. **`KAMINARI_AD_API_KEY` is forbidden in HTTP mode** — the bootstrap asserts on startup. Test: `tests/isolation/env_fallback_disabled.test.ts`.
 6. **Inbound: only `Authorization` is forwarded.** All other client-supplied headers (`X-Org-Id`, `X-User-Id`, `Cookie`, etc.) are stripped at the handler. Test: `tests/isolation/header_injection.test.ts`.
-7. **Session-id is bound to `sha256(bearer)`.** Reuse with a different Bearer is rejected and destroys the session. Test: `tests/isolation/bearer_swap_session.test.ts`.
+7. **Stateless transport — no sessions.** The HTTP transport runs stateless (`sessionIdGenerator: undefined`): no `Mcp-Session-Id` is issued or honored, no session state is persisted, and a fresh single-use MCP server+transport is built per request. Every request is independently authenticated by its own Bearer, so there is no session to hijack and any replica can serve any request. Test: `tests/isolation/stateless-no-session.test.ts`.
 8. **Bearers never log.** Only `bearer_hash = sha256(token).slice(0,8)`. Test: `tests/isolation/token_in_logs.test.ts`.
 9. **Outbound: pinned 5-key header allowlist.** Every outbound call to the Kaminari Ad API carries EXACTLY these headers — nothing more, nothing less: `authorization` (the caller's Bearer), `content-type: application/json`, `accept: application/json`, `user-agent: kaminari-ad-mcp`, and `x-request-id` (per-request correlation id). The list is declared literally in `src/infrastructure/api/http-api-gateway.ts` and enforced by `tests/isolation/header-injection.test.ts` (behavioural) + `tests/isolation/header-injection-e2e.test.ts` (source-text regex gate). Any added header must be reviewed AS a tenant-isolation change.
 
-Any change to `src/presentation/http/`, `src/infrastructure/session/`, `src/infrastructure/rate-limit/`, or `src/infrastructure/api/http-api-gateway.ts` requires a second reviewer.
+Any change to `src/presentation/http/`, `src/infrastructure/rate-limit/`, or `src/infrastructure/api/http-api-gateway.ts` requires a second reviewer.
 
 ## Reporting security issues
 

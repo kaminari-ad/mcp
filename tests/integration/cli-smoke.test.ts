@@ -164,13 +164,12 @@ describe("CLI smoke (built dist)", () => {
     expect(exitCode).toBe(2);
   });
 
-  it("HTTP mode handles a full session: initialize -> initialized -> tools/list", async () => {
-    // Regression test for the per-request McpServer+Transport bug
-    // that broke Streamable HTTP session continuity — `initialize`
-    // returned a session-id, but the very next POST with that id
-    // failed with "Server not initialized" because the SDK state was
-    // thrown away with the previous request's transport. Fixed by
-    // caching the transport in `liveSessions`.
+  it("HTTP mode is stateless: initialize -> initialized -> tools/list work with no session id", async () => {
+    // Stateless Streamable HTTP: the server issues NO `Mcp-Session-Id`
+    // and performs no session validation, so any replica serves any
+    // request and the old per-pod "Server not initialized" mid-session
+    // failure cannot happen. We assert initialize carries no session id
+    // and that initialized + tools/list succeed without one.
     if (!(await distAvailable())) return;
     const port = await freePort();
     const child = spawn("node", [BIN, "--transport=http"], {
@@ -205,11 +204,12 @@ describe("CLI smoke (built dist)", () => {
         },
       });
       expect(init.body.statusCode).toBe(200);
+      // Stateless: the server must NOT issue a session id.
       const sessionId = init.body.headers["mcp-session-id"];
-      expect(typeof sessionId).toBe("string");
+      expect(sessionId).toBeUndefined();
 
-      // SECOND request on the same session — used to fail with
-      // "Server not initialized" before the transport cache fix.
+      // Follow-up requests carry NO session id (stateless). Each lands
+      // on a fresh server+transport and still succeeds.
       const initialized = await mcpRpc(port, sessionId, {
         jsonrpc: "2.0",
         method: "notifications/initialized",
