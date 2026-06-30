@@ -118,14 +118,11 @@ export function createHttpRequestHandler(
       logger: reqLogger,
     });
 
-    // Single-use stateless MCP for this request. Closed on response end
-    // so the per-request SDK objects don't leak.
+    // Single-use stateless MCP for this request. Closed deterministically
+    // in `finally` once the response is written, so the per-request SDK
+    // objects don't accumulate across keep-alive requests (the SDK forbids
+    // reusing a stateless transport anyway).
     const { server, transport } = await createStatelessMcp({ api, logger: reqLogger, requestId });
-    res.on("close", () => {
-      void transport.close().catch(() => undefined);
-      void server.close().catch(() => undefined);
-    });
-
     try {
       await transport.handleRequest(req, res);
       reqLogger.info({}, "http.request_done");
@@ -137,6 +134,9 @@ export function createHttpRequestHandler(
       if (!res.headersSent) {
         writeJson(res, 500, { error: "Internal server error" });
       }
+    } finally {
+      void transport.close().catch(() => undefined);
+      void server.close().catch(() => undefined);
     }
   }
 

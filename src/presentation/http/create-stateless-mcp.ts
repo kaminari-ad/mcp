@@ -55,9 +55,17 @@ export async function createStatelessMcp(ctx: ToolContext): Promise<StatelessMcp
     enableJsonResponse: true,
   });
 
-  // @ts-expect-error SDK's Transport.onclose union (() => void) | undefined
-  // mismatches Server.connect's expected non-optional type. Harmless;
-  // fixed upstream in a future SDK release.
-  await server.connect(transport);
+  try {
+    // @ts-expect-error SDK's Transport.onclose union (() => void) | undefined
+    // mismatches Server.connect's expected non-optional type. Harmless;
+    // fixed upstream in a future SDK release.
+    await server.connect(transport);
+  } catch (cause) {
+    // Connect failed — free both so a failed request can't leak the
+    // half-built pair (the handler only registers cleanup on success).
+    await transport.close().catch(() => undefined);
+    await server.close().catch(() => undefined);
+    throw cause;
+  }
   return { server, transport };
 }
