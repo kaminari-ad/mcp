@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-30
+
+### Changed
+
+- **HTTP transport is now stateless** (`StreamableHTTPServerTransport` with
+  `sessionIdGenerator: undefined`). The server no longer issues an
+  `Mcp-Session-Id`; it builds a fresh, single-use MCP server + transport per
+  request and authenticates each request independently by its own Bearer. This
+  lets `mcp.kaminari.ad` run multiple replicas behind a round-robin load
+  balancer with no sticky sessions and no shared session store — fixing the
+  mid-session failures that appeared after the Traefik edge cutover. It aligns
+  with the MCP stateless direction (SEP-2575 / SEP-2567) and improves
+  ChatGPT-connector compatibility (the connector opens a new session per tool
+  call, which a stateful server handles poorly).
+
+### Removed
+
+- In-memory session store, the session-id <-> bearer binding, and the
+  `KAMINARI_AD_SESSION_TTL_SEC` env var — all obsolete in stateless mode. The
+  only remaining mutable store is the per-bearer rate limiter.
+
 ## [0.5.2] - 2026-06-20
 
 ### Security

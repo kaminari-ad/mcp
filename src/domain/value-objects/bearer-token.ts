@@ -98,8 +98,8 @@ export class BearerToken {
   }
 
   /**
-   * Returns the full SHA-256 hex digest. Used as the session-binding
-   * key in {@link SessionStore}. Not for logs.
+   * Returns the full SHA-256 hex digest. Used as the per-bearer key for
+   * the rate limiter. Not for logs.
    */
   fullHash(): string {
     return createHash("sha256").update(this.#raw).digest("hex");

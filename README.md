@@ -198,7 +198,7 @@ We follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for the two
 
 ## Privacy
 
-- **Data collected by the MCP server itself:** none beyond the `Authorization` header it forwards. In HTTP mode, only ephemeral per-request scoped state (session id ↔ Bearer hash, leaky-bucket rate limit by Bearer hash) is held in memory.
+- **Data collected by the MCP server itself:** none beyond the `Authorization` header it forwards. The HTTP transport is stateless — no sessions are persisted; each request is authenticated independently by its own Bearer. The only in-memory state is the leaky-bucket rate limiter keyed by `sha256(bearer)`.
 - **Data forwarded to Kaminari Ad:** every tool call is a thin pass-through to `/api/v1` over HTTPS. The Kaminari Ad privacy policy applies: [https://kaminari.ad/legal/privacy](https://kaminari.ad/legal/privacy).
 - **Logs:** structured pino output, JSON in HTTP mode. The full Bearer token is redacted; only `bearer_hash = sha256(token).slice(0,8)` makes it into a log line, alongside `request_id`, `tool_name`, `api_status`, `elapsed_ms`. Tool inputs (which may contain customer scan IDs / URLs) are NOT logged.
 - **Telemetry:** none. The OSS build ships a `NoopErrorReporter`. We do not bundle Sentry, OpenTelemetry exporters, or PostHog.

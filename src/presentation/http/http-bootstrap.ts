@@ -1,8 +1,8 @@
 /**
  * Composition root for the HTTP transport.
  *
- * Wires the long-lived per-process dependencies (logger, session store,
- * rate limiter) and hands the per-request handling off to
+ * Wires the long-lived per-process dependencies (logger, rate limiter)
+ * and hands the per-request handling off to
  * {@link createHttpRequestHandler} — which enforces every
  * tenant-isolation rule from CONTRIBUTING.md.
  *
@@ -21,7 +21,6 @@ import process from "node:process";
 import { createSystemClock } from "../../infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../infrastructure/logging/pino-logger.js";
 import { createLeakyBucketRateLimiter } from "../../infrastructure/rate-limit/leaky-bucket-rate-limiter.js";
-import { createInMemorySessionStore } from "../../infrastructure/session/in-memory-session-store.js";
 import type { Config } from "../../shared/config.js";
 import { createHttpRequestHandler } from "./http-request-handler.js";
 
@@ -40,10 +39,9 @@ export async function bootstrapHttp(config: Config): Promise<number> {
   }
 
   const clock = createSystemClock();
-  const sessions = createInMemorySessionStore(clock, config.sessionTtlSec * 1000);
   const rateLimiter = createLeakyBucketRateLimiter(clock, config.rateLimitRpm);
 
-  const handle = createHttpRequestHandler({ config, logger, sessions, rateLimiter });
+  const handle = createHttpRequestHandler({ config, logger, rateLimiter });
 
   const httpServer = createServer((req, res) => {
     // Security headers (moved from the rnd edge so mcp.kaminari.ad is

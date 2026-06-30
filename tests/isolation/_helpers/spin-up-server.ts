@@ -25,7 +25,6 @@ import {
 import { createSystemClock } from "../../../src/infrastructure/clock/system-clock.js";
 import { createPinoLogger } from "../../../src/infrastructure/logging/pino-logger.js";
 import { createLeakyBucketRateLimiter } from "../../../src/infrastructure/rate-limit/leaky-bucket-rate-limiter.js";
-import { createInMemorySessionStore } from "../../../src/infrastructure/session/in-memory-session-store.js";
 import { createHttpRequestHandler } from "../../../src/presentation/http/http-request-handler.js";
 import { loadConfig } from "../../../src/shared/config.js";
 
@@ -54,10 +53,10 @@ class MemorySink extends Writable {
 /**
  * Build a real HTTP server with the production request handler.
  *
- * @param overrides - Per-test config overrides (rate limit, session TTL).
+ * @param overrides - Per-test config overrides (rate limit).
  */
 export async function spinUpServer(
-  overrides: { readonly RATE_LIMIT_RPM?: number; readonly SESSION_TTL_SEC?: number } = {}
+  overrides: { readonly RATE_LIMIT_RPM?: number } = {}
 ): Promise<IsolationHarness> {
   const sink = new MemorySink();
   const logger = createPinoLogger("debug", "json", sink);
@@ -67,14 +66,12 @@ export async function spinUpServer(
     KAMINARI_AD_API_URL: "https://kaminari.test",
     KAMINARI_AD_LOG_LEVEL: "debug",
     KAMINARI_AD_HTTP_PORT: "0",
-    KAMINARI_AD_SESSION_TTL_SEC: String(overrides.SESSION_TTL_SEC ?? 1800),
     KAMINARI_AD_RATE_LIMIT_RPM: String(overrides.RATE_LIMIT_RPM ?? 1000),
   });
   if (configResult.isErr()) throw new Error("test config invalid");
   const config = configResult.value;
 
   const clock = createSystemClock();
-  const sessions = createInMemorySessionStore(clock, config.sessionTtlSec * 1000);
   const rateLimiter = createLeakyBucketRateLimiter(clock, config.rateLimitRpm);
 
   // Intercept Kaminari API requests via undici MockAgent globally.
@@ -88,7 +85,7 @@ export async function spinUpServer(
   mockApi.enableNetConnect((host) => host.startsWith("127.0.0.1") || host.startsWith("localhost"));
   setGlobalDispatcher(mockApi);
 
-  const handle = createHttpRequestHandler({ config, logger, sessions, rateLimiter });
+  const handle = createHttpRequestHandler({ config, logger, rateLimiter });
   const server: Server = createServer((req, res) => {
     handle(req, res).catch((cause: unknown) => {
       logger.error(

@@ -48,7 +48,6 @@ export interface Config {
   readonly logLevel: LogLevel;
   readonly logFormat: LogFormat;
   readonly httpPort: number;
-  readonly sessionTtlSec: number;
   readonly rateLimitRpm: number;
   /**
    * Set only in stdio mode. In HTTP mode the bootstrap MUST assert
@@ -107,7 +106,6 @@ const RawSchema = z.object({
   KAMINARI_AD_LOG_LEVEL: LogLevelSchema.default("info"),
   KAMINARI_AD_LOG_FORMAT: LogFormatSchema.optional(),
   KAMINARI_AD_HTTP_PORT: z.coerce.number().int().min(0).max(65535).default(8080),
-  KAMINARI_AD_SESSION_TTL_SEC: z.coerce.number().int().min(60).max(86_400).default(1800),
   KAMINARI_AD_RATE_LIMIT_RPM: z.coerce.number().int().min(1).max(10_000).default(120),
   KAMINARI_AD_API_KEY: z.string().min(8).optional(),
   // OAuth discovery (RFC 9728 protected-resource + RFC 8414 AS
@@ -153,7 +151,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
     logLevel: raw.KAMINARI_AD_LOG_LEVEL,
     logFormat,
     httpPort: raw.KAMINARI_AD_HTTP_PORT,
-    sessionTtlSec: raw.KAMINARI_AD_SESSION_TTL_SEC,
     rateLimitRpm: raw.KAMINARI_AD_RATE_LIMIT_RPM,
     stdioApiKey: raw.KAMINARI_AD_API_KEY,
     oauthProtectedResource: raw.KAMINARI_AD_OAUTH_PROTECTED_RESOURCE,

@@ -20,7 +20,6 @@ describe("isolation: HTTP-mode env fallback disabled", () => {
       KAMINARI_AD_LOG_LEVEL: "fatal", // silence the fatal log line in test output
       KAMINARI_AD_HTTP_PORT: "0",
       KAMINARI_AD_RATE_LIMIT_RPM: "60",
-      KAMINARI_AD_SESSION_TTL_SEC: "1800",
       KAMINARI_AD_API_KEY: "kad_test_fallback_value",
     });
     expect(cfgResult.isOk()).toBe(true);

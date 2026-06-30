@@ -20,7 +20,6 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
     logLevel: "info",
     logFormat: "json",
     httpPort: 8080,
-    sessionTtlSec: 1800,
     rateLimitRpm: 120,
     stdioApiKey: undefined,
     oauthProtectedResource: "https://mcp.kaminari.ad/mcp",

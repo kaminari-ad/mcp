@@ -15,7 +15,6 @@ describe("loadConfig", () => {
     expect(cfg.logLevel).toBe("info");
     expect(cfg.logFormat).toBe("pretty");
     expect(cfg.httpPort).toBe(8080);
-    expect(cfg.sessionTtlSec).toBe(1800);
     expect(cfg.rateLimitRpm).toBe(120);
     expect(cfg.stdioApiKey).toBeUndefined();
     // OAuth discovery defaults — pinned because Anthropic's directory
@@ -74,7 +73,6 @@ describe("loadConfig", () => {
       KAMINARI_AD_LOG_LEVEL: "debug",
       KAMINARI_AD_LOG_FORMAT: "json",
       KAMINARI_AD_HTTP_PORT: "9000",
-      KAMINARI_AD_SESSION_TTL_SEC: "600",
       KAMINARI_AD_RATE_LIMIT_RPM: "60",
       KAMINARI_AD_API_KEY: "kad_abc1234567",
     });
@@ -85,7 +83,6 @@ describe("loadConfig", () => {
     expect(cfg.logLevel).toBe("debug");
     expect(cfg.logFormat).toBe("json");
     expect(cfg.httpPort).toBe(9000);
-    expect(cfg.sessionTtlSec).toBe(600);
     expect(cfg.rateLimitRpm).toBe(60);
     expect(cfg.stdioApiKey).toBe("kad_abc1234567");
   });
