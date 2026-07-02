@@ -1767,8 +1767,7 @@ export interface components {
       tag_slug: string;
       /** Country Code */
       country_code: string;
-      /** Status */
-      status: string;
+      status: components["schemas"]["AlertStatus"];
       /** Closed By */
       closed_by: string | null;
       /**

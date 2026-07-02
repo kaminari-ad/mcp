@@ -1,6 +1,6 @@
 /**
  * Tool: `update_alert_status` — move an alert through its lifecycle
- * (open → ack → resolved | ignored).
+ * (open → escalated → resolved | dismissed).
  */
 
 import { z } from "zod";

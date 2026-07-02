@@ -784,7 +784,7 @@ const AlertResponse = z
     organization_id: z.string().uuid(),
     tag_slug: z.string(),
     country_code: z.string(),
-    status: z.string(),
+    status: AlertStatus,
     closed_by: z.union([z.string(), z.null()]),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.union([z.string(), z.null()]),
