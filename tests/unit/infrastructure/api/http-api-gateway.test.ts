@@ -953,7 +953,7 @@ describe("HttpApiGateway", () => {
         .reply(204, "");
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/alerts/stats", method: "GET" })
-        .reply(200, { open: 0, acknowledged: 0, resolved: 0, dismissed: 0 });
+        .reply(200, { open: 0, escalated: 0, resolved: 0, dismissed: 0 });
       // ── campaign lifecycle ─────────────────────────────────
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/campaigns/${CID}/run`, method: "POST" })
@@ -1207,7 +1207,7 @@ describe("HttpApiGateway", () => {
       ).toBe(true);
       expect((await gw.deletePolicySet(PID)).isOk()).toBe(true);
       expect((await gw.requestPolicySetApproval(PID)).isOk()).toBe(true);
-      expect((await gw.updateAlertStatus(AID, { status: "acknowledged" })).isOk()).toBe(true);
+      expect((await gw.updateAlertStatus(AID, { status: "escalated" })).isOk()).toBe(true);
       expect((await gw.getAlertStats()).isOk()).toBe(true);
       expect((await gw.runCampaign(CID)).isOk()).toBe(true);
       expect((await gw.cancelCampaign(CID)).isOk()).toBe(true);

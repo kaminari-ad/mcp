@@ -13,13 +13,13 @@ describe("getAlertStatsTool", () => {
     const api = createFakeApiGateway();
     api.state.responses.getAlertStats = ok({
       open: 3,
-      acknowledged: 1,
+      escalated: 1,
       resolved: 5,
       dismissed: 0,
     });
     const r = await getAlertStatsTool.handler({}, makeToolContext({ api }));
     expect(r._unsafeUnwrap().open).toBe(3);
-    expect(r._unsafeUnwrap().acknowledged).toBe(1);
+    expect(r._unsafeUnwrap().escalated).toBe(1);
     expect(r._unsafeUnwrap().resolved).toBe(5);
     expect(r._unsafeUnwrap().dismissed).toBe(0);
     expect(api.state.calls).toEqual([{ method: "getAlertStats" }]);

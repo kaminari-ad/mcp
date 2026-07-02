@@ -30,7 +30,7 @@ describe("updateAlertStatusTool", () => {
     expect(
       (
         await updateAlertStatusTool.handler(
-          { alert_id: AID, status: "acknowledged" },
+          { alert_id: AID, status: "escalated" },
           makeToolContext({ api })
         )
       ).isErr()

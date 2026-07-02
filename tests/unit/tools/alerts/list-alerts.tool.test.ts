@@ -11,7 +11,7 @@ describe("listAlertsTool", () => {
   });
 
   it("accepts the four canonical AlertStatus values", () => {
-    for (const status of ["open", "acknowledged", "resolved", "dismissed"] as const) {
+    for (const status of ["open", "escalated", "resolved", "dismissed"] as const) {
       expect(listAlertsTool.inputSchema.parse({ status }).status).toBe(status);
     }
   });

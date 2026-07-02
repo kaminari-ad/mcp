@@ -1799,8 +1799,8 @@ export interface components {
     AlertStatsResponse: {
       /** Open */
       open: number;
-      /** Acknowledged */
-      acknowledged: number;
+      /** Escalated */
+      escalated: number;
       /** Resolved */
       resolved: number;
       /** Dismissed */
@@ -1811,7 +1811,7 @@ export interface components {
      * @description Lifecycle status of a policy-violation alert.
      * @enum {string}
      */
-    AlertStatus: "open" | "acknowledged" | "resolved" | "dismissed";
+    AlertStatus: "open" | "escalated" | "resolved" | "dismissed";
     /**
      * ApiKeyCreatedResponse
      * @description One-time response with the full API key visible.

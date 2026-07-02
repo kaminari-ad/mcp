@@ -245,8 +245,8 @@ describe("parseRuleTest", () => {
 
 describe("parseAlertStats", () => {
   it("Ok valid", () => {
-    const r = parseAlertStats({ open: 3, acknowledged: 0, resolved: 5, dismissed: 1 });
-    expect(r._unsafeUnwrap()).toEqual({ open: 3, acknowledged: 0, resolved: 5, dismissed: 1 });
+    const r = parseAlertStats({ open: 3, escalated: 0, resolved: 5, dismissed: 1 });
+    expect(r._unsafeUnwrap()).toEqual({ open: 3, escalated: 0, resolved: 5, dismissed: 1 });
   });
   it("rejects on missing field", () => {
     expect(parseAlertStats({ open: 3 }).isErr()).toBe(true);

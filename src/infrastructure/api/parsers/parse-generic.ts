@@ -200,7 +200,7 @@ export const parseRuleTest = (raw: unknown): Result<RuleTestResponse, ApiError> 
 
 const AlertStatsSchema = schemas.AlertStatsResponse.pick({
   open: true,
-  acknowledged: true,
+  escalated: true,
   resolved: true,
   dismissed: true,
 }).strip();

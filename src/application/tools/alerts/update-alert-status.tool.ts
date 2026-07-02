@@ -13,8 +13,8 @@ import type { ToolError } from "../_shared/tool-result.js";
 const UpdateAlertStatusInputShape = {
   alert_id: z.string().uuid().describe("Alert UUID."),
   status: z
-    .enum(["open", "acknowledged", "resolved", "dismissed"])
-    .describe("New status: open | acknowledged | resolved | dismissed."),
+    .enum(["open", "escalated", "resolved", "dismissed"])
+    .describe("New status: open | escalated | resolved | dismissed."),
 } as const;
 type UpdateAlertStatusInputShape = typeof UpdateAlertStatusInputShape;
 
@@ -25,7 +25,7 @@ export interface UpdateAlertStatusOutput {
 export const updateAlertStatusTool: Tool<UpdateAlertStatusInputShape, UpdateAlertStatusOutput> = {
   name: "update_alert_status",
   description:
-    "Update an alert's status in its lifecycle: open → acknowledged → resolved | dismissed. The API enforces valid transitions; an invalid one returns 422.",
+    "Update an alert's status in its lifecycle: open → escalated → resolved | dismissed. The API enforces valid transitions; an invalid one returns 422.",
   annotations: {
     title: "Update Alert Status",
     readOnlyHint: false,
