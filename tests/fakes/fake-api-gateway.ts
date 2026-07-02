@@ -1220,7 +1220,7 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         state.responses.getAlertStats ??
         ok<AlertStatsResponse, ApiError>({
           open: 0,
-          acknowledged: 0,
+          escalated: 0,
           resolved: 0,
           dismissed: 0,
         })

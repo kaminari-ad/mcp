@@ -636,7 +636,7 @@ export type AlertResponse = Pick<
 
 export type AlertStatsResponse = Pick<
   S["AlertStatsResponse"],
-  "open" | "acknowledged" | "resolved" | "dismissed"
+  "open" | "escalated" | "resolved" | "dismissed"
 >;
 
 export type UpdateAlertStatusRequest = Pick<S["UpdateAlertStatusRequest"], "status">;

@@ -772,7 +772,7 @@ const UpdatePolicySetRequest = z
     entries: z.array(PolicyEntryRequest).min(1).max(500),
   })
   .passthrough();
-const AlertStatus = z.enum(["open", "acknowledged", "resolved", "dismissed"]);
+const AlertStatus = z.enum(["open", "escalated", "resolved", "dismissed"]);
 const status__2 = z.union([AlertStatus, z.null()]).optional();
 const AlertResponse = z
   .object({
@@ -784,7 +784,7 @@ const AlertResponse = z
     organization_id: z.string().uuid(),
     tag_slug: z.string(),
     country_code: z.string(),
-    status: z.string(),
+    status: AlertStatus,
     closed_by: z.union([z.string(), z.null()]),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.union([z.string(), z.null()]),
@@ -808,7 +808,7 @@ const UpdateAlertStatusRequest = z.object({ status: AlertStatus }).passthrough()
 const AlertStatsResponse = z
   .object({
     open: z.number().int(),
-    acknowledged: z.number().int(),
+    escalated: z.number().int(),
     resolved: z.number().int(),
     dismissed: z.number().int(),
   })
