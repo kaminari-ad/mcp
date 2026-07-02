@@ -13,10 +13,10 @@
 # `setup` produces a `node_modules` artifact that downstream jobs reuse.
 
 default:
-  # Run on the mcp dev base (node 22 + build tooling) for local/CI/prod parity.
+  # Run on the mcp builder base (node 22 + build tooling) for local/CI/prod parity.
   # Pulled from ECR (the only registry) — needs the runner ecr-credential-helper
   # (ci-ecr-auth); red until that + the v1.1.0 bases land.
-  image: 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-dev:v1.1.0
+  image: 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.1.0
   before_script:
     # Pulled image is alpine (no git); shell-executor runners are
     # debian/ubuntu (git already installed). Try `apk` then fall back
