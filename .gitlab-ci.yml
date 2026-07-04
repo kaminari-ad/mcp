@@ -14,9 +14,10 @@
 
 default:
   # Run on the mcp builder base (node 22 + build tooling) for local/CI/prod parity.
-  # Pulled from ECR (the only registry) — needs the runner ecr-credential-helper
-  # (ci-ecr-auth); red until that + the v1.1.0 bases land.
-  image: 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.1.0
+  # Pulled from the infra GitLab Container Registry (runner auto-auths via
+  # CI_JOB_TOKEN; infra allowlists this repo). The deploy image is built by
+  # arranger CodeBuild off the ECR base.
+  image: gitlab.sdev.pw:5050/adverif/infra/kaminariad-mcp-base-builder:v1.1.0
   before_script:
     # Pulled image is alpine (no git); shell-executor runners are
     # debian/ubuntu (git already installed). Try `apk` then fall back
@@ -203,64 +204,6 @@ build:
     expire_in: 7 days
     paths:
       - dist/
-
-# Docker image build — exercises the SAME Dockerfile the production
-# server runs. Catches Dockerfile regressions before they hit prod
-# (e.g. `NODE_ENV=production` on the base stage silently omitting
-# devDependencies and tsup failing at `Cannot find module typescript`;
-# or `npm ci` peer-dep conflicts that don't appear in the host
-# `npm ci --legacy-peer-deps` flow).
-#
-# Uses kaniko (no docker daemon) so it works on every GitLab runner
-# type, including the docker-executor ones in this project where
-# Docker-in-Docker service networking is not enabled. The image is
-# built into the kaniko cache and discarded — production deploy still
-# rebuilds on rnd. When we move to registry-pulled deploys, drop
-# `--no-push` and add a `--destination $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA`
-# plus a registry-login step here.
-#
-# Runtime sanity (does the bundle resolve all deps?) is covered by
-# `tests/integration/cli-smoke.test.ts` against the host-built
-# `dist/bin.js`, so this job only has to prove the Dockerfile builds.
-docker:build:
-  stage: package
-  needs:
-    - setup
-  image:
-    name: gcr.io/kaniko-project/executor:v1.23.2-debug
-    entrypoint: [""]
-  before_script: []
-  script:
-    # `--single-snapshot` is intentionally NOT used — multi-stage
-    # builds need a snapshot per RUN/COPY layer so files copied into
-    # the build stage survive until `tsup` runs. Otherwise tsup
-    # fails with "No input files" because src/ was reverted between
-    # layers.
-    #
-    # `--tar-path` exports the image as an OCI tarball so the next
-    # step can inspect its contents. Without this sanity check
-    # kaniko silently skips files excluded by .dockerignore even
-    # when a COPY instruction references them — a runtime image
-    # without LICENSE / README.md / SECURITY.md would build
-    # "successfully" but explode at production `docker compose build`
-    # (BuildKit is strict).
-    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile "$CI_PROJECT_DIR/.arranger/Dockerfile" --no-push --destination "kaminari-ad-mcp:ci" --tar-path image.tar
-    # Verify every file referenced by COPY in the Dockerfile actually
-    # made it into the image. Uses busybox `tar` and `find` only —
-    # the kaniko-debug image is based on busybox/musl, so no apk /
-    # jq / python is available. We list every `*.tar` blob inside
-    # the OCI tarball and grep the union for required runtime files.
-    - mkdir -p image-extracted
-    - tar -xf image.tar -C image-extracted
-    # kaniko's OCI tarball stores layer blobs as `blobs/sha256/<hash>`
-    # (no extension), not `*.tar`. Iterate every regular file; the
-    # inner `|| true` swallows `tar -tf` failures on non-tar blobs
-    # (config JSON, manifest) so GitLab's set -e pipefail does not
-    # abort the pipeline before sort runs.
-    - find image-extracted -type f -exec sh -c 'tar -tf "$1" 2>/dev/null || true' _ {} \; | sort -u > files.txt
-    - 'echo "files.txt has $(wc -l < files.txt) entries"'
-    - 'for f in var/www/kaminariad-mcp/package.json var/www/kaminariad-mcp/LICENSE var/www/kaminariad-mcp/README.md var/www/kaminariad-mcp/SECURITY.md var/www/kaminariad-mcp/dist/bin.js var/www/kaminariad-mcp/node_modules/@modelcontextprotocol/sdk/package.json; do grep -q "^${f}$" files.txt || { echo "MISSING IN IMAGE: ${f}"; echo "==== files.txt sample (first 50) ===="; head -50 files.txt; exit 1; }; done'
-    - echo "image contains all expected runtime files"
 
 # Prod smoke — fires a read-only subset of MCP tools at the deployed
 # endpoint using a long-lived sandbox-org bearer.
