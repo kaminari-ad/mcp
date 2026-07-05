@@ -34,20 +34,17 @@ stages:
   - package
   - publish
 
-# Single pipeline per commit. Without this rule GitLab creates BOTH
-# a branch (`push`) pipeline AND a detached `merge_request_event`
-# pipeline for every push to a branch that has an open MR — and the
-# MR-event pipeline runs zero jobs (every job below targets
-# `$CI_COMMIT_BRANCH`, which isn't set in MR-event context), so it
-# always lands in `failed`/`canceled` and pollutes the MR head-pipeline
-# badge. We run the full gate on the `push` pipeline; the MR-event
-# pipeline is suppressed entirely.
+# One pipeline per commit: MR-event pipeline when an MR is open, branch
+# pipeline otherwise, main/tags always. MR-event is REQUIRED (not suppressed)
+# because the injected policy jobs (build:arranger/deploy, blocking manual) are
+# excluded only on MR-event pipelines — a push pipeline sits in "manual"
+# forever and only_allow_merge_if_pipeline_succeeds would deadlock the MR.
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == ""
 
 variables:
   NPM_CONFIG_FUND: "false"
