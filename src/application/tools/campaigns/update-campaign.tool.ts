@@ -18,7 +18,13 @@ const UpdateCampaignInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
   url: z.string().url().optional().describe("New target URL (url-type campaigns)."),
-  ad_tag: z.string().optional().describe("New ad-tag HTML/JS (ad_tag-type campaigns)."),
+  ad_tag: z
+    .string()
+    .optional()
+    .describe(
+      "New ad-tag HTML/JS or an http(s) URL of a page with the rendered " +
+        "creative (ad_tag-type campaigns)."
+    ),
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
   group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
   ...campaignConfigFields,

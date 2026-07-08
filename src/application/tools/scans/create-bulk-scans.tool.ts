@@ -19,7 +19,10 @@ const CreateBulkScansInputShape = {
   ad_tag: z
     .string()
     .optional()
-    .describe("Raw ad-tag HTML/JS. EITHER `url` OR `ad_tag` is required."),
+    .describe(
+      "Raw ad-tag HTML/JS OR an http(s) URL of a page with the creative " +
+        "already rendered. EITHER `url` OR `ad_tag` is required."
+    ),
   country_codes: z
     .array(z.string().length(2))
     .min(1)
