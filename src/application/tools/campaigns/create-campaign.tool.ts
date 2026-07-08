@@ -21,7 +21,13 @@ const CreateCampaignInputShape = {
     .enum(["url", "ad_tag"])
     .describe("`url` or `ad_tag` — must match the target field below."),
   url: z.string().url().optional().describe("Target URL (required if campaign_type=url)."),
-  ad_tag: z.string().optional().describe("Ad-tag HTML/JS (required if campaign_type=ad_tag)."),
+  ad_tag: z
+    .string()
+    .optional()
+    .describe(
+      "Ad-tag HTML/JS or an http(s) URL of a page with the rendered creative " +
+        "(required if campaign_type=ad_tag)."
+    ),
   country_codes: z
     .array(z.string().length(2))
     .min(1)

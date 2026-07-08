@@ -23,7 +23,10 @@ const CreateScanInputShape = {
   ad_tag: z
     .string()
     .optional()
-    .describe("Raw HTML/JS ad tag (script, iframe, image). EITHER `url` OR `ad_tag` is required."),
+    .describe(
+      "Raw HTML/JS ad tag (script, iframe, image) OR an http(s) URL of a page " +
+        "with the creative already rendered. EITHER `url` OR `ad_tag` is required."
+    ),
   country_code: z
     .string()
     .length(2)
