@@ -354,7 +354,7 @@ export type TagDefinitionResponse = Pick<
   | "display_name"
   | "description"
   | "severity"
-  | "is_system"
+  | "scope"
   | "organization_id"
   | "visibility"
   | "scans_count"

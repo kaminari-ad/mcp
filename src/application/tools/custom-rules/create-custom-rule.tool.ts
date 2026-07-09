@@ -26,7 +26,7 @@ const CreateCustomRuleInputShape = {
     .max(100)
     .optional()
     .describe(
-      "Tag slug to assign on match. Empty = create-only (advanced). The API auto-registers a custom tag definition for this slug with `display_name = name`. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `is_system=true`); colliding requests return 422 with code `checking.system_slug_reserved`. For `rule_type='llm'` use `config.tags` keys instead and leave `tag_slug` empty."
+      "Tag slug to assign on match. Empty = create-only (advanced). The API auto-registers a custom tag definition for this slug with `display_name = name`. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. For `rule_type='llm'` use `config.tags` keys instead and leave `tag_slug` empty."
     ),
   rule_type: z
     .string()

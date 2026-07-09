@@ -30,7 +30,7 @@ describe("listTagsTool", () => {
         display_name: "Malware",
         description: "",
         severity: "high",
-        is_system: true,
+        scope: "system",
         organization_id: null,
         visibility: "public",
         scans_count: 10,

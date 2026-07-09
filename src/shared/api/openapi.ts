@@ -877,6 +877,9 @@ export interface paths {
     /**
      * List Tag Definitions
      * @description List all available tag definitions with usage statistics.
+     *
+     *     Archived tags are excluded by default; pass ``include_archived=true``
+     *     to include them.
      */
     get: operations["list_tag_definitions_api_v1_tag_definitions_get"];
     put?: never;
@@ -1045,6 +1048,76 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/policy-sets/{policy_set_id}/campaigns": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Policy Set Campaigns
+     * @description List campaigns bound to a policy set (paginated).
+     *
+     *     ``q`` filters by case-insensitive name substring. The detail response
+     *     embeds only a bounded preview of bound campaigns (``campaigns`` +
+     *     ``campaigns_total``); this endpoint serves the full membership.
+     */
+    get: operations["list_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/policy-sets/{policy_set_id}/campaigns/attach": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Attach Policy Set Campaigns
+     * @description Bind up to 500 campaigns to a policy set.
+     *
+     *     Incremental alternative to the PUT full-replace: existing bindings
+     *     stay intact; campaigns bound to another set are reassigned here.
+     */
+    post: operations["attach_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_attach_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/policy-sets/{policy_set_id}/campaigns/detach": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Detach Policy Set Campaigns
+     * @description Unbind campaigns from a policy set.
+     *
+     *     Pass ``campaign_ids`` (ids bound to other sets are ignored) or
+     *     ``detach_all=true`` to clear the whole membership.
+     */
+    post: operations["detach_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_detach_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/policy-sets/{policy_set_id}/request-approval": {
     parameters: {
       query?: never;
@@ -1110,6 +1183,30 @@ export interface paths {
      * @description Update an alert's status.
      */
     patch: operations["update_alert_status_api_v1_alerts__alert_id__status_patch"];
+    trace?: never;
+  };
+  "/api/v1/alerts/bulk-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Bulk Update Alert Status
+     * @description Change status for many alerts at once.
+     *
+     *     Provide either an explicit ``ids`` list or ``all_matching=true`` with
+     *     optional ``filter_status`` / ``filter_campaign_id``. Alerts already in
+     *     a non-transitionable state are skipped. Returns updated/skipped counts.
+     */
+    post: operations["bulk_update_alert_status_api_v1_alerts_bulk_status_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/v1/alerts/stats": {
@@ -1464,7 +1561,10 @@ export interface paths {
     };
     /**
      * Get Invoice Pdf
-     * @description Return a time-limited signed URL for the invoice PDF (or ``ready=false``).
+     * @description Stream the invoice PDF bytes (404 until rendered).
+     *
+     *     Bytes are proxied through the API — never a presigned S3 URL (see
+     *     ``artifact-serving.mdc``).
      */
     get: operations["get_invoice_pdf_api_v1_invoices__invoice_id__pdf_get"];
     put?: never;
@@ -1702,6 +1802,8 @@ export interface components {
       email_address: string | null;
       /** Included Label Keys */
       included_label_keys: string[];
+      /** Included Statuses */
+      included_statuses: string[];
       /**
        * Created At
        * Format: date-time
@@ -1858,8 +1960,30 @@ export interface components {
       created_at: string;
     };
     /**
+     * AttachCampaignsRequest
+     * @description Request body for POST /policy-sets/{id}/campaigns/attach.
+     *
+     *     Incremental bind: the listed campaigns are bound to the set (campaigns
+     *     bound to another set are reassigned); other bindings stay intact.
+     *     Large memberships are built up in <=500-id batches.
+     */
+    AttachCampaignsRequest: {
+      /** Campaign Ids */
+      campaign_ids: string[];
+    };
+    /**
      * BalanceTransactionResponse
      * @description One ledger row as seen through the API.
+     *
+     *     ``document_number`` is the unified top-up proforma number
+     *     (``PF-YYYY-NNNNNN``) — the single human-readable identifier shown
+     *     on the INXY statement, in the cabinet, in admin, and on the
+     *     paid-proforma receipt PDF. Populated via the read-side port
+     *     :class:`BalanceHistoryQueryService` (cross-domain JOIN to
+     *     ``invoices``, directly for bank and via ``payment_sessions`` for
+     *     crypto). ``None`` for non-top-up rows (scan charges, subscription
+     *     renewals) and legacy crypto sessions issued before the unified
+     *     model.
      */
     BalanceTransactionResponse: {
       /**
@@ -1879,6 +2003,8 @@ export interface components {
       reference_kind: string | null;
       /** Reference Id */
       reference_id: string | null;
+      /** Document Number */
+      document_number?: string | null;
       /** Actor User Id */
       actor_user_id: string | null;
       /**
@@ -2020,7 +2146,10 @@ export interface components {
     BulkScanRequest: {
       /** Url */
       url?: string | null;
-      /** Ad Tag */
+      /**
+       * Ad Tag
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url.
+       */
       ad_tag?: string | null;
       /** Country Codes */
       country_codes: string[];
@@ -2031,6 +2160,47 @@ export interface components {
       labels?: {
         [key: string]: string;
       };
+    };
+    /**
+     * BulkUpdateAlertStatusRequest
+     * @description Request body for POST /alerts/bulk-status.
+     *
+     *     Exactly one selection mode must be used:
+     *
+     *     * ``ids`` — an explicit, non-empty list of alert ids (capped at
+     *       1000 to bound the request).
+     *     * ``all_matching=True`` — every alert matching the optional
+     *       ``filter_status`` / ``filter_campaign_id`` (omitting both selects
+     *       the whole org). This is the "Select all" path for large inboxes.
+     *
+     *     ``status`` is the target; invalid transitions per alert are skipped.
+     */
+    BulkUpdateAlertStatusRequest: {
+      status: components["schemas"]["AlertStatus"];
+      /** Ids */
+      ids?: string[] | null;
+      /**
+       * All Matching
+       * @default false
+       */
+      all_matching: boolean;
+      filter_status?: components["schemas"]["AlertStatus"] | null;
+      /** Filter Campaign Id */
+      filter_campaign_id?: string | null;
+    };
+    /**
+     * BulkUpdateAlertStatusResponse
+     * @description Outcome of a bulk status change.
+     *
+     *     ``updated`` is the number of alerts actually transitioned;
+     *     ``skipped`` counts selected alerts that were in a state from which
+     *     the requested transition is not allowed.
+     */
+    BulkUpdateAlertStatusResponse: {
+      /** Updated */
+      updated: number;
+      /** Skipped */
+      skipped: number;
     };
     /**
      * CampaignGroupResponse
@@ -2096,6 +2266,8 @@ export interface components {
       group_id: string;
       /** Is Archived */
       is_archived: boolean;
+      /** Policy Set Id */
+      policy_set_id?: string | null;
     };
     /**
      * CampaignResponse
@@ -2235,7 +2407,10 @@ export interface components {
       campaign_type: string;
       /** Url */
       url?: string | null;
-      /** Ad Tag */
+      /**
+       * Ad Tag
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Required for ad_tag campaigns.
+       */
       ad_tag?: string | null;
       /** Country Codes */
       country_codes: string[];
@@ -2355,6 +2530,8 @@ export interface components {
       description: string;
       /** Entries */
       entries: components["schemas"]["PolicyEntryRequest"][];
+      /** Campaign Ids */
+      campaign_ids?: string[];
     };
     /**
      * CreateScanRequest
@@ -2363,7 +2540,10 @@ export interface components {
     CreateScanRequest: {
       /** Url */
       url?: string | null;
-      /** Ad Tag */
+      /**
+       * Ad Tag
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url.
+       */
       ad_tag?: string | null;
       /** Country Code */
       country_code: string;
@@ -2406,11 +2586,8 @@ export interface components {
        * Format: uuid
        */
       id: string;
-      /**
-       * Organization Id
-       * Format: uuid
-       */
-      organization_id: string;
+      /** Organization Id */
+      organization_id: string | null;
       /** Name */
       name: string;
       /** Tag Slug */
@@ -2430,6 +2607,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Scope
+       * @default personal
+       */
+      scope: string;
     };
     /**
      * CustomTaxonomyListItem
@@ -2581,6 +2763,23 @@ export interface components {
        * Format: date-time
        */
       received_at: string;
+    };
+    /**
+     * DetachCampaignsRequest
+     * @description Request body for POST /policy-sets/{id}/campaigns/detach.
+     *
+     *     Incremental unbind: listed campaigns bound to this set get their FK
+     *     cleared; ids bound elsewhere are ignored. ``detach_all=true`` clears
+     *     the whole org-scoped membership and ignores ``campaign_ids``.
+     */
+    DetachCampaignsRequest: {
+      /** Campaign Ids */
+      campaign_ids?: string[];
+      /**
+       * Detach All
+       * @default false
+       */
+      detach_all: boolean;
     };
     /**
      * EmulatorResponse
@@ -2749,16 +2948,6 @@ export interface components {
       timezone?: string | null;
     };
     /**
-     * InvoicePdfUrlResponse
-     * @description Time-limited download link, or ``null`` when the PDF is not yet rendered.
-     */
-    InvoicePdfUrlResponse: {
-      /** Url */
-      url: string | null;
-      /** Ready */
-      ready: boolean;
-    };
-    /**
      * InvoiceResponse
      * @description Projection of an :class:`Invoice` for the API layer.
      */
@@ -2781,6 +2970,14 @@ export interface components {
       status: string;
       /** Total Micros */
       total_micros: number;
+      /** Net Micros */
+      net_micros: number;
+      /** Vat Micros */
+      vat_micros: number;
+      /** Vat Rate */
+      vat_rate: string;
+      /** Vat Reason */
+      vat_reason: string;
       /** Currency */
       currency: string;
       /** Period Start */
@@ -2821,11 +3018,15 @@ export interface components {
      * InvoiceType
      * @description Kind of invoice. Drives numbering sequence prefix + workflow.
      *
-     *     * ``PROFORMA`` — self-service document a client uses to pay by
-     *       bank transfer. On confirmation → balance top-up via ledger.
+     *     * ``PROFORMA`` — the single document for every top-up (bank +
+     *       crypto). Issued up front (status=ISSUED); on settlement it flips
+     *       to PAID and the paid proforma IS the receipt. Carries no VAT line
+     *       per the EU/Cyprus deposit-on-account rationale. Number prefix
+     *       ``PF-``.
      *     * ``FINAL`` — end-of-period statement. For PREPAID orgs it is
      *       informational (status=PAID on issue). For POSTPAID orgs it is
-     *       the bill and remains ISSUED until payment confirmation.
+     *       the bill and remains ISSUED until payment confirmation. Number
+     *       prefix ``IN-``.
      * @enum {string}
      */
     InvoiceType: "proforma" | "final";
@@ -2910,6 +3111,21 @@ export interface components {
       created_at: string;
     };
     /**
+     * LinkedCampaignResponse
+     * @description Campaign bound to a policy set, surfaced on the Policy Set form.
+     */
+    LinkedCampaignResponse: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
+      /** Is Archived */
+      is_archived: boolean;
+    };
+    /**
      * LinkedRuleResponse
      * @description Minimal info about a custom rule that produces a given tag.
      */
@@ -2936,6 +3152,9 @@ export interface components {
      *     ``is_active`` remains as a computed backward-compat field — UI
      *     clients still reading the old boolean stay green for one release;
      *     drop it after every consumer has migrated to ``status``.
+     *
+     *     ``owner_id`` is ``None`` for ownerless orgs — the Kadam system org
+     *     (seeded NULL) and any org whose owner was transferred out.
      */
     OrgResponse: {
       /**
@@ -2945,22 +3164,48 @@ export interface components {
       id: string;
       /** Name */
       name: string;
-      /**
-       * Owner Id
-       * Format: uuid
-       */
-      owner_id: string;
+      /** Owner Id */
+      owner_id: string | null;
       status: components["schemas"]["OrganizationStatus"];
+      /** Domain */
+      domain?: string | null;
       /**
        * Created At
        * Format: date-time
        */
       created_at: string;
       /**
+       * Available Transitions
+       * @default []
+       */
+      available_transitions: components["schemas"]["OrgTransitionOptionResponse"][];
+      /**
        * Is Active
        * @description Backward-compat: True iff status == ACTIVE.
        */
       readonly is_active: boolean;
+    };
+    /**
+     * OrgTransitionAction
+     * @description The admin operation that drives a given org status transition.
+     *
+     *     Maps a target :class:`OrganizationStatus` to the endpoint/use case
+     *     that reaches it, so the UI can dispatch the right call without
+     *     re-encoding the transition graph.
+     * @enum {string}
+     */
+    OrgTransitionAction: "approve" | "reject" | "suspend" | "reactivate";
+    /**
+     * OrgTransitionOptionResponse
+     * @description A status the org may move to, plus the admin action that does it.
+     *
+     *     Computed from :class:`OrgStatusTransitionPolicy` and surfaced on the
+     *     admin org detail response so the UI offers exactly the transitions
+     *     the backend allows.
+     */
+    OrgTransitionOptionResponse: {
+      target_status: components["schemas"]["OrganizationStatus"];
+      action: components["schemas"]["OrgTransitionAction"];
     };
     /**
      * OrganizationStatus
@@ -2974,7 +3219,9 @@ export interface components {
      *       meters tick.
      *     * ``SUSPENDED`` — admin froze the org (formerly ``is_active=False``).
      *     * ``REJECTED`` — admin denied a self-service signup; soft-delete
-     *       for audit trail; permanent unless an admin explicitly unblocks.
+     *       for audit trail. Recoverable: an admin can approve it in place
+     *       (REJECTED → ACTIVE via ``AdminApproveOrganization``) or unblock
+     *       it to free the email for a fresh signup (deletes the owner).
      * @enum {string}
      */
     OrganizationStatus:
@@ -3052,6 +3299,19 @@ export interface components {
     PaginatedResponse_InvoiceResponse_: {
       /** Items */
       items: components["schemas"]["InvoiceResponse"][];
+      /** Total */
+      total: number;
+      /** Page */
+      page: number;
+      /** Limit */
+      limit: number;
+      /** Pages */
+      pages: number;
+    };
+    /** PaginatedResponse[LinkedCampaignResponse] */
+    PaginatedResponse_LinkedCampaignResponse_: {
+      /** Items */
+      items: components["schemas"]["LinkedCampaignResponse"][];
       /** Total */
       total: number;
       /** Page */
@@ -3291,7 +3551,12 @@ export interface components {
     };
     /**
      * PolicySetResponse
-     * @description Policy set returned by API (with entries).
+     * @description Policy set returned by API (with entries + bound-campaigns preview).
+     *
+     *     ``campaigns`` is a bounded preview (first N by name, N =
+     *     ``PoliciesSettings.campaigns_preview_limit``); ``campaigns_total``
+     *     carries the real membership size. The full list is served by the
+     *     paginated ``GET /policy-sets/{id}/campaigns`` endpoint.
      */
     PolicySetResponse: {
       /**
@@ -3314,6 +3579,13 @@ export interface components {
       is_approved: boolean;
       /** Entries */
       entries: components["schemas"]["PolicyEntryResponse"][];
+      /** Campaigns */
+      campaigns?: components["schemas"]["LinkedCampaignResponse"][];
+      /**
+       * Campaigns Total
+       * @default 0
+       */
+      campaigns_total: number;
       /**
        * Created At
        * Format: date-time
@@ -3443,6 +3715,15 @@ export interface components {
     /**
      * RuleTestRequest
      * @description Request body for POST /custom-rules/test.
+     *
+     *     ``context`` selects the prompt mode for LLM rules:
+     *
+     *     * ``isolated`` (default) — the prompt carries only the draft rule;
+     *       good for iterating on criteria wording.
+     *     * ``production`` — the prompt carries the org's full active rule
+     *       set with the draft substituted for its saved version
+     *       (``rule_id``), exactly like a real scan; the reply is filtered
+     *       to the draft's tags. Only valid for ``rule_type="llm"``.
      */
     RuleTestRequest: {
       /**
@@ -3461,6 +3742,19 @@ export interface components {
        * @default page
        */
       target: string;
+      /**
+       * Name
+       * @default Test Rule
+       */
+      name: string;
+      /**
+       * Context
+       * @default isolated
+       * @enum {string}
+       */
+      context: "isolated" | "production";
+      /** Rule Id */
+      rule_id?: string | null;
     };
     /**
      * RuleTestResponse
@@ -3624,6 +3918,16 @@ export interface components {
        * @default false
        */
       is_ad_tag: boolean;
+      /**
+       * Emulator Display Name
+       * @default
+       */
+      emulator_display_name: string;
+      /**
+       * Emulator Category
+       * @default
+       */
+      emulator_category: string;
     };
     /**
      * ScanClassificationResponse
@@ -3709,6 +4013,10 @@ export interface components {
       campaign_id?: string | null;
       /** Campaign Name */
       campaign_name?: string | null;
+      /** Campaign Group Id */
+      campaign_group_id?: string | null;
+      /** Campaign Group Name */
+      campaign_group_name?: string | null;
       /**
        * Created At
        * Format: date-time
@@ -3731,6 +4039,20 @@ export interface components {
      *     been applied and we are waiting only on async parts (LLM batch today,
      *     SafeBrowsing / VirusTotal tomorrow). UI can show partial tags + alerts
      *     at this stage; only classification is still pending.
+     *
+     *     ``RECHECKING`` is a **transient** state used **only** by the recheck
+     *     flow. The recheck use case atomically moves a scan from a terminal
+     *     state into ``RECHECKING``, wipes prior tags (CH tombstones), wipes
+     *     scan_part_state, then atomically transitions to ``CHECKING`` with
+     *     fresh ``expected_parts``. Both transitions bypass the forward-only
+     *     ``advance_status()`` guard via dedicated repository methods.
+     *
+     *     Why RECHECKING exists: stale ``check.results`` messages for a now-
+     *     rechecking scan must NOT write tags (those would survive the wipe
+     *     without tombstones, corrupting the post-recheck tag set). Consumers
+     *     check ``WRITE_BLOCKED_STATUSES`` and skip the message when the scan
+     *     is in ``RECHECKING``. Defence in depth — the TagWriterAdapter's UoW
+     *     also re-reads the scan status before save.
      * @enum {string}
      */
     ScanStatus:
@@ -3739,6 +4061,7 @@ export interface components {
       | "crawled"
       | "checking"
       | "checking_async"
+      | "rechecking"
       | "completed"
       | "partial"
       | "failed"
@@ -3767,6 +4090,11 @@ export interface components {
        * @default
        */
       url: string;
+      /**
+       * Surface
+       * @default page
+       */
+      surface: string;
       /**
        * Display Name
        * @default
@@ -4008,8 +4336,8 @@ export interface components {
       display_name: string;
       /** Description */
       description: string;
-      /** Is System */
-      is_system: boolean;
+      /** Scope */
+      scope: string;
       /** Organization Id */
       organization_id: string | null;
       /** Visibility */
@@ -4020,6 +4348,8 @@ export interface components {
       scans_count: number;
       /** Rules Count */
       rules_count: number;
+      /** Archived At */
+      archived_at?: string | null;
       /** Linked Rules */
       linked_rules?: components["schemas"]["LinkedRuleResponse"][];
     };
@@ -4029,7 +4359,8 @@ export interface components {
      *
      *     ``visibility`` is one of ``hidden`` / ``internal`` / ``public``
      *     (see :class:`TagVisibility`). ``scans_count`` is scoped to the
-     *     caller's organization.
+     *     caller's organization. ``archived_at`` is ``null`` for active tags
+     *     and a timestamp for archived (hidden-but-kept) tags.
      */
     TagDefinitionWithStatsResponse: {
       /** Slug */
@@ -4042,8 +4373,8 @@ export interface components {
       display_name: string;
       /** Description */
       description: string;
-      /** Is System */
-      is_system: boolean;
+      /** Scope */
+      scope: string;
       /** Organization Id */
       organization_id: string | null;
       /** Visibility */
@@ -4054,6 +4385,8 @@ export interface components {
       scans_count: number;
       /** Rules Count */
       rules_count: number;
+      /** Archived At */
+      archived_at?: string | null;
     };
     /**
      * TagSeverity
@@ -4179,7 +4512,10 @@ export interface components {
       name?: string | null;
       /** Url */
       url?: string | null;
-      /** Ad Tag */
+      /**
+       * Ad Tag
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Only for ad_tag campaigns.
+       */
       ad_tag?: string | null;
       /** Country Codes */
       country_codes?: string[] | null;
@@ -4269,6 +4605,11 @@ export interface components {
     /**
      * UpdateOrgRequest
      * @description Request body for organization update.
+     *
+     *     ``name`` accepts the same bounds as
+     *     :class:`UpdateOrganizationAdminRequest` so both rename paths (owner
+     *     self-service vs admin override) share a single validation contract:
+     *     1-200 chars, leading/trailing whitespace stripped before persistence.
      */
     UpdateOrgRequest: {
       /** Name */
@@ -4277,6 +4618,10 @@ export interface components {
     /**
      * UpdatePolicySetRequest
      * @description Request body for PUT /policy-sets/{id}.
+     *
+     *     ``campaign_ids`` uses full-replace semantics but is only applied when
+     *     present in the payload (``model_fields_set``) so v1 clients that omit
+     *     it never wipe existing bindings.
      */
     UpdatePolicySetRequest: {
       /** Name */
@@ -4288,6 +4633,8 @@ export interface components {
       description: string;
       /** Entries */
       entries: components["schemas"]["PolicyEntryRequest"][];
+      /** Campaign Ids */
+      campaign_ids?: string[];
     };
     /**
      * UpdateTagDefinitionRequest
@@ -4399,6 +4746,12 @@ export interface components {
      *     (introduced in COOP-14061 follow-up) — older clients ignore
      *     them while admin SPA (and self-service "team members" pages)
      *     need them for filtering, linking, and editing.
+     *
+     *     ``role_scope`` ("org" / "admin") is additive too (COOP-14131): the
+     *     admin SPA inspects it to (a) hide admin-scope rows from the regular
+     *     Edit-User role dropdown and (b) render a read-only Internal Admin
+     *     badge in place of editable controls when the user is staff. Older
+     *     clients that ignore it keep working.
      */
     UserResponse: {
       /**
@@ -4417,6 +4770,11 @@ export interface components {
       role_id: string;
       /** Role Name */
       role_name: string;
+      /**
+       * Role Scope
+       * @default org
+       */
+      role_scope: string;
       /**
        * Organization Id
        * Format: uuid
@@ -6020,6 +6378,7 @@ export interface operations {
     parameters: {
       query?: {
         category?: string | null;
+        include_archived?: boolean;
       };
       header?: never;
       path?: never;
@@ -6494,6 +6853,107 @@ export interface operations {
       };
     };
   };
+  list_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_get: {
+    parameters: {
+      query?: {
+        q?: string | null;
+        page?: number;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaginatedResponse_LinkedCampaignResponse_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  attach_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_attach_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AttachCampaignsRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  detach_policy_set_campaigns_api_v1_policy_sets__policy_set_id__campaigns_detach_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DetachCampaignsRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   request_public_approval_api_v1_policy_sets__policy_set_id__request_approval_post: {
     parameters: {
       query?: never;
@@ -6578,6 +7038,39 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  bulk_update_alert_status_api_v1_alerts_bulk_status_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BulkUpdateAlertStatusRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BulkUpdateAlertStatusResponse"];
+        };
       };
       /** @description Validation Error */
       422: {
@@ -7247,14 +7740,21 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Successful Response */
+      /** @description Invoice PDF bytes */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["InvoicePdfUrlResponse"];
+          "application/pdf": unknown;
         };
+      };
+      /** @description Invoice not found or PDF not yet rendered */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

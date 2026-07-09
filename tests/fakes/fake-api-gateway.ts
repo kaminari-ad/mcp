@@ -568,7 +568,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   display_name: "Default tag",
   description: "",
   severity: "medium",
-  is_system: true,
+  scope: "system",
   organization_id: null,
   visibility: "internal",
   scans_count: 0,
@@ -586,7 +586,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
 export const DEFAULT_TAG_DETAIL_CUSTOM: TagDefinitionDetailResponse = {
   ...DEFAULT_TAG_DETAIL,
   source: "custom",
-  is_system: false,
+  scope: "personal",
   organization_id: "00000000-0000-0000-0000-000000000010",
 };
 

@@ -603,7 +603,7 @@ describe("HttpApiGateway", () => {
         source: "system",
         display_name: "X",
         description: "",
-        is_system: true,
+        scope: "system",
         organization_id: null,
         visibility: "internal",
         severity: "high",
@@ -880,7 +880,7 @@ describe("HttpApiGateway", () => {
           display_name: "Malware",
           description: "",
           severity: "high",
-          is_system: true,
+          scope: "system",
           organization_id: null,
           visibility: "public",
           // Detail endpoint includes `linked_rules` (custom rules

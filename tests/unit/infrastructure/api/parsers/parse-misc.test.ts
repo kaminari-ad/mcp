@@ -75,7 +75,7 @@ describe("parseTag / parseTagDefinitionArray", () => {
     source: "system",
     display_name: "Malware",
     description: "",
-    is_system: true,
+    scope: "system",
     organization_id: null,
     visibility: "internal",
     severity: "high",
@@ -95,7 +95,7 @@ describe("parseTag / parseTagDefinitionArray", () => {
     expect(parseTag(withoutSlug).isErr()).toBe(true);
   });
   it("rejects wrong field types (strict schema)", () => {
-    expect(parseTag({ ...VALID, is_system: "x" }).isErr()).toBe(true);
+    expect(parseTag({ ...VALID, scope: 42 }).isErr()).toBe(true);
     expect(parseTag({ ...VALID, organization_id: 5 }).isErr()).toBe(true);
   });
   it("parseTagDefinitionArray Ok valid + rejects bad shapes", () => {
