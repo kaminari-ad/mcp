@@ -13,7 +13,7 @@ const TAG_ROW = {
   display_name: "Malware",
   description: "Tag for malware redirects.",
   severity: "high",
-  is_system: true,
+  scope: "system",
   organization_id: null,
   visibility: "public",
   scans_count: 42,

@@ -29,7 +29,7 @@ const UpdateCustomRuleInputShape = {
     .max(100)
     .optional()
     .describe(
-      "New tag slug to assign on match. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `is_system=true`); colliding requests return 422 with code `checking.system_slug_reserved`. Re-registering an existing custom slug refreshes its tag definition's `display_name` / `description`."
+      "New tag slug to assign on match. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. Re-registering an existing custom slug refreshes its tag definition's `display_name` / `description`."
     ),
   config: z
     .record(z.unknown())

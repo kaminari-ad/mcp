@@ -35,13 +35,19 @@ const OrganizationStatus = z.enum([
   "suspended",
   "rejected",
 ]);
+const OrgTransitionAction = z.enum(["approve", "reject", "suspend", "reactivate"]);
+const OrgTransitionOptionResponse = z
+  .object({ target_status: OrganizationStatus, action: OrgTransitionAction })
+  .passthrough();
 const OrgResponse = z
   .object({
     id: z.string().uuid(),
     name: z.string(),
-    owner_id: z.string().uuid(),
+    owner_id: z.union([z.string(), z.null()]),
     status: OrganizationStatus,
+    domain: z.union([z.string(), z.null()]).optional(),
     created_at: z.string().datetime({ offset: true }),
+    available_transitions: z.array(OrgTransitionOptionResponse).optional().default([]),
     is_active: z.boolean(),
   })
   .passthrough();
@@ -87,6 +93,7 @@ const UserResponse = z
     name: z.string(),
     role_id: z.string().uuid(),
     role_name: z.string(),
+    role_scope: z.string().optional().default("org"),
     organization_id: z.string().uuid(),
     organization_name: z.string(),
     is_active: z.boolean(),
@@ -164,6 +171,7 @@ const ScanStatus = z.enum([
   "crawled",
   "checking",
   "checking_async",
+  "rechecking",
   "completed",
   "partial",
   "failed",
@@ -277,6 +285,8 @@ const ScanResponse = z
     classification: z.union([ScanClassificationResponse, z.null()]).optional(),
     campaign_id: z.union([z.string(), z.null()]).optional(),
     campaign_name: z.union([z.string(), z.null()]).optional(),
+    campaign_group_id: z.union([z.string(), z.null()]).optional(),
+    campaign_group_name: z.union([z.string(), z.null()]).optional(),
     created_at: z.string().datetime({ offset: true }),
     completed_at: z.union([z.string(), z.null()]),
     landings: z.array(LandingResponse).optional(),
@@ -301,6 +311,8 @@ const ScanBriefResponse = z
     campaign_id: z.union([z.string(), z.null()]).optional(),
     campaign_name: z.union([z.string(), z.null()]).optional(),
     is_ad_tag: z.boolean().optional().default(false),
+    emulator_display_name: z.string().optional().default(""),
+    emulator_category: z.string().optional().default(""),
   })
   .passthrough();
 const PaginatedResponse_ScanBriefResponse_ = z
@@ -451,6 +463,7 @@ const CampaignPickerItem = z
     name: z.string(),
     group_id: z.string().uuid(),
     is_archived: z.boolean(),
+    policy_set_id: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const UpdateCampaignRequest = z
@@ -530,6 +543,7 @@ const ScanTagResponse = z
     tag_slug: z.string(),
     detail: z.string(),
     url: z.string().optional().default(""),
+    surface: z.string().optional().default("page"),
     display_name: z.string().optional().default(""),
     category: z.string().optional().default(""),
     severity: z.string().optional().default(""),
@@ -543,12 +557,13 @@ const TagDefinitionWithStatsResponse = z
     source: z.string(),
     display_name: z.string(),
     description: z.string(),
-    is_system: z.boolean(),
+    scope: z.string(),
     organization_id: z.union([z.string(), z.null()]),
     visibility: z.string(),
     severity: z.string(),
     scans_count: z.number().int(),
     rules_count: z.number().int(),
+    archived_at: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const LinkedRuleResponse = z
@@ -567,12 +582,13 @@ const TagDefinitionDetailResponse = z
     source: z.string(),
     display_name: z.string(),
     description: z.string(),
-    is_system: z.boolean(),
+    scope: z.string(),
     organization_id: z.union([z.string(), z.null()]),
     visibility: z.string(),
     severity: z.string(),
     scans_count: z.number().int(),
     rules_count: z.number().int(),
+    archived_at: z.union([z.string(), z.null()]).optional(),
     linked_rules: z.array(LinkedRuleResponse).optional(),
   })
   .passthrough();
@@ -599,7 +615,7 @@ const CreateCustomRuleRequest = z
 const CustomRuleResponse = z
   .object({
     id: z.string().uuid(),
-    organization_id: z.string().uuid(),
+    organization_id: z.union([z.string(), z.null()]),
     name: z.string(),
     tag_slug: z.string(),
     rule_type: z.string(),
@@ -607,6 +623,7 @@ const CustomRuleResponse = z
     target: z.string(),
     is_active: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
+    scope: z.string().optional().default("personal"),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -634,6 +651,9 @@ const RuleTestRequest = z
     rule_type: z.string(),
     config: z.object({}).partial().passthrough(),
     target: z.string().optional().default("page"),
+    name: z.string().optional().default("Test Rule"),
+    context: z.enum(["isolated", "production"]).optional().default("isolated"),
+    rule_id: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const RuleTestTagResult = z
@@ -692,6 +712,7 @@ const CreatePolicySetRequest = z
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
     entries: z.array(PolicyEntryRequest).min(1).max(500),
+    campaign_ids: z.array(z.string().uuid()).max(2000).optional(),
   })
   .passthrough();
 const PolicyEntryIabV3Response = z
@@ -731,6 +752,9 @@ const PolicyEntryResponse = z
     country_codes: z.array(z.string()),
   })
   .passthrough();
+const LinkedCampaignResponse = z
+  .object({ id: z.string().uuid(), name: z.string(), is_archived: z.boolean() })
+  .passthrough();
 const PolicySetResponse = z
   .object({
     id: z.string().uuid(),
@@ -740,6 +764,8 @@ const PolicySetResponse = z
     visibility: z.string(),
     is_approved: z.boolean(),
     entries: z.array(PolicyEntryResponse),
+    campaigns: z.array(LinkedCampaignResponse).optional(),
+    campaigns_total: z.number().int().optional().default(0),
     created_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
@@ -770,7 +796,27 @@ const UpdatePolicySetRequest = z
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
     entries: z.array(PolicyEntryRequest).min(1).max(500),
+    campaign_ids: z.array(z.string().uuid()).max(2000).optional(),
   })
+  .passthrough();
+const PaginatedResponse_LinkedCampaignResponse_ = z
+  .object({
+    items: z.array(LinkedCampaignResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    pages: z.number().int(),
+  })
+  .passthrough();
+const AttachCampaignsRequest = z
+  .object({ campaign_ids: z.array(z.string().uuid()).min(1).max(500) })
+  .passthrough();
+const DetachCampaignsRequest = z
+  .object({
+    campaign_ids: z.array(z.string().uuid()).max(500),
+    detach_all: z.boolean().default(false),
+  })
+  .partial()
   .passthrough();
 const AlertStatus = z.enum(["open", "escalated", "resolved", "dismissed"]);
 const status__2 = z.union([AlertStatus, z.null()]).optional();
@@ -805,6 +851,18 @@ const PaginatedResponse_AlertResponse_ = z
   })
   .passthrough();
 const UpdateAlertStatusRequest = z.object({ status: AlertStatus }).passthrough();
+const BulkUpdateAlertStatusRequest = z
+  .object({
+    status: AlertStatus,
+    ids: z.union([z.array(z.string().uuid()), z.null()]).optional(),
+    all_matching: z.boolean().optional().default(false),
+    filter_status: z.union([AlertStatus, z.null()]).optional(),
+    filter_campaign_id: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const BulkUpdateAlertStatusResponse = z
+  .object({ updated: z.number().int(), skipped: z.number().int() })
+  .passthrough();
 const AlertStatsResponse = z
   .object({
     open: z.number().int(),
@@ -888,6 +946,7 @@ const BalanceTransactionResponse = z
     description: z.string(),
     reference_kind: z.union([z.string(), z.null()]),
     reference_id: z.union([z.string(), z.null()]),
+    document_number: z.union([z.string(), z.null()]).optional(),
     actor_user_id: z.union([z.string(), z.null()]),
     created_at: z.string().datetime({ offset: true }),
   })
@@ -1021,6 +1080,7 @@ const AlertNotificationDestinationResponse = z
     telegram_chat_type: z.union([z.string(), z.null()]),
     email_address: z.union([z.string(), z.null()]),
     included_label_keys: z.array(z.string()),
+    included_statuses: z.array(z.string()),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
   })
@@ -1051,6 +1111,10 @@ const InvoiceResponse = z
     type: z.string(),
     status: z.string(),
     total_micros: z.number().int(),
+    net_micros: z.number().int(),
+    vat_micros: z.number().int(),
+    vat_rate: z.string(),
+    vat_reason: z.string(),
     currency: z.string(),
     period_start: z.union([z.string(), z.null()]),
     period_end: z.union([z.string(), z.null()]),
@@ -1071,9 +1135,6 @@ const PaginatedResponse_InvoiceResponse_ = z
     limit: z.number().int(),
     pages: z.number().int(),
   })
-  .passthrough();
-const InvoicePdfUrlResponse = z
-  .object({ url: z.union([z.string(), z.null()]), ready: z.boolean() })
   .passthrough();
 const SubmitContactInquiryRequest = z
   .object({
@@ -1180,6 +1241,8 @@ const UpdateCustomTaxonomyRequest = z.object({
 
 export const schemas = {
   OrganizationStatus,
+  OrgTransitionAction,
+  OrgTransitionOptionResponse,
   OrgResponse,
   UpdateOrgRequest,
   ValidationError,
@@ -1256,17 +1319,23 @@ export const schemas = {
   PolicyEntryAiCategoryResponse,
   PolicyEntryCustomTaxonomyResponse,
   PolicyEntryResponse,
+  LinkedCampaignResponse,
   PolicySetResponse,
   VisibilityType,
   visibility,
   PolicySetListItem,
   PaginatedResponse_PolicySetListItem_,
   UpdatePolicySetRequest,
+  PaginatedResponse_LinkedCampaignResponse_,
+  AttachCampaignsRequest,
+  DetachCampaignsRequest,
   AlertStatus,
   status__2,
   AlertResponse,
   PaginatedResponse_AlertResponse_,
   UpdateAlertStatusRequest,
+  BulkUpdateAlertStatusRequest,
+  BulkUpdateAlertStatusResponse,
   AlertStatsResponse,
   BlockReason,
   BillingSummaryResponse,
@@ -1302,7 +1371,6 @@ export const schemas = {
   status__3,
   InvoiceResponse,
   PaginatedResponse_InvoiceResponse_,
-  InvoicePdfUrlResponse,
   SubmitContactInquiryRequest,
   ContactInquiryAcknowledgement,
   PreferredContactChannel,
