@@ -66,4 +66,13 @@ describe("parseScanPage", () => {
       parseScanPage({ items: [{ id: "not-uuid" }], total: 1, page: 1, limit: 50 }).isErr()
     ).toBe(true);
   });
+  it("surfaces is_vast for VAST scans", () => {
+    const r = parseScanPage({
+      items: [{ ...VALID_BRIEF, url: "", is_ad_tag: false, is_vast: true }],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+    expect(r._unsafeUnwrap().items[0]?.is_vast).toBe(true);
+  });
 });

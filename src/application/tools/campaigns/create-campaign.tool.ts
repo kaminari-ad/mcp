@@ -18,8 +18,8 @@ import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config
 const CreateCampaignInputShape = {
   name: z.string().min(1).max(200).describe("Display name (1-200 chars)."),
   campaign_type: z
-    .enum(["url", "ad_tag"])
-    .describe("`url` or `ad_tag` — must match the target field below."),
+    .enum(["url", "ad_tag", "vast"])
+    .describe("`url`, `ad_tag`, or `vast` — must match the target field below."),
   url: z.string().url().optional().describe("Target URL (required if campaign_type=url)."),
   ad_tag: z
     .string()
@@ -27,6 +27,13 @@ const CreateCampaignInputShape = {
     .describe(
       "Ad-tag HTML/JS or an http(s) URL of a page with the rendered creative " +
         "(required if campaign_type=ad_tag)."
+    ),
+  vast_tag: z
+    .string()
+    .optional()
+    .describe(
+      "VAST video ad tag: an http(s) URL of a VAST endpoint OR raw VAST XML " +
+        "(required if campaign_type=vast)."
     ),
   country_codes: z
     .array(z.string().length(2))
@@ -75,6 +82,7 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       country_codes: input.country_codes,
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
+      ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),

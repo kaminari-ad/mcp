@@ -18,6 +18,7 @@ const SCAN_BRIEF = {
   campaign_id: null,
   campaign_name: null,
   is_ad_tag: false,
+  is_vast: false,
   created_at: "2026-05-16T10:00:00Z",
 };
 
@@ -44,13 +45,29 @@ describe("listScansTool", () => {
       ctx
     );
     expect(result.isOk()).toBe(true);
-    expect(result._unsafeUnwrap().items).toHaveLength(1);
+    const items = result._unsafeUnwrap().items;
+    expect(items).toHaveLength(1);
+    expect(items[0]?.is_ad_tag).toBe(false);
+    expect(items[0]?.is_vast).toBe(false);
 
     const call = api.state.calls[0];
     expect(call?.method).toBe("listScans");
     if (call?.method === "listScans") {
       expect(call.filters).toMatchObject({ status: "completed", country_code: "US" });
     }
+  });
+
+  it("surfaces the is_vast flag for VAST scans", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.listScans = ok({
+      items: [{ ...SCAN_BRIEF, url: "", is_ad_tag: false, is_vast: true }],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+    const ctx = makeToolContext({ api });
+    const result = await listScansTool.handler({ page: 1, limit: 50 }, ctx);
+    expect(result._unsafeUnwrap().items[0]?.is_vast).toBe(true);
   });
 
   it("rejects an over-large limit at zod boundary", () => {

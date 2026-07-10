@@ -25,6 +25,7 @@ const ScanBriefSchema = schemas.ScanBriefResponse.pick({
   campaign_id: true,
   campaign_name: true,
   is_ad_tag: true,
+  is_vast: true,
   created_at: true,
 }).strip();
 

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-10
+
+### Added
+
+- **VAST video-ad support.** `create_scan`, `create_bulk_scans`,
+  `create_campaign` (new `vast` campaign type), and `update_campaign` now
+  accept a `vast_tag` — an http(s) URL of a VAST endpoint or raw VAST XML —
+  mutually exclusive with `url` / `ad_tag`. Scan responses surface
+  `creative_kind` (`banner` | `video`) plus a `video` block (duration,
+  media-file URL, VAST version, ad system, VPAID flag, wrapper depth), and the
+  scan-list brief carries `is_vast`. Regenerated the OpenAPI type + zod-schema
+  snapshots against the updated `/api/v1` surface.
+
 ## [0.6.0] - 2026-06-30
 
 ### Changed

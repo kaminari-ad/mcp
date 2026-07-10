@@ -79,6 +79,18 @@ describe("updateCampaignTool", () => {
     expect(call.body.schedule_timezone).toBe("Europe/Berlin");
   });
 
+  it("forwards vast_tag for vast-type campaigns", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler(
+      { campaign_id: CID, vast_tag: "https://ad.server/vast?id=2" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong");
+    expect(call.body.vast_tag).toBe("https://ad.server/vast?id=2");
+  });
+
   it("rejects invalid emulator_mode / proxy_type / schedule_type", () => {
     expect(() =>
       updateCampaignTool.inputSchema.parse({ campaign_id: CID, emulator_mode: "x" })

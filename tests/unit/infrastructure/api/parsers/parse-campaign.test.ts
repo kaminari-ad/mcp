@@ -47,6 +47,16 @@ describe("parseCampaign", () => {
   it("rejects non-uuid id", () => {
     expect(parseCampaign({ ...VALID, id: "not-uuid" }).isErr()).toBe(true);
   });
+  it("surfaces vast_tag for vast-type campaigns", () => {
+    const c = parseCampaign({
+      ...VALID,
+      campaign_type: "vast",
+      url: "",
+      vast_tag: "https://ad.server/vast?id=1",
+    })._unsafeUnwrap();
+    expect(c.campaign_type).toBe("vast");
+    expect(c.vast_tag).toBe("https://ad.server/vast?id=1");
+  });
 });
 
 describe("parseCampaignPage", () => {
