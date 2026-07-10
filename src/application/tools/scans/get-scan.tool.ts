@@ -28,7 +28,7 @@ export type GetScanOutput = ScanResponse;
 export const getScanTool: Tool<GetScanInputShape, GetScanOutput> = {
   name: "get_scan",
   description:
-    "Get full detail for one scan by UUID: status, offer URL, absolute screenshot URL, report_url + public_report_url deep-links, timing, labels, and the parent campaign if any. Link users with the returned `report_url` / `public_report_url` — never construct URLs yourself.",
+    "Get full detail for one scan by UUID: status, offer URL, absolute screenshot URL, report_url + public_report_url deep-links, timing, labels, and the parent campaign if any. VAST video scans also carry `vast_tag`, `creative_kind` (banner|video), and a `video` block (duration, media-file URL, VAST version, ad system, VPAID flag, wrapper depth). Link users with the returned `report_url` / `public_report_url` — never construct URLs yourself.",
   annotations: {
     title: "Get Scan",
     readOnlyHint: true,
