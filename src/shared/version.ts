@@ -8,4 +8,4 @@
  */
 
 export const NAME = "@kaminari-ad/mcp";
-export const VERSION = "0.6.0";
+export const VERSION = "0.7.2";
