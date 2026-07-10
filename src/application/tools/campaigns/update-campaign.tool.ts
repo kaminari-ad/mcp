@@ -25,6 +25,13 @@ const UpdateCampaignInputShape = {
       "New ad-tag HTML/JS or an http(s) URL of a page with the rendered " +
         "creative (ad_tag-type campaigns)."
     ),
+  vast_tag: z
+    .string()
+    .optional()
+    .describe(
+      "New VAST video ad tag: an http(s) URL of a VAST endpoint OR raw VAST " +
+        "XML (vast-type campaigns)."
+    ),
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
   group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
   ...campaignConfigFields,
@@ -58,6 +65,7 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
+      ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.country_codes !== undefined ? { country_codes: input.country_codes } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),

@@ -157,6 +157,7 @@ const CreateScanRequest = z
   .object({
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
+    vast_tag: z.union([z.string(), z.null()]).optional(),
     country_code: z.string().min(2).max(2),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -200,6 +201,17 @@ const RedirectHopResponse = z
     redirected_from: z.string(),
     sub_requests: z.array(SubRequestResponse),
   })
+  .passthrough();
+const VideoMetaResponse = z
+  .object({
+    duration_ms: z.number().int().default(0),
+    mediafile_url: z.string().default(""),
+    vast_version: z.string().default(""),
+    ad_system: z.string().default(""),
+    is_vpaid: z.boolean().default(false),
+    wrapper_depth: z.number().int().default(0),
+  })
+  .partial()
   .passthrough();
 const ProxyTargetResponse = z
   .object({
@@ -274,9 +286,12 @@ const ScanResponse = z
     report_url: z.string().optional().default(""),
     public_report_url: z.string().optional().default(""),
     ad_tag: z.union([z.string(), z.null()]).optional(),
+    vast_tag: z.union([z.string(), z.null()]).optional(),
+    creative_kind: z.string().optional().default("banner"),
     creative_screenshot_url: z.string().optional().default(""),
     creative_width: z.number().int().optional().default(0),
     creative_height: z.number().int().optional().default(0),
+    video: z.union([VideoMetaResponse, z.null()]).optional(),
     proxy: z.union([ProxyTargetResponse, z.null()]).optional(),
     page_title: z.string(),
     elapsed_ms: z.number().int(),
@@ -311,6 +326,7 @@ const ScanBriefResponse = z
     campaign_id: z.union([z.string(), z.null()]).optional(),
     campaign_name: z.union([z.string(), z.null()]).optional(),
     is_ad_tag: z.boolean().optional().default(false),
+    is_vast: z.boolean().optional().default(false),
     emulator_display_name: z.string().optional().default(""),
     emulator_category: z.string().optional().default(""),
   })
@@ -328,6 +344,7 @@ const BulkScanRequest = z
   .object({
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
+    vast_tag: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()).min(1),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -397,6 +414,7 @@ const CreateCampaignRequest = z
     campaign_type: z.string().optional().default("url"),
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
+    vast_tag: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()).min(1),
     group_id: z.union([z.string(), z.null()]).optional(),
     emulator_categories: z.array(z.string()).optional(),
@@ -429,6 +447,7 @@ const CampaignResponse = z
     campaign_type: z.string().optional().default("url"),
     url: z.string(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
+    vast_tag: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()),
     group_id: z.string().uuid(),
     emulator_selection: EmulatorSelectionResponse,
@@ -471,6 +490,7 @@ const UpdateCampaignRequest = z
     name: z.union([z.string(), z.null()]),
     url: z.union([z.string(), z.null()]),
     ad_tag: z.union([z.string(), z.null()]),
+    vast_tag: z.union([z.string(), z.null()]),
     country_codes: z.union([z.array(z.string()), z.null()]),
     group_id: z.union([z.string(), z.null()]),
     emulator_categories: z.union([z.array(z.string()), z.null()]),
@@ -1263,6 +1283,7 @@ export const schemas = {
   ScanStatus,
   SubRequestResponse,
   RedirectHopResponse,
+  VideoMetaResponse,
   ProxyTargetResponse,
   AiCategoryResponse,
   IabV3CategoryResponse,

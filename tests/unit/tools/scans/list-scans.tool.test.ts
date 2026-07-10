@@ -18,6 +18,7 @@ const SCAN_BRIEF = {
   campaign_id: null,
   campaign_name: null,
   is_ad_tag: false,
+  is_vast: false,
   created_at: "2026-05-16T10:00:00Z",
 };
 

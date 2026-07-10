@@ -57,6 +57,32 @@ describe("parseScan", () => {
     const { id: _omit, ...withoutId } = VALID;
     expect(parseScan(withoutId).isErr()).toBe(true);
   });
+  it("surfaces VAST fields (vast_tag, creative_kind, video)", () => {
+    const r = parseScan({
+      ...VALID,
+      url: "",
+      ad_tag: null,
+      vast_tag: "https://ad.server/vast?id=1",
+      creative_kind: "video",
+      video: {
+        duration_ms: 15000,
+        mediafile_url: "https://cdn.example/ad.mp4",
+        vast_version: "4.0",
+        ad_system: "AdServer",
+        is_vpaid: false,
+        wrapper_depth: 1,
+      },
+    });
+    const scan = r._unsafeUnwrap();
+    expect(scan.vast_tag).toBe("https://ad.server/vast?id=1");
+    expect(scan.creative_kind).toBe("video");
+    expect(scan.video?.vast_version).toBe("4.0");
+  });
+  it("defaults creative_kind to banner and video to absent for non-VAST scans", () => {
+    const scan = parseScan(VALID)._unsafeUnwrap();
+    expect(scan.creative_kind).toBe("banner");
+    expect(scan.video ?? null).toBeNull();
+  });
 });
 
 describe("parseScanArray", () => {

@@ -2141,16 +2141,21 @@ export interface components {
     };
     /**
      * BulkScanRequest
-     * @description Request body to create scans for a URL or ad tag across multiple countries.
+     * @description Request body to create scans for a URL, ad tag, or VAST tag across countries.
      */
     BulkScanRequest: {
       /** Url */
       url?: string | null;
       /**
        * Ad Tag
-       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url.
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url/vast_tag.
        */
       ad_tag?: string | null;
+      /**
+       * Vast Tag
+       * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
+       */
+      vast_tag?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Emulator Id */
@@ -2290,6 +2295,8 @@ export interface components {
       url: string;
       /** Ad Tag */
       ad_tag?: string | null;
+      /** Vast Tag */
+      vast_tag?: string | null;
       /** Country Codes */
       country_codes: string[];
       /**
@@ -2412,6 +2419,11 @@ export interface components {
        * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Required for ad_tag campaigns.
        */
       ad_tag?: string | null;
+      /**
+       * Vast Tag
+       * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Required for vast campaigns.
+       */
+      vast_tag?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Group Id */
@@ -2542,9 +2554,14 @@ export interface components {
       url?: string | null;
       /**
        * Ad Tag
-       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url.
+       * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Mutually exclusive with url/vast_tag.
        */
       ad_tag?: string | null;
+      /**
+       * Vast Tag
+       * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
+       */
+      vast_tag?: string | null;
       /** Country Code */
       country_code: string;
       /** Emulator Id */
@@ -3859,10 +3876,11 @@ export interface components {
      * ScanBriefResponse
      * @description Brief scan info for list views.
      *
-     *     Ad-tag scans surface as ``is_ad_tag=True`` with empty ``url``; the
-     *     UI then shows ``campaign_name`` (and ``offer_url`` if present) in the
-     *     URL column instead of the empty input URL. The HTML creative is NOT
-     *     leaked in the list response — only the boolean flag.
+     *     Ad-tag scans surface as ``is_ad_tag=True`` with empty ``url``; VAST
+     *     video-ad scans surface as ``is_vast=True`` with empty ``url``. In both
+     *     cases the UI shows ``campaign_name`` (and ``offer_url`` if present) in
+     *     the URL column instead of the empty input URL. Neither the HTML creative
+     *     nor the VAST tag is leaked in the list response — only the boolean flag.
      */
     ScanBriefResponse: {
       /**
@@ -3918,6 +3936,11 @@ export interface components {
        * @default false
        */
       is_ad_tag: boolean;
+      /**
+       * Is Vast
+       * @default false
+       */
+      is_vast: boolean;
       /**
        * Emulator Display Name
        * @default
@@ -3982,6 +4005,13 @@ export interface components {
       public_report_url: string;
       /** Ad Tag */
       ad_tag?: string | null;
+      /** Vast Tag */
+      vast_tag?: string | null;
+      /**
+       * Creative Kind
+       * @default banner
+       */
+      creative_kind: string;
       /**
        * Creative Screenshot Url
        * @default
@@ -3997,6 +4027,7 @@ export interface components {
        * @default 0
        */
       creative_height: number;
+      video?: components["schemas"]["VideoMetaResponse"] | null;
       proxy?: components["schemas"]["ProxyTargetResponse"] | null;
       /** Page Title */
       page_title: string;
@@ -4517,6 +4548,11 @@ export interface components {
        * @description Ad tag to check: an HTML snippet OR an http(s) URL of a page with the creative already rendered. Only for ad_tag campaigns.
        */
       ad_tag?: string | null;
+      /**
+       * Vast Tag
+       * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Only for vast campaigns.
+       */
+      vast_tag?: string | null;
       /** Country Codes */
       country_codes?: string[] | null;
       /** Group Id */
@@ -4802,6 +4838,46 @@ export interface components {
       input?: unknown;
       /** Context */
       ctx?: Record<string, never>;
+    };
+    /**
+     * VideoMetaResponse
+     * @description Slim VAST video metadata surfaced on the scan report.
+     *
+     *     Present only for VAST scans. The rendered video frame is served via
+     *     the existing creative-screenshot URL; this block carries the
+     *     video-specific facts the report shows alongside it.
+     */
+    VideoMetaResponse: {
+      /**
+       * Duration Ms
+       * @default 0
+       */
+      duration_ms: number;
+      /**
+       * Mediafile Url
+       * @default
+       */
+      mediafile_url: string;
+      /**
+       * Vast Version
+       * @default
+       */
+      vast_version: string;
+      /**
+       * Ad System
+       * @default
+       */
+      ad_system: string;
+      /**
+       * Is Vpaid
+       * @default false
+       */
+      is_vpaid: boolean;
+      /**
+       * Wrapper Depth
+       * @default 0
+       */
+      wrapper_depth: number;
     };
     /**
      * VisibilityType

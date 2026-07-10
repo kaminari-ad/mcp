@@ -114,6 +114,7 @@ export type ScanBriefResponse = Pick<
   | "campaign_id"
   | "campaign_name"
   | "is_ad_tag"
+  | "is_vast"
   | "created_at"
 >;
 
@@ -154,6 +155,9 @@ export type ScanResponse = Pick<
   | "report_url"
   | "public_report_url"
   | "ad_tag"
+  | "vast_tag"
+  | "creative_kind"
+  | "video"
   | "creative_screenshot_url"
   | "page_title"
   | "elapsed_ms"
@@ -196,12 +200,19 @@ interface ScanProxyTarget {
 
 export type CreateScanRequest = Pick<
   S["CreateScanRequest"],
-  "url" | "ad_tag" | "country_code" | "emulator_id" | "labels" | "campaign_id" | "run_id"
+  | "url"
+  | "ad_tag"
+  | "vast_tag"
+  | "country_code"
+  | "emulator_id"
+  | "labels"
+  | "campaign_id"
+  | "run_id"
 > & { readonly proxy?: ScanProxyTarget };
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
-  "url" | "ad_tag" | "country_codes" | "emulator_id" | "labels"
+  "url" | "ad_tag" | "vast_tag" | "country_codes" | "emulator_id" | "labels"
 > & { readonly proxy?: ScanProxyTarget };
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
@@ -224,6 +235,7 @@ export type CampaignResponse = Pick<
   | "campaign_type"
   | "url"
   | "ad_tag"
+  | "vast_tag"
   | "country_codes"
   | "group_id"
   | "emulator_selection"
@@ -292,6 +304,7 @@ export type CreateCampaignRequest = Pick<
   | "campaign_type"
   | "url"
   | "ad_tag"
+  | "vast_tag"
   | "country_codes"
   | "group_id"
   | "labels"
@@ -323,6 +336,7 @@ export type UpdateCampaignRequest = Pick<
   | "name"
   | "url"
   | "ad_tag"
+  | "vast_tag"
   | "country_codes"
   | "group_id"
   | "emulator_categories"

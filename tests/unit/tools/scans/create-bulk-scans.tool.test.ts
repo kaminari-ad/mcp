@@ -55,6 +55,24 @@ describe("createBulkScansTool", () => {
     expect(call.body.url).toBe("https://x.com");
   });
 
+  it("forwards vast_tag when supplied", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        vast_tag: "https://ad.server/vast?id=1",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.vast_tag).toBe("https://ad.server/vast?id=1");
+    expect(call.body.url).toBeUndefined();
+    expect(call.body.ad_tag).toBeUndefined();
+  });
+
   it("forwards proxy targeting when supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

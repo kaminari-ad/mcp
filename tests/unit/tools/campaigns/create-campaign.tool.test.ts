@@ -87,6 +87,35 @@ describe("createCampaignTool", () => {
     expect(call.body.schedule_timezone).toBe("UTC");
   });
 
+  it("accepts a vast campaign type and forwards vast_tag", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const r = await createCampaignTool.handler(
+      {
+        name: "Preroll",
+        campaign_type: "vast",
+        vast_tag: "https://ad.server/vast?id=1",
+        country_codes: ["US"],
+      },
+      ctx
+    );
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.campaign_type).toBe("vast");
+    expect(call.body.vast_tag).toBe("https://ad.server/vast?id=1");
+  });
+
+  it("rejects an invalid campaign_type at validation", () => {
+    expect(() =>
+      createCampaignTool.inputSchema.parse({
+        name: "X",
+        campaign_type: "banner",
+        country_codes: ["US"],
+      })
+    ).toThrow();
+  });
+
   it("rejects an invalid emulator_mode at validation", () => {
     expect(() =>
       createCampaignTool.inputSchema.parse({
