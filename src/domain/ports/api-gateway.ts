@@ -115,6 +115,11 @@ export type ScanBriefResponse = Pick<
   | "campaign_name"
   | "is_ad_tag"
   | "is_vast"
+  | "parent_scan_id"
+  | "ad_discovery"
+  | "slot_index"
+  | "ad_kind"
+  | "network"
   | "created_at"
 >;
 
@@ -165,6 +170,11 @@ export type ScanResponse = Pick<
   | "labels"
   | "campaign_id"
   | "campaign_name"
+  | "parent_scan_id"
+  | "ad_discovery"
+  | "slot_index"
+  | "ad_kind"
+  | "network"
   | "created_at"
   | "completed_at"
 >;
@@ -208,6 +218,7 @@ export type CreateScanRequest = Pick<
   | "labels"
   | "campaign_id"
   | "run_id"
+  | "ad_discovery"
 > & { readonly proxy?: ScanProxyTarget };
 
 export type BulkScanRequest = Pick<
@@ -1066,6 +1077,10 @@ export interface ApiGateway {
     filters: ListScansFilters
   ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
   getScan(scanId: string): Promise<Result<ScanResponse, ApiError>>;
+  listScanChildren(
+    scanId: string,
+    filters: PageFilters
+  ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
   createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>>;
   createBulkScans(body: BulkScanRequest): Promise<Result<readonly ScanResponse[], ApiError>>;
   recheckScans(body: RecheckRequest): Promise<Result<RecheckResponse, ApiError>>;

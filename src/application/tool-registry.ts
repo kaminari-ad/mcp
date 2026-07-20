@@ -92,6 +92,7 @@ import { getScanTool } from "./tools/scans/get-scan.tool.js";
 import { getScanCreativeScreenshotTool } from "./tools/scans/get-scan-creative-screenshot.tool.js";
 import { getScanLandingScreenshotTool } from "./tools/scans/get-scan-landing-screenshot.tool.js";
 import { getScanScreenshotTool } from "./tools/scans/get-scan-screenshot.tool.js";
+import { listScanChildrenTool } from "./tools/scans/list-scan-children.tool.js";
 import { listScansTool } from "./tools/scans/list-scans.tool.js";
 import { recheckScansTool } from "./tools/scans/recheck-scans.tool.js";
 import { deleteTagDefinitionTool } from "./tools/tags/delete-tag-definition.tool.js";
@@ -136,6 +137,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(listEmulatorsTool);
   // scans
   register(getScanTool);
+  register(listScanChildrenTool);
   register(listScansTool);
   register(cancelScanTool);
   register(createBulkScansTool);

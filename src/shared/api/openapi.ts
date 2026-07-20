@@ -2575,6 +2575,12 @@ export interface components {
       campaign_id?: string | null;
       /** Run Id */
       run_id?: string | null;
+      /**
+       * Ad Discovery
+       * @description Publisher ad discovery: detect ad blocks on the page and spawn one child scan per detected ad. Only valid with url (not ad_tag/vast_tag).
+       * @default false
+       */
+      ad_discovery?: boolean;
     };
     /**
      * CreateWebhookRequest
@@ -3941,6 +3947,22 @@ export interface components {
        * @default false
        */
       is_vast: boolean;
+      /** Parent Scan Id */
+      parent_scan_id?: string | null;
+      /**
+       * Ad Discovery
+       * @default false
+       */
+      ad_discovery?: boolean;
+      /** Slot Index */
+      slot_index?: number | null;
+      /** Ad Kind */
+      ad_kind?: string | null;
+      /**
+       * Network
+       * @default
+       */
+      network?: string;
       /**
        * Emulator Display Name
        * @default
@@ -3984,6 +4006,22 @@ export interface components {
       /** Emulator Id */
       emulator_id: string;
       status: components["schemas"]["ScanStatus"];
+      /** Parent Scan Id */
+      parent_scan_id?: string | null;
+      /**
+       * Ad Discovery
+       * @default false
+       */
+      ad_discovery?: boolean;
+      /** Slot Index */
+      slot_index?: number | null;
+      /** Ad Kind */
+      ad_kind?: string | null;
+      /**
+       * Network
+       * @default
+       */
+      network?: string;
       /** Offer Url */
       offer_url: string;
       /** Redirect Chain */

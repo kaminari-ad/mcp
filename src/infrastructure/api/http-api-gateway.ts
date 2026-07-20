@@ -554,6 +554,17 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseScan
       );
     },
+    async listScanChildren(
+      scanId: string,
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/scans/{scan_id}/children",
+        { params: { path: { scan_id: scanId }, query: filters } },
+        parseScanPage
+      );
+    },
     async createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>> {
       return call("POST", "/api/v1/scans", { body }, parseScan);
     },
