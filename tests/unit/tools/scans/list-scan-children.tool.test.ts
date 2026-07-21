@@ -35,6 +35,7 @@ describe("listScanChildrenTool", () => {
       is_ad_tag: false,
       is_vast: false,
       parent_scan_id: PARENT,
+      ad_discovery: false,
       ad_kind: "banner",
       slot_index: 0,
       network: "ExoClick",

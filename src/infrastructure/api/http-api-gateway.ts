@@ -313,7 +313,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
   async function call<T>(
     method: HttpMethod,
-    path: string,
+    // `keyof paths` keeps every JSON call site pinned to a route that
+    // exists in the generated spec — a removed/renamed endpoint fails tsc.
+    path: keyof paths,
     init: OpenapiInit,
     parse: (raw: unknown) => Result<T, ApiError>
   ): Promise<Result<T, ApiError>> {

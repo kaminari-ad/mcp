@@ -208,6 +208,10 @@ interface ScanProxyTarget {
   readonly isp?: string | undefined;
 }
 
+/**
+ * `ad_discovery` is required-with-default in the generated type; surfaced
+ * as optional so callers omit it and the API applies its default.
+ */
 export type CreateScanRequest = Pick<
   S["CreateScanRequest"],
   | "url"
@@ -218,8 +222,7 @@ export type CreateScanRequest = Pick<
   | "labels"
   | "campaign_id"
   | "run_id"
-  | "ad_discovery"
-> & { readonly proxy?: ScanProxyTarget };
+> & { readonly proxy?: ScanProxyTarget } & Partial<Pick<S["CreateScanRequest"], "ad_discovery">>;
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],

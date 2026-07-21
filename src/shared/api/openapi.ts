@@ -237,11 +237,7 @@ export interface paths {
     };
     /**
      * List Scans
-     * @description List scans with filters. Comma-separated values for multi-select.
-     *
-     *     ``iab_category`` is the legacy filter name and is honoured for one
-     *     release as a synonym of ``ai_category`` so older API clients keep
-     *     working through the rename window.
+     * @description List scans with filters (comma-separated multi-select; ``iab_category`` legacy alias).
      */
     get: operations["list_scans_api_v1_scans_get"];
     put?: never;
@@ -328,6 +324,26 @@ export interface paths {
      * @description Get a scan by ID.
      */
     get: operations["get_scan_api_v1_scans__scan_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/children": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Scan Children
+     * @description List the ad-discovery child scans of a publisher scan.
+     */
+    get: operations["list_scan_children_api_v1_scans__scan_id__children_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2580,7 +2596,7 @@ export interface components {
        * @description Publisher ad discovery: detect ad blocks on the page and spawn one child scan per detected ad. Only valid with url (not ad_tag/vast_tag).
        * @default false
        */
-      ad_discovery?: boolean;
+      ad_discovery: boolean;
     };
     /**
      * CreateWebhookRequest
@@ -3953,7 +3969,7 @@ export interface components {
        * Ad Discovery
        * @default false
        */
-      ad_discovery?: boolean;
+      ad_discovery: boolean;
       /** Slot Index */
       slot_index?: number | null;
       /** Ad Kind */
@@ -3962,7 +3978,7 @@ export interface components {
        * Network
        * @default
        */
-      network?: string;
+      network: string;
       /**
        * Emulator Display Name
        * @default
@@ -4012,7 +4028,7 @@ export interface components {
        * Ad Discovery
        * @default false
        */
-      ad_discovery?: boolean;
+      ad_discovery: boolean;
       /** Slot Index */
       slot_index?: number | null;
       /** Ad Kind */
@@ -4021,7 +4037,7 @@ export interface components {
        * Network
        * @default
        */
-      network?: string;
+      network: string;
       /** Offer Url */
       offer_url: string;
       /** Redirect Chain */
@@ -5384,6 +5400,7 @@ export interface operations {
         run_id?: string | null;
         campaign_id?: string | null;
         group_id?: string | null;
+        parent_scan_id?: string | null;
         tag?: string | null;
         ai_category?: string | null;
         iab_v3_category?: string | null;
@@ -5566,6 +5583,40 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ScanResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_scan_children_api_v1_scans__scan_id__children_get: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaginatedResponse_ScanBriefResponse_"];
         };
       };
       /** @description Validation Error */

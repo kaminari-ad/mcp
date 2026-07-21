@@ -415,6 +415,8 @@ const DEFAULT_SCAN: ScanResponse = {
   labels: {},
   campaign_id: null,
   campaign_name: null,
+  ad_discovery: false,
+  network: "",
   created_at: "2026-05-16T12:00:00Z",
   completed_at: "2026-05-16T12:00:01Z",
 };
