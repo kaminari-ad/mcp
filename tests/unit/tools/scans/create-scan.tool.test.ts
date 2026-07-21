@@ -89,6 +89,38 @@ describe("createScanTool", () => {
     expect(call.body.proxy).toEqual({ proxy_type: "mobile", city: "LA" });
   });
 
+  it("forwards ad_discovery: true to the gateway request", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://publisher.example/page",
+        country_code: "US",
+        emulator_id: "default",
+        ad_discovery: true,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.ad_discovery).toBe(true);
+    expect(Object.keys(call.body).sort()).toEqual(
+      ["ad_discovery", "country_code", "emulator_id", "url"].sort()
+    );
+  });
+
+  it("omits the ad_discovery key entirely when the input leaves it unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      { url: "https://publisher.example/page", country_code: "US", emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect("ad_discovery" in call.body).toBe(false);
+  });
+
   it("forwards run_id when supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

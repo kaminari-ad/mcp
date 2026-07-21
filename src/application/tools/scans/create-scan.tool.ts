@@ -57,6 +57,14 @@ const CreateScanInputShape = {
     .optional()
     .describe("Optional campaign UUID to attribute the scan to."),
   run_id: z.string().uuid().optional().describe("Optional run UUID inside the campaign."),
+  ad_discovery: z
+    .boolean()
+    .optional()
+    .describe(
+      "Publisher ad discovery: detect ad blocks on the page and spawn one child " +
+        "scan per detected ad (banner/pop). Only valid with `url`. Each child is a " +
+        "separate billed scan; list them with `list_scan_children`."
+    ),
 } as const;
 type CreateScanInputShape = typeof CreateScanInputShape;
 
@@ -85,6 +93,7 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
       ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),
+      ...(input.ad_discovery !== undefined ? { ad_discovery: input.ad_discovery } : {}),
     };
     const result = await ctx.api.createScan(body);
     if (result.isErr()) return err(mapApiError(result.error));

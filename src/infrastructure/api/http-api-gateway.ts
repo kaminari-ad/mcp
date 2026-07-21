@@ -313,7 +313,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
   async function call<T>(
     method: HttpMethod,
-    path: string,
+    // `keyof paths` keeps every JSON call site pinned to a route that
+    // exists in the generated spec — a removed/renamed endpoint fails tsc.
+    path: keyof paths,
     init: OpenapiInit,
     parse: (raw: unknown) => Result<T, ApiError>
   ): Promise<Result<T, ApiError>> {
@@ -552,6 +554,17 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         "/api/v1/scans/{scan_id}",
         { params: { path: { scan_id: scanId } } },
         parseScan
+      );
+    },
+    async listScanChildren(
+      scanId: string,
+      filters: PageFilters
+    ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/scans/{scan_id}/children",
+        { params: { path: { scan_id: scanId }, query: filters } },
+        parseScanPage
       );
     },
     async createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>> {

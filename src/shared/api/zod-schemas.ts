@@ -164,6 +164,7 @@ const CreateScanRequest = z
     labels: z.record(z.string()).optional(),
     campaign_id: z.union([z.string(), z.null()]).optional(),
     run_id: z.union([z.string(), z.null()]).optional(),
+    ad_discovery: z.boolean().optional().default(false),
   })
   .passthrough();
 const ScanStatus = z.enum([
@@ -280,6 +281,11 @@ const ScanResponse = z
     country_code: z.string(),
     emulator_id: z.string(),
     status: ScanStatus,
+    parent_scan_id: z.union([z.string(), z.null()]).optional(),
+    ad_discovery: z.boolean().optional().default(false),
+    slot_index: z.union([z.number(), z.null()]).optional(),
+    ad_kind: z.union([z.string(), z.null()]).optional(),
+    network: z.string().optional().default(""),
     offer_url: z.string(),
     redirect_chain: z.array(RedirectHopResponse),
     screenshot_url: z.string().optional().default(""),
@@ -327,6 +333,11 @@ const ScanBriefResponse = z
     campaign_name: z.union([z.string(), z.null()]).optional(),
     is_ad_tag: z.boolean().optional().default(false),
     is_vast: z.boolean().optional().default(false),
+    parent_scan_id: z.union([z.string(), z.null()]).optional(),
+    ad_discovery: z.boolean().optional().default(false),
+    slot_index: z.union([z.number(), z.null()]).optional(),
+    ad_kind: z.union([z.string(), z.null()]).optional(),
+    network: z.string().optional().default(""),
     emulator_display_name: z.string().optional().default(""),
     emulator_category: z.string().optional().default(""),
   })

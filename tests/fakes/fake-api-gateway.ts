@@ -136,6 +136,11 @@ type Call =
   | { readonly method: "revokeApiKey"; readonly id: string }
   | { readonly method: "listScans"; readonly filters: ListScansFilters }
   | { readonly method: "getScan"; readonly scanId: string }
+  | {
+      readonly method: "listScanChildren";
+      readonly scanId: string;
+      readonly filters: PageFilters;
+    }
   | { readonly method: "createScan"; readonly body: CreateScanRequest }
   | { readonly method: "createBulkScans"; readonly body: BulkScanRequest }
   | { readonly method: "recheckScans"; readonly body: RecheckRequest }
@@ -300,6 +305,7 @@ export interface FakeApiGatewayState {
     revokeApiKey?: Result<null, ApiError>;
     listScans?: Result<PaginatedResponse<ScanBriefResponse>, ApiError>;
     getScan?: Result<ScanResponse, ApiError>;
+    listScanChildren?: Result<PaginatedResponse<ScanBriefResponse>, ApiError>;
     createScan?: Result<ScanResponse, ApiError>;
     createBulkScans?: Result<readonly ScanResponse[], ApiError>;
     recheckScans?: Result<RecheckResponse, ApiError>;
@@ -409,6 +415,8 @@ const DEFAULT_SCAN: ScanResponse = {
   labels: {},
   campaign_id: null,
   campaign_name: null,
+  ad_discovery: false,
+  network: "",
   created_at: "2026-05-16T12:00:00Z",
   completed_at: "2026-05-16T12:00:01Z",
 };
@@ -811,6 +819,19 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "getScan", scanId });
       await Promise.resolve();
       return state.responses.getScan ?? ok<ScanResponse, ApiError>(DEFAULT_SCAN);
+    },
+    async listScanChildren(scanId, filters) {
+      push({ method: "listScanChildren", scanId, filters });
+      await Promise.resolve();
+      return (
+        state.responses.listScanChildren ??
+        ok<PaginatedResponse<ScanBriefResponse>, ApiError>({
+          items: [],
+          total: 0,
+          page: filters.page,
+          limit: filters.limit,
+        })
+      );
     },
     async createScan(body) {
       push({ method: "createScan", body });

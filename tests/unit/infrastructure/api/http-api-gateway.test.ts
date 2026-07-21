@@ -372,6 +372,29 @@ describe("HttpApiGateway", () => {
     });
   });
 
+  describe("listScanChildren", () => {
+    it("GETs the children path with pagination and parses the envelope", async () => {
+      let receivedPath: string | undefined;
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: (p) => {
+            receivedPath = p;
+            return p.startsWith("/api/v1/scans/00000000-0000-0000-0000-000000000aaa/children?");
+          },
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50 });
+      const result = await buildGateway(agent).listScanChildren(
+        "00000000-0000-0000-0000-000000000aaa",
+        { page: 1, limit: 50 }
+      );
+      expect(result.isOk()).toBe(true);
+      expect(receivedPath).toContain("page=1");
+      expect(receivedPath).toContain("limit=50");
+    });
+  });
+
   describe("createScan", () => {
     it("POSTs body and returns the parsed scan on 201", async () => {
       let receivedBody: unknown;

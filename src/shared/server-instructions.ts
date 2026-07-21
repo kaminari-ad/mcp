@@ -18,6 +18,8 @@ export const SERVER_INSTRUCTIONS = [
   "- `report_url`: authenticated dashboard report (requires login).",
   "- `public_report_url`: shareable report (no login).",
   "- `screenshot_url` / `creative_screenshot_url`: absolute, directly followable.",
-  "These come from `get_scan`, `list_scans`, and `list_run_scans`. Do NOT assemble",
-  "scan/app URLs from a base host yourself — the apex domain does not serve scan pages.",
+  "These come from `get_scan`, `list_scans`, `list_run_scans`, and `list_scan_children`.",
+  "Do NOT assemble scan/app URLs from a base host yourself — the apex domain does not serve scan pages.",
+  "Publisher ad discovery: create a scan with `ad_discovery: true` (url scans only) to detect",
+  "ad blocks on a page; `list_scan_children` returns one child scan per detected ad (banner/pop).",
 ].join("\n");

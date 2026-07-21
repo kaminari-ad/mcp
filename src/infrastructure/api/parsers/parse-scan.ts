@@ -31,6 +31,11 @@ const ScanSchema = schemas.ScanResponse.pick({
   labels: true,
   campaign_id: true,
   campaign_name: true,
+  parent_scan_id: true,
+  ad_discovery: true,
+  slot_index: true,
+  ad_kind: true,
+  network: true,
   created_at: true,
   completed_at: true,
 }).strip();

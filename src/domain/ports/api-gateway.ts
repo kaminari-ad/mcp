@@ -115,6 +115,11 @@ export type ScanBriefResponse = Pick<
   | "campaign_name"
   | "is_ad_tag"
   | "is_vast"
+  | "parent_scan_id"
+  | "ad_discovery"
+  | "slot_index"
+  | "ad_kind"
+  | "network"
   | "created_at"
 >;
 
@@ -165,6 +170,11 @@ export type ScanResponse = Pick<
   | "labels"
   | "campaign_id"
   | "campaign_name"
+  | "parent_scan_id"
+  | "ad_discovery"
+  | "slot_index"
+  | "ad_kind"
+  | "network"
   | "created_at"
   | "completed_at"
 >;
@@ -198,6 +208,10 @@ interface ScanProxyTarget {
   readonly isp?: string | undefined;
 }
 
+/**
+ * `ad_discovery` is required-with-default in the generated type; surfaced
+ * as optional so callers omit it and the API applies its default.
+ */
 export type CreateScanRequest = Pick<
   S["CreateScanRequest"],
   | "url"
@@ -208,7 +222,7 @@ export type CreateScanRequest = Pick<
   | "labels"
   | "campaign_id"
   | "run_id"
-> & { readonly proxy?: ScanProxyTarget };
+> & { readonly proxy?: ScanProxyTarget } & Partial<Pick<S["CreateScanRequest"], "ad_discovery">>;
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
@@ -1066,6 +1080,10 @@ export interface ApiGateway {
     filters: ListScansFilters
   ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
   getScan(scanId: string): Promise<Result<ScanResponse, ApiError>>;
+  listScanChildren(
+    scanId: string,
+    filters: PageFilters
+  ): Promise<Result<PaginatedResponse<ScanBriefResponse>, ApiError>>;
   createScan(body: CreateScanRequest): Promise<Result<ScanResponse, ApiError>>;
   createBulkScans(body: BulkScanRequest): Promise<Result<readonly ScanResponse[], ApiError>>;
   recheckScans(body: RecheckRequest): Promise<Result<RecheckResponse, ApiError>>;
