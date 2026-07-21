@@ -75,4 +75,27 @@ describe("parseScanPage", () => {
     });
     expect(r._unsafeUnwrap().items[0]?.is_vast).toBe(true);
   });
+  it("surfaces ad-discovery child fields through the real parser", () => {
+    const r = parseScanPage({
+      items: [
+        {
+          ...VALID_BRIEF,
+          url: "",
+          parent_scan_id: "00000000-0000-0000-0000-0000000000aa",
+          ad_discovery: false,
+          slot_index: 0,
+          ad_kind: "banner",
+          network: "ExoClick",
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+    const item = r._unsafeUnwrap().items[0];
+    expect(item?.parent_scan_id).toBe("00000000-0000-0000-0000-0000000000aa");
+    expect(item?.ad_kind).toBe("banner");
+    expect(item?.network).toBe("ExoClick");
+    expect(item?.slot_index).toBe(0);
+  });
 });
