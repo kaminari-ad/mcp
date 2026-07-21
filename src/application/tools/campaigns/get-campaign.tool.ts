@@ -20,7 +20,7 @@ export type GetCampaignOutput = CampaignResponse;
 export const getCampaignTool: Tool<GetCampaignInputShape, GetCampaignOutput> = {
   name: "get_campaign",
   description:
-    "Get one campaign by UUID: name, type (url|ad_tag|vast), target URL / ad-tag / VAST tag (vast_tag), countries, schedule status, archive status, parent group.",
+    "Get one campaign by UUID: name, type (url|ad_tag|vast|ad_discovery), target URL / ad-tag / VAST tag (vast_tag), countries, schedule status, archive status, parent group. `ad_discovery` campaigns store the publisher page in the URL field.",
   annotations: {
     title: "Get Campaign",
     readOnlyHint: true,
