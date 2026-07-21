@@ -106,6 +106,25 @@ describe("createCampaignTool", () => {
     expect(call.body.vast_tag).toBe("https://ad.server/vast?id=1");
   });
 
+  it("accepts an ad_discovery campaign type and forwards url", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const r = await createCampaignTool.handler(
+      {
+        name: "Publisher page",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["DE"],
+      },
+      ctx
+    );
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.campaign_type).toBe("ad_discovery");
+    expect(call.body.url).toBe("https://publisher.example/article");
+  });
+
   it("rejects an invalid campaign_type at validation", () => {
     expect(() =>
       createCampaignTool.inputSchema.parse({
