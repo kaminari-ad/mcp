@@ -17,7 +17,11 @@ import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config
 const UpdateCampaignInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
-  url: z.string().url().optional().describe("New target URL (url-type campaigns)."),
+  url: z
+    .string()
+    .url()
+    .optional()
+    .describe("New target URL (url-type and ad_discovery campaigns)."),
   ad_tag: z
     .string()
     .optional()

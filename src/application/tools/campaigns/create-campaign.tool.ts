@@ -18,9 +18,17 @@ import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config
 const CreateCampaignInputShape = {
   name: z.string().min(1).max(200).describe("Display name (1-200 chars)."),
   campaign_type: z
-    .enum(["url", "ad_tag", "vast"])
-    .describe("`url`, `ad_tag`, or `vast` — must match the target field below."),
-  url: z.string().url().optional().describe("Target URL (required if campaign_type=url)."),
+    .enum(["url", "ad_tag", "vast", "ad_discovery"])
+    .describe(
+      "`url`, `ad_tag`, `vast`, or `ad_discovery` — must match the target field below. " +
+        "`ad_discovery` is a publisher-page scan: set `url`; each run detects the page's " +
+        "ad blocks and opens a child scan per detected ad."
+    ),
+  url: z
+    .string()
+    .url()
+    .optional()
+    .describe("Target URL (required if campaign_type=url or ad_discovery)."),
   ad_tag: z
     .string()
     .optional()
