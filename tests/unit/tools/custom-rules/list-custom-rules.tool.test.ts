@@ -29,6 +29,12 @@ describe("listCustomRulesTool", () => {
     expect(call.filters).toEqual({ page: 3, limit: 20 });
   });
 
+  it("warns that a returned combo match_scope must be resent verbatim", () => {
+    expect(listCustomRulesTool.description).toContain("may carry the rule-level key `match_scope`");
+    expect(listCustomRulesTool.description).toContain("Resend it verbatim when updating");
+    expect(listCustomRulesTool.description).toContain("reverts the rule to whole-scan matching");
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listCustomRules = err(makeApiError("forbidden", "x"));

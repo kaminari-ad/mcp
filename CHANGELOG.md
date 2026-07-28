@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Combo-rule match scope.** `create_custom_rule`, `update_custom_rule`, and
+  `test_custom_rule` now document the rule-level `config.match_scope` key used
+  by `rule_type='combo'`: `"scan"` (the default, and the behaviour when the key
+  is absent) counts conditions across the union of all tags on the scan, while
+  `"url"` requires every condition to be satisfied by tags on the same link and
+  assigns the output tag to that link. The description warns about the traps a
+  per-link rule falls into: a combo built only from link-less tags (AI verdicts,
+  crawler behaviour) has no link to attach to and never matches, AI verdicts and
+  per-link detections are not evaluated together today, and a per-link rule needs
+  at least one positive condition. Any other `match_scope` value is rejected
+  before the request is sent, so a misspelled scope surfaces as a tool-input
+  error instead of a round trip; the API validates `match_scope` on create,
+  update, and the rule-test preview as well, so this is early feedback rather
+  than the durable guarantee. The rest of a combo config is still validated only
+  for admin-authored system rules, which is why the per-link traps are documented
+  rather than enforced. `get_custom_rule` and `list_custom_rules` now flag that
+  the returned `config` may carry `match_scope` and that it must be resent
+  verbatim, since `update_custom_rule` replaces `config` wholesale.
+
 ## [0.10.0] - 2026-07-28
 
 ### Added

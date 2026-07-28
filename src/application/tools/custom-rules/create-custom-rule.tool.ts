@@ -12,6 +12,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { COMBO_MATCH_SCOPE_DOC, ruleConfigField } from "./_rule-config-input.js";
 
 const CreateCustomRuleInputShape = {
   name: z
@@ -34,11 +35,10 @@ const CreateCustomRuleInputShape = {
     .describe(
       "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `blacklist_domain`, `combo`, `llm`. The API validates."
     ),
-  config: z
-    .record(z.unknown())
-    .describe(
-      "Rule-type-specific configuration object. Shape depends on `rule_type`. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`)."
-    ),
+  config: ruleConfigField.describe(
+    "Rule-type-specific configuration object. Shape depends on `rule_type`. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
+      COMBO_MATCH_SCOPE_DOC
+  ),
   target: z
     .string()
     .max(30)
@@ -54,7 +54,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. The API auto-registers a tag definition for each slug the rule emits (`tag_slug` for non-LLM rules; `config.tags` keys for `rule_type='llm'`); slugs that collide with a built-in system tag are rejected with HTTP 422 / code `checking.system_slug_reserved`. Matches tag every future scan; existing scans are untouched until you call `recheck_scans`.",
+    "Define a custom tag-detection rule. The API auto-registers a tag definition for each slug the rule emits (`tag_slug` for non-LLM rules; `config.tags` keys for `rule_type='llm'`); slugs that collide with a built-in system tag are rejected with HTTP 422 / code `checking.system_slug_reserved`. For `rule_type='combo'` set `config.match_scope='url'` when the thresholds must be met inside one link instead of anywhere on the scan (default `'scan'`). Matches tag every future scan; existing scans are untouched until you call `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,

@@ -16,6 +16,13 @@ describe("getCustomRuleTool", () => {
     const r = await getCustomRuleTool.handler({ rule_id: RID }, makeToolContext({ api }));
     expect(r._unsafeUnwrap().id).toBe(RID);
   });
+  it("warns that a returned combo match_scope must be resent verbatim", () => {
+    // Read-modify-write trap: update replaces `config` wholesale, so an
+    // agent echoing back a config without the key reverts to whole-scan.
+    expect(getCustomRuleTool.description).toContain("may carry the rule-level key `match_scope`");
+    expect(getCustomRuleTool.description).toContain("Resend it verbatim when updating");
+    expect(getCustomRuleTool.description).toContain("reverts the rule to whole-scan matching");
+  });
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getCustomRule = err(makeApiError("not-found", "x"));

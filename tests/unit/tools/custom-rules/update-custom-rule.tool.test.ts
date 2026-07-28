@@ -43,6 +43,30 @@ describe("updateCustomRuleTool", () => {
       "target",
     ]);
   });
+  it("accepts a combo match_scope and rejects an unknown one", () => {
+    expect(
+      updateCustomRuleTool.inputSchema.safeParse({
+        rule_id: RID,
+        config: { match_scope: "scan", any_of: ["a", "b"], any_of_min: 2 },
+      }).success
+    ).toBe(true);
+    const parsed = updateCustomRuleTool.inputSchema.safeParse({
+      rule_id: RID,
+      config: { match_scope: "per-link", any_of: ["a", "b"] },
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.path).toEqual(["config", "match_scope"]);
+    }
+  });
+
+  it("warns in the config description that a supplied config replaces the stored one", () => {
+    const description = updateCustomRuleTool.inputSchema.shape.config.description ?? "";
+    expect(description).toContain("Replaces the stored config wholesale");
+    expect(description).toContain("resend every key you want to keep, including a combo rule");
+    expect(description).toContain("has no link to attach to and will never match");
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateCustomRule = err(makeApiError("not-found", "x"));
