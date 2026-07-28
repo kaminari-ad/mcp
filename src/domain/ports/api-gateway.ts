@@ -217,6 +217,7 @@ export type CreateScanRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_code"
   | "emulator_id"
   | "labels"
@@ -226,7 +227,7 @@ export type CreateScanRequest = Pick<
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
-  "url" | "ad_tag" | "vast_tag" | "country_codes" | "emulator_id" | "labels"
+  "url" | "ad_tag" | "vast_tag" | "referrer" | "country_codes" | "emulator_id" | "labels"
 > & { readonly proxy?: ScanProxyTarget };
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
@@ -319,6 +320,7 @@ export type CreateCampaignRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_codes"
   | "group_id"
   | "labels"
@@ -351,6 +353,7 @@ export type UpdateCampaignRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_codes"
   | "group_id"
   | "emulator_categories"

@@ -103,6 +103,27 @@ describe("updateCampaignTool", () => {
     ).toThrow();
   });
 
+  it("forwards referrer and leaves it untouched when unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler(
+      { campaign_id: CID, referrer: "https://publisher.example/section/page" },
+      ctx
+    );
+    await updateCampaignTool.handler({ campaign_id: CID, name: "new" }, ctx);
+    const [withReferrer, withoutReferrer] = api.state.calls;
+    if (withReferrer?.method !== "updateCampaign") throw new Error("wrong");
+    if (withoutReferrer?.method !== "updateCampaign") throw new Error("wrong");
+    expect(withReferrer.body.referrer).toBe("https://publisher.example/section/page");
+    expect("referrer" in withoutReferrer.body).toBe(false);
+  });
+
+  it("rejects a referrer that is not an absolute URL", () => {
+    expect(() =>
+      updateCampaignTool.inputSchema.parse({ campaign_id: CID, referrer: "publisher.example" })
+    ).toThrow();
+  });
+
   it("maps ApiError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateCampaign = err(makeApiError("not-found", "x"));

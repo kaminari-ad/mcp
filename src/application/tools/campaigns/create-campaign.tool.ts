@@ -14,6 +14,7 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
+import { campaignReferrerField } from "./_campaign-referrer-input.js";
 
 const CreateCampaignInputShape = {
   name: z.string().min(1).max(200).describe("Display name (1-200 chars)."),
@@ -43,6 +44,7 @@ const CreateCampaignInputShape = {
       "VAST video ad tag: an http(s) URL of a VAST endpoint OR raw VAST XML " +
         "(required if campaign_type=vast)."
     ),
+  referrer: campaignReferrerField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)
@@ -91,6 +93,7 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
+      ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),

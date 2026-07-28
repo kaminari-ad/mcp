@@ -14,6 +14,7 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
+import { scanReferrerField } from "./_scan-referrer-input.js";
 
 const CreateBulkScansInputShape = {
   url: z
@@ -35,6 +36,7 @@ const CreateBulkScansInputShape = {
       "VAST video ad tag: an http(s) URL of a VAST endpoint OR raw VAST XML. " +
         "Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
+  referrer: scanReferrerField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)
@@ -77,6 +79,7 @@ export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScan
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
+      ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
     };

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`referrer` on scan and campaign creation.** `create_scan`,
+  `create_bulk_scans`, `create_campaign`, and `update_campaign` accept an
+  optional http(s) page URL the check is performed from. With `ad_tag` or
+  `vast_tag` it is the publisher page the tag is embedded in: the browser
+  commits the page document on that URL without fetching the publisher, so the
+  creative renders as if embedded there. With `url` or `ad_discovery` it is
+  where the visitor came from, sent as the `Referer` of the page request.
+
+### Changed
+
+- Regenerated the OpenAPI type + zod-schema snapshots against the `/api/v1`
+  surface. Besides `referrer`, they catch up with API fields that shipped
+  after the last regen: scan/campaign repeats and retries, VAST
+  `click_through`, creative video/XML/HTML artefact URLs, custom-rule tag
+  visibility, and the `card_top_up` balance-transaction type.
+
 ## [0.8.0] - 2026-07-10
 
 ### Added

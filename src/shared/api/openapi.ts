@@ -238,6 +238,9 @@ export interface paths {
     /**
      * List Scans
      * @description List scans with filters (comma-separated multi-select; ``iab_category`` legacy alias).
+     *
+     *     ``tag_match=any`` (default) returns scans carrying at least one of the
+     *     requested ``tag`` slugs; ``tag_match=all`` requires every one of them.
      */
     get: operations["list_scans_api_v1_scans_get"];
     put?: never;
@@ -361,7 +364,13 @@ export interface paths {
     };
     /**
      * Get Screenshot
-     * @description Serve screenshot, optionally resized to *w* pixels wide. Public endpoint.
+     * @description Serve the page screenshot, optionally resized to *w* pixels wide. Public endpoint.
+     *
+     *     Omitting ``w`` always returns the capture as stored, which for a page
+     *     scan is the full scrollable page (bounded crawler-side), not just the
+     *     viewport. Passing ``w`` returns a thumbnail whose height is capped at
+     *     2.5x its width, so an over-tall page is cropped to its top region —
+     *     fetch without ``w`` when you need the whole page.
      */
     get: operations["get_screenshot_api_v1_scans__scan_id__screenshot_get"];
     put?: never;
@@ -382,8 +391,75 @@ export interface paths {
     /**
      * Get Creative Screenshot
      * @description Serve creative screenshot for ad tag scans. Public endpoint.
+     *
+     *     Unlike the page and landing surfaces, ``w`` never crops here — a
+     *     creative's aspect ratio is part of what is being verified.
      */
     get: operations["get_creative_screenshot_api_v1_scans__scan_id__creative_screenshot_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/creative-html": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Creative Html
+     * @description Serve the generated creative HTML source for ad-tag scans. Public endpoint.
+     *
+     *     Served as ``text/plain`` + ``X-Content-Type-Options: nosniff`` so a
+     *     direct navigation shows the source and never executes the untrusted
+     *     ad markup in our origin.
+     */
+    get: operations["get_creative_html_api_v1_scans__scan_id__creative_html_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/creative-video": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Creative Video
+     * @description Serve the stored VAST MediaFile MP4 for VAST scans. Public endpoint.
+     */
+    get: operations["get_creative_video_api_v1_scans__scan_id__creative_video_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/vast-xml": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Vast Xml
+     * @description Serve the resolved/unwrapped VAST XML for VAST scans. Public endpoint.
+     */
+    get: operations["get_vast_xml_api_v1_scans__scan_id__vast_xml_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -402,6 +478,9 @@ export interface paths {
     /**
      * Get Landing Screenshot
      * @description Serve one landing-tab screenshot for an ad-tag scan. Public endpoint.
+     *
+     *     Same ``w`` semantics as the page screenshot: the thumbnail is capped
+     *     at 2.5x its width, the un-resized artifact is the whole capture.
      */
     get: operations["get_landing_screenshot_api_v1_scans__scan_id__landings__landing_ord__screenshot_get"];
     put?: never;
@@ -2048,7 +2127,8 @@ export interface components {
       | "admin_adjustment"
       | "refund"
       | "invoice_settlement"
-      | "crypto_top_up";
+      | "crypto_top_up"
+      | "card_top_up";
     /**
      * BillingSummaryResponse
      * @description Aggregated billing state for an organization.
@@ -2172,6 +2252,11 @@ export interface components {
        * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Emulator Id */
@@ -2181,6 +2266,18 @@ export interface components {
       labels?: {
         [key: string]: string;
       };
+      /**
+       * Repeat Count
+       * @default 1
+       */
+      repeat_count: number;
+      /** @default isolated */
+      repeat_mode: components["schemas"]["RepeatModeType"];
+      /**
+       * Retry Max Attempts
+       * @default 0
+       */
+      retry_max_attempts: number;
     };
     /**
      * BulkUpdateAlertStatusRequest
@@ -2313,6 +2410,8 @@ export interface components {
       ad_tag?: string | null;
       /** Vast Tag */
       vast_tag?: string | null;
+      /** Referrer */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /**
@@ -2341,6 +2440,18 @@ export interface components {
        * @default
        */
       proxy_isp: string;
+      /**
+       * Repeat Count
+       * @default 1
+       */
+      repeat_count: number;
+      /** @default isolated */
+      repeat_mode: components["schemas"]["RepeatMode"];
+      /**
+       * Retry Max Attempts
+       * @default 0
+       */
+      retry_max_attempts: number;
       /** Schedule Type */
       schedule_type?: string | null;
       /** Schedule Weekly */
@@ -2440,6 +2551,11 @@ export interface components {
        * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Required for vast campaigns.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Group Id */
@@ -2473,6 +2589,18 @@ export interface components {
        * @default
        */
       proxy_isp: string;
+      /**
+       * Repeat Count
+       * @default 1
+       */
+      repeat_count: number;
+      /** @default isolated */
+      repeat_mode: components["schemas"]["RepeatMode"];
+      /**
+       * Retry Max Attempts
+       * @default 0
+       */
+      retry_max_attempts: number;
       /** Labels */
       labels?: {
         [key: string]: string;
@@ -2525,6 +2653,10 @@ export interface components {
        * @default page
        */
       target: string;
+      /** Tag Visibility */
+      tag_visibility?: {
+        [key: string]: components["schemas"]["TagVisibility"];
+      } | null;
     };
     /**
      * CreateCustomTaxonomyRequest
@@ -2578,6 +2710,11 @@ export interface components {
        * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       */
+      referrer?: string | null;
       /** Country Code */
       country_code: string;
       /** Emulator Id */
@@ -2597,6 +2734,23 @@ export interface components {
        * @default false
        */
       ad_discovery: boolean;
+      /**
+       * Repeat Count
+       * @description How many times to scan this combination. Each repeat is a full scan with its own report and its own billing.
+       * @default 1
+       */
+      repeat_count: number;
+      /**
+       * @description isolated: every repeat gets a fresh browser and a new IP. shared: all repeats run in one browser behind one IP, carrying cookies and localStorage over. Not available with ad_discovery.
+       * @default isolated
+       */
+      repeat_mode: components["schemas"]["RepeatModeType"];
+      /**
+       * Retry Max Attempts
+       * @description Extra crawl attempts after a technical failure (dead proxy, timeout, browser crash). The same scan is reused, so a retry is never billed twice.
+       * @default 0
+       */
+      retry_max_attempts: number;
     };
     /**
      * CreateWebhookRequest
@@ -2651,6 +2805,10 @@ export interface components {
        * @default personal
        */
       scope: string;
+      /** Tag Visibility */
+      tag_visibility?: {
+        [key: string]: string;
+      };
     };
     /**
      * CustomTaxonomyListItem
@@ -3733,6 +3891,31 @@ export interface components {
       sub_requests: components["schemas"]["SubRequestResponse"][];
     };
     /**
+     * RepeatMode
+     * @description How the repeats of one ``url x country x device`` relate to each other.
+     *
+     *     Value-compatible with scanning's ``RepeatModeType`` — campaigns owns
+     *     its own copy because the write side must not import another domain's
+     *     package (``check-imports``), and only the value crosses the boundary.
+     * @enum {string}
+     */
+    RepeatMode: "isolated" | "shared";
+    /**
+     * RepeatModeType
+     * @description Browser-session isolation mode for a group of repeated scans.
+     *
+     *     ``ISOLATED`` is the historical (and only) crawler behaviour: every
+     *     scan gets its own Chromium, its own context and its own proxy session,
+     *     so every repeat sees a new IP and an empty cookie jar.
+     *
+     *     ``SHARED`` makes the crawler run the whole group inside one browser
+     *     session — one proxy session (one IP) and ``storage_state`` carried from
+     *     one repeat to the next. Only groups in this mode carry a
+     *     ``Scan.repeat_session_id``.
+     * @enum {string}
+     */
+    RepeatModeType: "isolated" | "shared";
+    /**
      * RoleResponse
      * @description Role details with associated permission codenames.
      */
@@ -3989,6 +4172,28 @@ export interface components {
        * @default
        */
       emulator_category: string;
+      /**
+       * Repeat Index
+       * @default 0
+       */
+      repeat_index: number;
+      /**
+       * Repeat Total
+       * @default 1
+       */
+      repeat_total: number;
+      /** Repeat Session Id */
+      repeat_session_id?: string | null;
+      /**
+       * Retry Attempt
+       * @default 0
+       */
+      retry_attempt: number;
+      /**
+       * Retry Max Attempts
+       * @default 0
+       */
+      retry_max_attempts: number;
     };
     /**
      * ScanClassificationResponse
@@ -4061,16 +4266,34 @@ export interface components {
       ad_tag?: string | null;
       /** Vast Tag */
       vast_tag?: string | null;
+      /** Referrer */
+      referrer?: string | null;
       /**
        * Creative Kind
        * @default banner
+       * @enum {string}
        */
-      creative_kind: string;
+      creative_kind: "banner" | "video";
       /**
        * Creative Screenshot Url
        * @default
        */
       creative_screenshot_url: string;
+      /**
+       * Creative Video Url
+       * @default
+       */
+      creative_video_url: string;
+      /**
+       * Vast Xml Url
+       * @default
+       */
+      vast_xml_url: string;
+      /**
+       * Creative Html Url
+       * @default
+       */
+      creative_html_url: string;
       /**
        * Creative Width
        * @default 0
@@ -4111,6 +4334,33 @@ export interface components {
       completed_at: string | null;
       /** Landings */
       landings?: components["schemas"]["LandingResponse"][];
+      /**
+       * Repeat Index
+       * @default 0
+       */
+      repeat_index: number;
+      /**
+       * Repeat Total
+       * @default 1
+       */
+      repeat_total: number;
+      /** Repeat Session Id */
+      repeat_session_id?: string | null;
+      /**
+       * Repeat Scan Ids
+       * @description The sibling scans this request also created, excluding this one. Populated only by the create endpoints — list and detail responses leave it empty.
+       */
+      repeat_scan_ids?: string[];
+      /**
+       * Retry Attempt
+       * @default 0
+       */
+      retry_attempt: number;
+      /**
+       * Retry Max Attempts
+       * @default 0
+       */
+      retry_max_attempts: number;
     };
     /**
      * ScanStatus
@@ -4261,6 +4511,7 @@ export interface components {
       offer_url: string;
       /**
        * Screenshot Url
+       * @description Page screenshot at ?w=400 — a top-cropped tile of the capture, not the whole page. Fetch the endpoint without ?w= for the full frame.
        * @default
        */
       screenshot_url: string;
@@ -4474,6 +4725,16 @@ export interface components {
       archived_at?: string | null;
     };
     /**
+     * TagMatchMode
+     * @description Boolean semantics of the scan-list tag filter.
+     *
+     *     ``ANY`` matches scans carrying at least one requested slug, ``ALL``
+     *     only scans carrying every one of them. ``ANY`` is the default and
+     *     the historical behaviour.
+     * @enum {string}
+     */
+    TagMatchMode: "any" | "all";
+    /**
      * TagSeverity
      * @description Logical severity for a tag definition.
      *
@@ -4607,6 +4868,11 @@ export interface components {
        * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Only for vast campaigns.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes?: string[] | null;
       /** Group Id */
@@ -4625,6 +4891,11 @@ export interface components {
       proxy_city?: string | null;
       /** Proxy Isp */
       proxy_isp?: string | null;
+      /** Repeat Count */
+      repeat_count?: number | null;
+      repeat_mode?: components["schemas"]["RepeatMode"] | null;
+      /** Retry Max Attempts */
+      retry_max_attempts?: number | null;
       /** Labels */
       labels?: {
         [key: string]: string;
@@ -4661,6 +4932,10 @@ export interface components {
       target?: string | null;
       /** Is Active */
       is_active?: boolean | null;
+      /** Tag Visibility */
+      tag_visibility?: {
+        [key: string]: components["schemas"]["TagVisibility"];
+      } | null;
     };
     /**
      * UpdateCustomTaxonomyRequest
@@ -4932,6 +5207,11 @@ export interface components {
        * @default 0
        */
       wrapper_depth: number;
+      /**
+       * Click Through
+       * @default
+       */
+      click_through: string;
     };
     /**
      * VisibilityType
@@ -5402,6 +5682,7 @@ export interface operations {
         group_id?: string | null;
         parent_scan_id?: string | null;
         tag?: string | null;
+        tag_match?: components["schemas"]["TagMatchMode"];
         ai_category?: string | null;
         iab_v3_category?: string | null;
         iab_category?: string | null;
@@ -5668,6 +5949,99 @@ export interface operations {
       query?: {
         w?: number | null;
       };
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_creative_html_api_v1_scans__scan_id__creative_html_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_creative_video_api_v1_scans__scan_id__creative_video_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_vast_xml_api_v1_scans__scan_id__vast_xml_get: {
+    parameters: {
+      query?: never;
       header?: never;
       path: {
         scan_id: string;
