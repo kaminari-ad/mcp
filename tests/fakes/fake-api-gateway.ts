@@ -394,7 +394,7 @@ const DEFAULT_ORG: OrgResponse = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-const DEFAULT_SCAN: ScanResponse = {
+export const DEFAULT_SCAN: ScanResponse = {
   id: "00000000-0000-0000-0000-000000000aaa",
   url: "https://ad.example/a",
   country_code: "US",

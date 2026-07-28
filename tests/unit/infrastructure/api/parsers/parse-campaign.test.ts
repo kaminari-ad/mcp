@@ -57,6 +57,25 @@ describe("parseCampaign", () => {
     expect(c.campaign_type).toBe("vast");
     expect(c.vast_tag).toBe("https://ad.server/vast?id=1");
   });
+  it("keeps the repeat / retry settings through the pick whitelist", () => {
+    const c = parseCampaign({
+      ...VALID,
+      repeat_count: 4,
+      repeat_mode: "shared",
+      retry_max_attempts: 3,
+    })._unsafeUnwrap();
+    expect(c.repeat_count).toBe(4);
+    expect(c.repeat_mode).toBe("shared");
+    expect(c.retry_max_attempts).toBe(3);
+  });
+  it("defaults repeat_count / retry_max_attempts for an untouched campaign", () => {
+    const c = parseCampaign(VALID)._unsafeUnwrap();
+    expect(c.repeat_count).toBe(1);
+    expect(c.retry_max_attempts).toBe(0);
+  });
+  it("rejects an unknown repeat_mode", () => {
+    expect(parseCampaign({ ...VALID, repeat_mode: "session" }).isErr()).toBe(true);
+  });
 });
 
 describe("parseCampaignPage", () => {

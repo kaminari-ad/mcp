@@ -98,4 +98,35 @@ describe("parseScanPage", () => {
     expect(item?.network).toBe("ExoClick");
     expect(item?.slot_index).toBe(0);
   });
+  it("keeps the repeat / retry block through the pick whitelist", () => {
+    const r = parseScanPage({
+      items: [
+        {
+          ...VALID_BRIEF,
+          repeat_index: 1,
+          repeat_total: 3,
+          repeat_session_id: "00000000-0000-0000-0000-0000000005e5",
+          retry_attempt: 2,
+          retry_max_attempts: 4,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+    const item = r._unsafeUnwrap().items[0];
+    expect(item?.repeat_index).toBe(1);
+    expect(item?.repeat_total).toBe(3);
+    expect(item?.repeat_session_id).toBe("00000000-0000-0000-0000-0000000005e5");
+    expect(item?.retry_attempt).toBe(2);
+    expect(item?.retry_max_attempts).toBe(4);
+  });
+  it("defaults the repeat / retry block for a plain single scan", () => {
+    const r = parseScanPage({ items: [VALID_BRIEF], total: 1, page: 1, limit: 50 });
+    const item = r._unsafeUnwrap().items[0];
+    expect(item?.repeat_index).toBe(0);
+    expect(item?.repeat_total).toBe(1);
+    expect(item?.repeat_session_id ?? null).toBeNull();
+    expect(item?.retry_attempt).toBe(0);
+  });
 });

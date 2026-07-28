@@ -125,6 +125,48 @@ describe("createCampaignTool", () => {
     expect(call.body.url).toBe("https://publisher.example/article");
   });
 
+  it("forwards the repeat / retry trio and echoes the campaign's settings back", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const r = await createCampaignTool.handler(
+      {
+        name: "Cloaker hunt",
+        campaign_type: "url",
+        url: "https://x.com",
+        country_codes: ["US"],
+        repeat_count: 3,
+        repeat_mode: "shared",
+        retry_max_attempts: 2,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.repeat_count).toBe(3);
+    expect(call.body.repeat_mode).toBe("shared");
+    expect(call.body.retry_max_attempts).toBe(2);
+    const campaign = r._unsafeUnwrap();
+    expect(campaign.repeat_count).toBe(1);
+    expect(campaign.repeat_mode).toBe("isolated");
+    expect(campaign.retry_max_attempts).toBe(0);
+  });
+
+  it("rejects an out-of-range repeat_count at validation", () => {
+    const base = {
+      name: "X",
+      campaign_type: "url",
+      url: "https://x.com",
+      country_codes: ["US"],
+    };
+    expect(() => createCampaignTool.inputSchema.parse({ ...base, repeat_count: 21 })).toThrow();
+    expect(() =>
+      createCampaignTool.inputSchema.parse({ ...base, retry_max_attempts: 6 })
+    ).toThrow();
+    expect(() =>
+      createCampaignTool.inputSchema.parse({ ...base, repeat_mode: "session" })
+    ).toThrow();
+  });
+
   it("rejects an invalid campaign_type at validation", () => {
     expect(() =>
       createCampaignTool.inputSchema.parse({

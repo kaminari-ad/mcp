@@ -83,6 +83,37 @@ describe("parseScan", () => {
     expect(scan.creative_kind).toBe("banner");
     expect(scan.video ?? null).toBeNull();
   });
+  it("keeps the repeat / retry block through the pick whitelist", () => {
+    const scan = parseScan({
+      ...VALID,
+      repeat_index: 2,
+      repeat_total: 5,
+      repeat_session_id: "00000000-0000-0000-0000-0000000005e5",
+      repeat_scan_ids: [
+        "00000000-0000-0000-0000-000000000ab1",
+        "00000000-0000-0000-0000-000000000ab2",
+      ],
+      retry_attempt: 1,
+      retry_max_attempts: 3,
+    })._unsafeUnwrap();
+    expect(scan.repeat_index).toBe(2);
+    expect(scan.repeat_total).toBe(5);
+    expect(scan.repeat_session_id).toBe("00000000-0000-0000-0000-0000000005e5");
+    expect(scan.repeat_scan_ids).toEqual([
+      "00000000-0000-0000-0000-000000000ab1",
+      "00000000-0000-0000-0000-000000000ab2",
+    ]);
+    expect(scan.retry_attempt).toBe(1);
+    expect(scan.retry_max_attempts).toBe(3);
+  });
+  it("defaults the repeat / retry block to a single un-retried scan", () => {
+    const scan = parseScan(VALID)._unsafeUnwrap();
+    expect(scan.repeat_index).toBe(0);
+    expect(scan.repeat_total).toBe(1);
+    expect(scan.repeat_session_id ?? null).toBeNull();
+    expect(scan.retry_attempt).toBe(0);
+    expect(scan.retry_max_attempts).toBe(0);
+  });
 });
 
 describe("parseScanArray", () => {
