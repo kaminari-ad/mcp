@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { getScanCreativeScreenshotTool } from "../../../../src/application/tools/scans/get-scan-creative-screenshot.tool.js";
+import { getScanLandingScreenshotTool } from "../../../../src/application/tools/scans/get-scan-landing-screenshot.tool.js";
 import { getScanScreenshotTool } from "../../../../src/application/tools/scans/get-scan-screenshot.tool.js";
 import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -54,5 +56,27 @@ describe("getScanScreenshotTool", () => {
     expect(
       (await getScanScreenshotTool.handler({ scan_id: SID }, makeToolContext({ api }))).isErr()
     ).toBe(true);
+  });
+});
+
+describe("resized-screenshot cropping caveat", () => {
+  // The API top-crops a page or landing thumbnail past 2.5x its width, so
+  // an agent reading a resized capture may be looking at the top region of
+  // a much longer page. Creatives are never cropped — their aspect ratio is
+  // the artefact under verification — so that tool must NOT carry the text.
+  const widthText = (tool: {
+    inputSchema: { shape: { width: { description?: string | undefined } } };
+  }): string => tool.inputSchema.shape.width.description ?? "";
+
+  it.each([
+    ["get_scan_screenshot", getScanScreenshotTool],
+    ["get_scan_landing_screenshot", getScanLandingScreenshotTool],
+  ] as const)("%s warns about the crop and the way around it", (_name, tool) => {
+    expect(widthText(tool)).toMatch(/2\.5x/);
+    expect(widthText(tool)).toMatch(/without `width`/);
+  });
+
+  it("get_scan_creative_screenshot stays silent because it never crops", () => {
+    expect(widthText(getScanCreativeScreenshotTool)).not.toMatch(/2\.5x/);
   });
 });

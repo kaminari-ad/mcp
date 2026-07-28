@@ -394,7 +394,7 @@ const DEFAULT_ORG: OrgResponse = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-const DEFAULT_SCAN: ScanResponse = {
+export const DEFAULT_SCAN: ScanResponse = {
   id: "00000000-0000-0000-0000-000000000aaa",
   url: "https://ad.example/a",
   country_code: "US",
@@ -419,9 +419,14 @@ const DEFAULT_SCAN: ScanResponse = {
   network: "",
   created_at: "2026-05-16T12:00:00Z",
   completed_at: "2026-05-16T12:00:01Z",
+  repeat_index: 0,
+  repeat_total: 1,
+  repeat_session_id: null,
+  retry_attempt: 0,
+  retry_max_attempts: 0,
 };
 
-const DEFAULT_CAMPAIGN: CampaignResponse = {
+export const DEFAULT_CAMPAIGN: CampaignResponse = {
   id: "00000000-0000-0000-0000-000000000ccc",
   name: "Test Campaign",
   campaign_type: "url",
@@ -435,6 +440,9 @@ const DEFAULT_CAMPAIGN: CampaignResponse = {
   proxy_region: "",
   proxy_city: "",
   proxy_isp: "",
+  repeat_count: 1,
+  repeat_mode: "isolated",
+  retry_max_attempts: 0,
   labels: {},
   policy_set_id: null,
   schedule_enabled: false,

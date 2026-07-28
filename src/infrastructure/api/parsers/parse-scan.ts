@@ -38,7 +38,18 @@ const ScanSchema = schemas.ScanResponse.pick({
   network: true,
   created_at: true,
   completed_at: true,
-}).strip();
+  repeat_index: true,
+  repeat_total: true,
+  repeat_session_id: true,
+  repeat_scan_ids: true,
+  retry_attempt: true,
+  retry_max_attempts: true,
+})
+  // `creative_kind` stays in the pick so a rename still breaks tsc, but
+  // the generated `banner | video` enum is widened to string per the
+  // port's forward-compat policy (see `ScanResponse.creative_kind`).
+  .extend({ creative_kind: z.string().default("banner") })
+  .strip();
 
 const ScanArraySchema = z.array(ScanSchema);
 

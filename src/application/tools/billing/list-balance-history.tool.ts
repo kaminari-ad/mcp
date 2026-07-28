@@ -14,6 +14,12 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
+/**
+ * Kept in step with the generated `BalanceTransactionType` by
+ * `tests/unit/tools/billing/list-balance-history.tool.test.ts` — a value
+ * the API has but this enum lacks is unfilterable even though unfiltered
+ * calls return it.
+ */
 const TransactionTypeEnum = z.enum([
   "initial_balance",
   "top_up_manual",
@@ -24,6 +30,7 @@ const TransactionTypeEnum = z.enum([
   "refund",
   "invoice_settlement",
   "crypto_top_up",
+  "card_top_up",
 ]);
 
 const ListBalanceHistoryInputShape = {
@@ -31,10 +38,10 @@ const ListBalanceHistoryInputShape = {
   date_to: z.string().date().optional().describe("ISO date, inclusive."),
   type: z
     .array(TransactionTypeEnum)
-    .max(9)
+    .max(TransactionTypeEnum.options.length)
     .optional()
     .describe(
-      "Filter by transaction kind. Pass several values to OR them (e.g. ['top_up_manual','crypto_top_up'] for credits-only)."
+      "Filter by transaction kind. Pass several values to OR them (e.g. ['top_up_manual','crypto_top_up','card_top_up'] for credits-only)."
     ),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),

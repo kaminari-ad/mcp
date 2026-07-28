@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { createScanTool } from "../../../../src/application/tools/scans/create-scan.tool.js";
-import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
+import {
+  createFakeApiGateway,
+  DEFAULT_SCAN,
+  err,
+  makeApiError,
+  ok,
+} from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("createScanTool", () => {
@@ -136,6 +142,87 @@ describe("createScanTool", () => {
     const call = api.state.calls[0];
     if (call?.method !== "createScan") throw new Error("wrong method");
     expect(call.body.run_id).toBeDefined();
+  });
+
+  it("forwards the repeat / retry trio to the gateway request", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://ad.example.com/a",
+        country_code: "US",
+        emulator_id: "default",
+        repeat_count: 5,
+        repeat_mode: "shared",
+        retry_max_attempts: 2,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.repeat_count).toBe(5);
+    expect(call.body.repeat_mode).toBe("shared");
+    expect(call.body.retry_max_attempts).toBe(2);
+  });
+
+  it("omits the repeat / retry keys entirely when the input leaves them unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      { url: "https://ad.example.com/a", country_code: "US", emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect("repeat_count" in call.body).toBe(false);
+    expect("repeat_mode" in call.body).toBe(false);
+    expect("retry_max_attempts" in call.body).toBe(false);
+  });
+
+  it("rejects an out-of-range repeat_count at the zod boundary", () => {
+    const base = { url: "https://x.com", country_code: "US", emulator_id: "default" };
+    expect(() => createScanTool.inputSchema.parse({ ...base, repeat_count: 21 })).toThrow();
+    expect(() => createScanTool.inputSchema.parse({ ...base, retry_max_attempts: 6 })).toThrow();
+  });
+
+  it("surfaces the repeat group the API reports back on the create response", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.createScan = ok({
+      ...DEFAULT_SCAN,
+      repeat_total: 3,
+      repeat_session_id: "00000000-0000-0000-0000-0000000005e5",
+      repeat_scan_ids: [
+        "00000000-0000-0000-0000-000000000ab1",
+        "00000000-0000-0000-0000-000000000ab2",
+      ],
+      retry_max_attempts: 2,
+    });
+    const ctx = makeToolContext({ api });
+    const result = await createScanTool.handler(
+      {
+        url: "https://ad.example.com/a",
+        country_code: "US",
+        emulator_id: "default",
+        repeat_count: 3,
+        repeat_mode: "shared",
+        retry_max_attempts: 2,
+      },
+      ctx
+    );
+    const scan = result._unsafeUnwrap();
+    expect(scan.repeat_index).toBe(0);
+    expect(scan.repeat_total).toBe(3);
+    expect(scan.repeat_session_id).toBe("00000000-0000-0000-0000-0000000005e5");
+    expect(scan.repeat_scan_ids).toHaveLength(2);
+    expect(scan.retry_max_attempts).toBe(2);
+  });
+
+  it("states its own fan-out formula and that it takes a single URL", () => {
+    // The shared repeat_count text is deliberately dimension-free, so this
+    // description is the only place an agent learns how many scans (and how
+    // many credits) one create_scan call costs.
+    expect(createScanTool.description).toMatch(/exactly `repeat_count` scans/);
+    expect(createScanTool.description).toMatch(/no multi-URL form/i);
   });
 
   it("maps invalid-input ApiError to ToolError", async () => {

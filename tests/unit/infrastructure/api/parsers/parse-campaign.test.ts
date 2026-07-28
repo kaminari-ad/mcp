@@ -57,6 +57,41 @@ describe("parseCampaign", () => {
     expect(c.campaign_type).toBe("vast");
     expect(c.vast_tag).toBe("https://ad.server/vast?id=1");
   });
+  it("keeps the repeat / retry settings through the pick whitelist", () => {
+    const c = parseCampaign({
+      ...VALID,
+      repeat_count: 4,
+      repeat_mode: "shared",
+      retry_max_attempts: 3,
+    })._unsafeUnwrap();
+    expect(c.repeat_count).toBe(4);
+    expect(c.repeat_mode).toBe("shared");
+    expect(c.retry_max_attempts).toBe(3);
+  });
+  it("defaults repeat_count / retry_max_attempts for an untouched campaign", () => {
+    const c = parseCampaign(VALID)._unsafeUnwrap();
+    expect(c.repeat_count).toBe(1);
+    expect(c.retry_max_attempts).toBe(0);
+  });
+  it("defaults repeat_mode rather than leaving it undefined", () => {
+    // openapi-zod-client drops the openapi `default` from a $ref'd enum,
+    // so an omitted repeat_mode would otherwise reach the agent as
+    // `undefined` behind a port field typed as always-present.
+    const c = parseCampaign(VALID)._unsafeUnwrap();
+    expect(c.repeat_mode).toBe("isolated");
+  });
+  it("defaults repeat_mode on every row of a page", () => {
+    const page = parseCampaignPage({
+      items: [VALID],
+      total: 1,
+      page: 1,
+      limit: 50,
+    })._unsafeUnwrap();
+    expect(page.items[0]?.repeat_mode).toBe("isolated");
+  });
+  it("rejects an unknown repeat_mode", () => {
+    expect(parseCampaign({ ...VALID, repeat_mode: "session" }).isErr()).toBe(true);
+  });
 });
 
 describe("parseCampaignPage", () => {

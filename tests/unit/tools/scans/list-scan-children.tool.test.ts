@@ -39,6 +39,11 @@ describe("listScanChildrenTool", () => {
       ad_kind: "banner",
       slot_index: 0,
       network: "ExoClick",
+      repeat_index: 0,
+      repeat_total: 1,
+      repeat_session_id: null,
+      retry_attempt: 0,
+      retry_max_attempts: 0,
     };
     api.state.responses.listScanChildren = ok<PaginatedResponse<ScanBriefResponse>, ApiError>({
       items: [child],

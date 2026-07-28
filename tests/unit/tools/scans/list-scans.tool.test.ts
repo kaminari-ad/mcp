@@ -22,6 +22,11 @@ const SCAN_BRIEF = {
   ad_discovery: false,
   network: "",
   created_at: "2026-05-16T10:00:00Z",
+  repeat_index: 0,
+  repeat_total: 1,
+  repeat_session_id: null,
+  retry_attempt: 0,
+  retry_max_attempts: 0,
 };
 
 describe("listScansTool", () => {
