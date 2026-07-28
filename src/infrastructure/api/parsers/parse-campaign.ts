@@ -38,7 +38,13 @@ const CampaignSchema = schemas.CampaignResponse.pick({
   is_archived: true,
   created_at: true,
   last_run_at: true,
-}).strip();
+})
+  // openapi-zod-client does not carry a `default` onto a $ref'd enum, so
+  // the generated `repeat_mode` is a bare `.optional()` while the API
+  // always sends it. Restore the API's default rather than loosening the
+  // port, which would push a phantom `undefined` onto every consumer.
+  .extend({ repeat_mode: schemas.RepeatMode.default("isolated") })
+  .strip();
 
 export const parseCampaign = (raw: unknown): Result<CampaignResponse, ApiError> =>
   parseWithSchema(CampaignSchema, raw, "campaign") as Result<CampaignResponse, ApiError>;

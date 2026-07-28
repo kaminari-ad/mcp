@@ -10,8 +10,8 @@
  * agent, and the repeated "forward only what was supplied" branching
  * lives in a single unit-tested helper.
  *
- * The repeat / retry trio is re-exported from
- * {@link repeatRetryFields} because the two scan-creation tools carry
+ * The repeat / retry trio is spread in from {@link repeatRetryFields}
+ * rather than declared here, because the two scan-creation tools carry
  * the identical fields.
  *
  * Every field is `.optional()`: on create the API applies its own

@@ -170,7 +170,6 @@ export type ScanResponse = Pick<
   | "public_report_url"
   | "ad_tag"
   | "vast_tag"
-  | "creative_kind"
   | "video"
   | "creative_screenshot_url"
   | "page_title"
@@ -192,7 +191,20 @@ export type ScanResponse = Pick<
   | "repeat_scan_ids"
   | "retry_attempt"
   | "retry_max_attempts"
->;
+> & {
+  /**
+   * What kind of creative the scan captured.
+   *
+   * API source narrows this to a specific enum (`banner` | `video`).
+   * We surface it as `string` for agent ergonomics — new kinds added on
+   * the API side surface without an MCP release. Same treatment as
+   * `block_reason`, and for a sharper reason here: `parseWithSchema`
+   * validates the whole object, so a narrow enum would turn one
+   * unrecognised value into a failure of the entire `get_scan` /
+   * `create_scan` / `create_bulk_scans` call.
+   */
+  readonly creative_kind: string;
+};
 
 export type ScanTagResponse = Pick<
   S["ScanTagResponse"],
@@ -968,17 +980,16 @@ export interface ListUsageFilters {
   readonly limit: number;
 }
 
-/** Possible values for ``ListBalanceHistoryFilters.type``. */
-export type BalanceTransactionType =
-  | "initial_balance"
-  | "top_up_manual"
-  | "usage_charge"
-  | "subscription_renewal"
-  | "subscription_upgrade"
-  | "admin_adjustment"
-  | "refund"
-  | "invoice_settlement"
-  | "crypto_top_up";
+/**
+ * Possible values for ``ListBalanceHistoryFilters.type``.
+ *
+ * Aliased straight off the generated schema rather than hand-mirrored:
+ * a value added on the API side (`card_top_up` was) then reaches this
+ * filter on the next `gen:api-types`, and any consumer that still
+ * enumerates the old list fails `tsc` instead of silently rejecting the
+ * new value locally.
+ */
+export type BalanceTransactionType = S["BalanceTransactionType"];
 
 export interface ListBalanceHistoryFilters {
   readonly date_from?: string;

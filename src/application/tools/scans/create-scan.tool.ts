@@ -75,7 +75,7 @@ export type CreateScanOutput = ScanResponse;
 export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
   name: "create_scan",
   description:
-    "Queue a single new scan for a URL, ad-tag, or VAST video tag against one country. COSTS CREDITS and bills the caller's organization — `repeat_count` multiplies both the scans created and the credits spent. Returns the newly-created scan record; when `repeat_count` > 1 the response's `repeat_scan_ids` lists the sibling scans this call also created.",
+    "Queue a single new scan for a URL, ad-tag, or VAST video tag against one country. Takes one target and one country — there is no multi-URL form; call it once per URL. COSTS CREDITS and bills the caller's organization: this call creates exactly `repeat_count` scans (default 1) and bills every one of them. Returns the newly-created scan record; when `repeat_count` > 1 the response's `repeat_scan_ids` lists the sibling scans this call also created.",
   annotations: {
     title: "Create Scan",
     readOnlyHint: false,

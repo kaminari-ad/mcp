@@ -13,9 +13,18 @@
  * `retry_max_attempts: 0`); on update an omitted field is left
  * unchanged.
  *
- * The 20 / 5 ceilings mirror the API's default operator limits
+ * The 20 / 5 ceilings mirror the API's *default* operator limits
  * (`SCANNING__MAX_REPEAT_COUNT` / `SCANNING__MAX_RETRY_ATTEMPTS`), so a
- * runaway agent is stopped here instead of by a 422.
+ * runaway agent is stopped here instead of by a 422. They are kill
+ * switches an operator can lower at any time, so the describe text also
+ * warns that an accepted value can still 422 — otherwise the agent has
+ * no way to explain that failure.
+ *
+ * The text stays dimension-free on purpose: `repeat_count` multiplies
+ * whatever fan-out the calling tool already produces (nothing for
+ * `create_scan`, countries for `create_bulk_scans`, countries x device
+ * profiles for the campaign tools), so the concrete formula belongs in
+ * each tool's own `description`, not here.
  */
 import { z } from "zod";
 
@@ -31,10 +40,12 @@ export const repeatRetryFields = {
     .max(20)
     .optional()
     .describe(
-      "How many scans to create for each url x country x device combination (1-20). " +
-        "This is a multiplier: 3 URLs x 2 countries x 2 devices with repeat_count=5 is " +
-        "60 scans, and every one of them is a full scan with its own report and its own " +
-        "billing. Default: 1."
+      "How many times to repeat every scan this call already produces (1-20). It is a " +
+        "multiplier on top of the tool's own fan-out — see that tool's description for " +
+        "the exact formula — and each resulting repeat is a full scan with its own " +
+        "report and its own billing. 1-20 is the API's default ceiling; an operator can " +
+        "lower it during an incident, and then a value accepted here still comes back " +
+        "as a 422 from the API. Default: 1."
     ),
   repeat_mode: z
     .enum(["isolated", "shared"])
@@ -45,9 +56,11 @@ export const repeatRetryFields = {
         "independent. 'shared' runs all repeats of one combination in a single browser " +
         "behind one IP, carrying cookies and localStorage from one repeat to the next — " +
         "use it to reproduce a cloaker or a frequency cap that only misbehaves on the " +
-        "second or third visit. 'shared' is rejected with 422 together with ad discovery " +
-        '(`ad_discovery: true` on a scan, `campaign_type: "ad_discovery"` on a ' +
-        "campaign). Default: isolated."
+        "second or third visit. 'shared' is rejected with 422 on an ad-discovery target: " +
+        "when creating, that is `ad_discovery: true` on a scan or `campaign_type: " +
+        '"ad_discovery"` on a campaign; when updating a campaign, it is a campaign whose ' +
+        "existing type is already ad_discovery, since campaign_type itself cannot be " +
+        "changed. Default: isolated."
     ),
   retry_max_attempts: z
     .number()
@@ -59,7 +72,8 @@ export const repeatRetryFields = {
       "Extra crawl attempts when a scan fails for a technical reason — dead proxy, " +
         "navigation timeout, browser crash (0-5). Permanent failures are never retried. " +
         "The same scan is reused and only a completed scan is billed, so a retry never " +
-        "double-charges. Default: 0."
+        "double-charges. 0-5 is the API's default ceiling; an operator can lower it, and " +
+        "then a value accepted here still comes back as a 422 from the API. Default: 0."
     ),
 } satisfies z.ZodRawShape;
 

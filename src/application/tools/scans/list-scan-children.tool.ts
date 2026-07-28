@@ -30,7 +30,7 @@ export type ListScanChildrenOutput = PaginatedResponse<ScanBriefResponse>;
 export const listScanChildrenTool: Tool<ListScanChildrenInputShape, ListScanChildrenOutput> = {
   name: "list_scan_children",
   description:
-    "List the discovered-ad child scans of a publisher ad-discovery scan — one per detected ad block on the page. Each child brief carries ad_kind (banner|pop), the attributed ad network, and slot_index. Returns a paginated envelope with screenshot + report deep-links; link users with those, never hand-build URLs.",
+    "List the discovered-ad child scans of a publisher ad-discovery scan — one per detected ad block on the page. Each child brief carries ad_kind (banner|pop), the attributed ad network, slot_index, and the repeat / retry fields (`repeat_index` / `repeat_total` for its position in a repeat group, `repeat_session_id`, `retry_attempt` / `retry_max_attempts`) — note that ad discovery never runs in `shared` repeat mode, so `repeat_session_id` is always null here. Returns a paginated envelope with screenshot + report deep-links; link users with those, never hand-build URLs.",
   annotations: {
     title: "List Scan Children",
     readOnlyHint: true,

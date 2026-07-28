@@ -22,7 +22,15 @@ const GetScanLandingScreenshotInputShape = {
     .min(0)
     .max(50)
     .describe("0-indexed landing slot (see `get_scan(...).landings[*].ord`)."),
-  width: z.number().int().min(50).max(2000).optional().describe("Optional resize width in pixels."),
+  width: z
+    .number()
+    .int()
+    .min(50)
+    .max(2000)
+    .optional()
+    .describe(
+      "Optional resize width in pixels. The API top-crops a resized landing screenshot whose height exceeds 2.5x its width, so a long landing page comes back as its top region only — never conclude that something is absent from the page from a resized capture. Fetch without `width` when you need the whole page."
+    ),
 } as const;
 type GetScanLandingScreenshotInputShape = typeof GetScanLandingScreenshotInputShape;
 

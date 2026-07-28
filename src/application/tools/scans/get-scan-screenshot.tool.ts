@@ -19,7 +19,7 @@ const GetScanScreenshotInputShape = {
     .max(2000)
     .optional()
     .describe(
-      "Optional resize width in pixels. The API resizes server-side to keep the image small for the agent's context window."
+      "Optional resize width in pixels. The API resizes server-side to keep the image small for the agent's context window. It also top-crops a resized page screenshot whose height exceeds 2.5x its width, so a long page comes back as its top region only — never conclude that something is absent from the page from a resized capture. Fetch without `width` when you need the whole page."
     ),
 } as const;
 type GetScanScreenshotInputShape = typeof GetScanScreenshotInputShape;
