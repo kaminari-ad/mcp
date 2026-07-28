@@ -38,6 +38,12 @@ const ScanSchema = schemas.ScanResponse.pick({
   network: true,
   created_at: true,
   completed_at: true,
+  repeat_index: true,
+  repeat_total: true,
+  repeat_session_id: true,
+  repeat_scan_ids: true,
+  retry_attempt: true,
+  retry_max_attempts: true,
 }).strip();
 
 const ScanArraySchema = z.array(ScanSchema);

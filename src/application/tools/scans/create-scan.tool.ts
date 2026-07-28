@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
@@ -65,6 +66,7 @@ const CreateScanInputShape = {
         "scan per detected ad (banner/pop). Only valid with `url`. Each child is a " +
         "separate billed scan; list them with `list_scan_children`."
     ),
+  ...repeatRetryFields,
 } as const;
 type CreateScanInputShape = typeof CreateScanInputShape;
 
@@ -73,7 +75,7 @@ export type CreateScanOutput = ScanResponse;
 export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
   name: "create_scan",
   description:
-    "Queue a single new scan for a URL, ad-tag, or VAST video tag against one country. COSTS CREDITS and bills the caller's organization. Returns the newly-created scan record.",
+    "Queue a single new scan for a URL, ad-tag, or VAST video tag against one country. COSTS CREDITS and bills the caller's organization — `repeat_count` multiplies both the scans created and the credits spent. Returns the newly-created scan record; when `repeat_count` > 1 the response's `repeat_scan_ids` lists the sibling scans this call also created.",
   annotations: {
     title: "Create Scan",
     readOnlyHint: false,
@@ -94,6 +96,7 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
       ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),
       ...(input.ad_discovery !== undefined ? { ad_discovery: input.ad_discovery } : {}),
+      ...pickRepeatRetryBody(input),
     };
     const result = await ctx.api.createScan(body);
     if (result.isErr()) return err(mapApiError(result.error));

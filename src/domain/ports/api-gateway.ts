@@ -121,6 +121,11 @@ export type ScanBriefResponse = Pick<
   | "ad_kind"
   | "network"
   | "created_at"
+  | "repeat_index"
+  | "repeat_total"
+  | "repeat_session_id"
+  | "retry_attempt"
+  | "retry_max_attempts"
 >;
 
 /**
@@ -147,6 +152,10 @@ export type ScanTileResponse = Pick<
  * Narrow scan view: omits heavy nested arrays
  * (redirect_chain, landings, classification). Agents that need them
  * can request them through dedicated tools (future work).
+ *
+ * `repeat_scan_ids` is populated only by the create endpoints (the
+ * siblings that same call produced); list and detail responses leave it
+ * empty.
  */
 export type ScanResponse = Pick<
   S["ScanResponse"],
@@ -177,6 +186,12 @@ export type ScanResponse = Pick<
   | "network"
   | "created_at"
   | "completed_at"
+  | "repeat_index"
+  | "repeat_total"
+  | "repeat_session_id"
+  | "repeat_scan_ids"
+  | "retry_attempt"
+  | "retry_max_attempts"
 >;
 
 export type ScanTagResponse = Pick<
@@ -209,8 +224,9 @@ interface ScanProxyTarget {
 }
 
 /**
- * `ad_discovery` is required-with-default in the generated type; surfaced
- * as optional so callers omit it and the API applies its default.
+ * `ad_discovery` and the repeat / retry trio are required-with-default in
+ * the generated type; surfaced as optional so callers omit them and the
+ * API applies its defaults.
  */
 export type CreateScanRequest = Pick<
   S["CreateScanRequest"],
@@ -222,12 +238,19 @@ export type CreateScanRequest = Pick<
   | "labels"
   | "campaign_id"
   | "run_id"
-> & { readonly proxy?: ScanProxyTarget } & Partial<Pick<S["CreateScanRequest"], "ad_discovery">>;
+> & { readonly proxy?: ScanProxyTarget } & Partial<
+    Pick<
+      S["CreateScanRequest"],
+      "ad_discovery" | "repeat_count" | "repeat_mode" | "retry_max_attempts"
+    >
+  >;
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
   "url" | "ad_tag" | "vast_tag" | "country_codes" | "emulator_id" | "labels"
-> & { readonly proxy?: ScanProxyTarget };
+> & { readonly proxy?: ScanProxyTarget } & Partial<
+    Pick<S["BulkScanRequest"], "repeat_count" | "repeat_mode" | "retry_max_attempts">
+  >;
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
 
@@ -257,6 +280,9 @@ export type CampaignResponse = Pick<
   | "proxy_region"
   | "proxy_city"
   | "proxy_isp"
+  | "repeat_count"
+  | "repeat_mode"
+  | "retry_max_attempts"
   | "labels"
   | "policy_set_id"
   | "schedule_enabled"
@@ -338,6 +364,9 @@ export type CreateCampaignRequest = Pick<
       | "proxy_region"
       | "proxy_city"
       | "proxy_isp"
+      | "repeat_count"
+      | "repeat_mode"
+      | "retry_max_attempts"
       | "schedule_type"
       | "schedule_weekly"
       | "schedule_interval_seconds"
@@ -360,6 +389,9 @@ export type UpdateCampaignRequest = Pick<
   | "proxy_region"
   | "proxy_city"
   | "proxy_isp"
+  | "repeat_count"
+  | "repeat_mode"
+  | "retry_max_attempts"
   | "labels"
   | "policy_set_id"
   | "schedule_type"

@@ -419,6 +419,11 @@ const DEFAULT_SCAN: ScanResponse = {
   network: "",
   created_at: "2026-05-16T12:00:00Z",
   completed_at: "2026-05-16T12:00:01Z",
+  repeat_index: 0,
+  repeat_total: 1,
+  repeat_session_id: null,
+  retry_attempt: 0,
+  retry_max_attempts: 0,
 };
 
 const DEFAULT_CAMPAIGN: CampaignResponse = {
@@ -435,6 +440,9 @@ const DEFAULT_CAMPAIGN: CampaignResponse = {
   proxy_region: "",
   proxy_city: "",
   proxy_isp: "",
+  repeat_count: 1,
+  repeat_mode: "isolated",
+  retry_max_attempts: 0,
   labels: {},
   policy_set_id: null,
   schedule_enabled: false,
