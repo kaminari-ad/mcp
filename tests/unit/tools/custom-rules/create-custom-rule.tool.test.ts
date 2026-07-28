@@ -34,6 +34,61 @@ describe("createCustomRuleTool", () => {
     expect(call.body.target).toBeUndefined();
   });
 
+  it("accepts both combo match_scope values and forwards config verbatim", async () => {
+    for (const match_scope of ["scan", "url"]) {
+      expect(
+        createCustomRuleTool.inputSchema.safeParse({
+          name: "AV consensus",
+          rule_type: "combo",
+          config: { match_scope, tag_category: "antivirus", count_gte: 5 },
+        }).success
+      ).toBe(true);
+    }
+    const api = createFakeApiGateway();
+    await createCustomRuleTool.handler(
+      {
+        name: "AV consensus",
+        rule_type: "combo",
+        config: { match_scope: "url", tag_category: "antivirus", count_gte: 5 },
+      },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCustomRule") throw new Error("wrong");
+    expect(call.body.config).toEqual({
+      match_scope: "url",
+      tag_category: "antivirus",
+      count_gte: 5,
+    });
+  });
+
+  it("rejects an unknown combo match_scope before the gateway is called", () => {
+    // The API rejects this too; failing locally turns an upstream 422
+    // into an input error naming the key and its two legal values.
+    for (const match_scope of ["per_url", "URL", 1]) {
+      const parsed = createCustomRuleTool.inputSchema.safeParse({
+        name: "AV consensus",
+        rule_type: "combo",
+        config: { match_scope, tag_category: "antivirus", count_gte: 5 },
+      });
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(parsed.error.issues[0]?.path).toEqual(["config", "match_scope"]);
+        expect(parsed.error.issues[0]?.message).toContain('"scan" or "url"');
+      }
+    }
+  });
+
+  it("documents the match_scope default and the per-link caveats in the config description", () => {
+    const description = createCustomRuleTool.inputSchema.shape.config.description ?? "";
+    expect(description).toContain('`"scan"` (the default');
+    expect(description).toContain("every condition must be satisfied by tags on the same link");
+    // The warning an LLM author most needs: a link-less-only combo never fires.
+    expect(description).toContain("has no link to attach to and will never match");
+    expect(description).toContain("not evaluated together today");
+    expect(description).toContain("at least one positive condition");
+  });
+
   it("forwards tag_slug and target when supplied", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

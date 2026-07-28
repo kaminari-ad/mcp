@@ -21,6 +21,34 @@ describe("testCustomRuleTool", () => {
     if (call?.method !== "testCustomRule") throw new Error("wrong");
     expect(call.body.scan_id).toBe(SID);
   });
+  it("previews a per-URL combo config and rejects an unknown match_scope", async () => {
+    const api = createFakeApiGateway();
+    await testCustomRuleTool.handler(
+      {
+        rule_type: "combo",
+        config: { match_scope: "url", tag_category: "antivirus", count_gte: 5 },
+        target: "page",
+        scan_id: SID,
+      },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "testCustomRule") throw new Error("wrong");
+    expect(call.body.config).toEqual({
+      match_scope: "url",
+      tag_category: "antivirus",
+      count_gte: 5,
+    });
+    expect(
+      testCustomRuleTool.inputSchema.safeParse({
+        rule_type: "combo",
+        config: { match_scope: "scan-wide", count_gte: 5 },
+        target: "page",
+        scan_id: SID,
+      }).success
+    ).toBe(false);
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.testCustomRule = err(makeApiError("invalid-input", "regex"));

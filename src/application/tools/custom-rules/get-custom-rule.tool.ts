@@ -9,6 +9,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { COMBO_MATCH_SCOPE_READ_DOC } from "./_rule-config-input.js";
 
 const GetCustomRuleInputShape = { rule_id: z.string().uuid().describe("Rule UUID.") } as const;
 type GetCustomRuleInputShape = typeof GetCustomRuleInputShape;
@@ -18,7 +19,8 @@ export type GetCustomRuleOutput = CustomRuleResponse;
 export const getCustomRuleTool: Tool<GetCustomRuleInputShape, GetCustomRuleOutput> = {
   name: "get_custom_rule",
   description:
-    "Get one custom rule by UUID with name, tag-slug, type, config object, target, active flag.",
+    "Get one custom rule by UUID with name, tag-slug, type, config object, target, active flag. " +
+    COMBO_MATCH_SCOPE_READ_DOC,
   annotations: {
     title: "Get Custom Rule",
     readOnlyHint: true,
