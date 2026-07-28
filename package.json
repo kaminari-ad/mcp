@@ -76,7 +76,7 @@
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test:cov && npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "neverthrow": "8.1.1",
     "openapi-fetch": "0.17.0",
     "pino": "9.5.0",
