@@ -12,14 +12,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import js from "@eslint/js";
-import importPlugin from "eslint-plugin-import";
+import vitest from "@vitest/eslint-plugin";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import importX from "eslint-plugin-import-x";
 import jsdoc from "eslint-plugin-jsdoc";
 import noSecrets from "eslint-plugin-no-secrets";
 import promise from "eslint-plugin-promise";
 import security from "eslint-plugin-security";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import unicorn from "eslint-plugin-unicorn";
-import vitest from "eslint-plugin-vitest";
 import prettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
 
@@ -58,7 +59,7 @@ export default tseslint.config(
       },
     },
     plugins: {
-      import: importPlugin,
+      "import-x": importX,
       "simple-import-sort": simpleImportSort,
       promise,
       unicorn,
@@ -67,12 +68,10 @@ export default tseslint.config(
       jsdoc,
     },
     settings: {
-      "import/resolver": {
-        typescript: {
-          alwaysTryTypes: true,
-        },
-        node: true,
-      },
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({ alwaysTryTypes: true }),
+        importX.createNodeResolver(),
+      ],
     },
   },
 
@@ -126,12 +125,12 @@ export default tseslint.config(
       "promise/no-promise-in-callback": "warn",
 
       // === Import discipline ===
-      "import/no-cycle": ["error", { maxDepth: 10 }],
-      "import/no-self-import": "error",
-      "import/no-default-export": "error", // named exports only — better grep / refactor
-      "import/no-duplicates": "error",
-      "import/first": "error",
-      "import/newline-after-import": "error",
+      "import-x/no-cycle": ["error", { maxDepth: 10 }],
+      "import-x/no-self-import": "error",
+      "import-x/no-default-export": "error", // named exports only — better grep / refactor
+      "import-x/no-duplicates": "error",
+      "import-x/first": "error",
+      "import-x/newline-after-import": "error",
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
 
@@ -270,6 +269,11 @@ export default tseslint.config(
     plugins: { vitest },
     rules: {
       ...vitest.configs.recommended.rules,
+      // Discriminated-union / neverthrow `Result` narrowing needs an
+      // `if` that TypeScript understands; every such block here sits
+      // behind an unconditional `expect` on the same discriminant, so
+      // the branch cannot be silently skipped.
+      "vitest/no-conditional-expect": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/explicit-function-return-type": "off",
@@ -290,7 +294,7 @@ export default tseslint.config(
       "jsdoc/require-description": "off",
       "no-console": "off",
       "no-secrets/no-secrets": "off",
-      "import/no-default-export": "off",
+      "import-x/no-default-export": "off",
       "no-restricted-imports": "off",
     },
   },
@@ -299,7 +303,7 @@ export default tseslint.config(
   {
     files: ["*.config.ts", "*.config.mts"],
     rules: {
-      "import/no-default-export": "off",
+      "import-x/no-default-export": "off",
       "@typescript-eslint/no-require-imports": "off",
     },
   },

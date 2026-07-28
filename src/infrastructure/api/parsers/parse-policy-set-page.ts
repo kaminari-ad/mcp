@@ -32,7 +32,4 @@ const PolicySetListItemSchema = schemas.PolicySetListItem.pick({
 export const parsePolicySetPage = (
   raw: unknown
 ): Result<PaginatedResponse<PolicySetListItemResponse>, ApiError> =>
-  parsePagedWithItemSchema(PolicySetListItemSchema, raw, "policy-sets") as Result<
-    PaginatedResponse<PolicySetListItemResponse>,
-    ApiError
-  >;
+  parsePagedWithItemSchema(PolicySetListItemSchema, raw, "policy-sets");

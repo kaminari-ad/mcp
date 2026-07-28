@@ -37,7 +37,4 @@ const ScanTileSchema = schemas.ScanTileResponse.pick({
 export const parseRunScanPage = (
   raw: unknown
 ): Result<PaginatedResponse<ScanTileResponse>, ApiError> =>
-  parsePagedWithItemSchema(ScanTileSchema, raw, "run-scans") as Result<
-    PaginatedResponse<ScanTileResponse>,
-    ApiError
-  >;
+  parsePagedWithItemSchema(ScanTileSchema, raw, "run-scans");

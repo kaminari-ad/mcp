@@ -20,4 +20,4 @@ const ApiKeySchema = schemas.ApiKeyResponse.pick({
 const ApiKeyListSchema = z.array(ApiKeySchema);
 
 export const parseApiKeyList = (raw: unknown): Result<readonly ApiKeyResponse[], ApiError> =>
-  parseWithSchema(ApiKeyListSchema, raw, "api-keys") as Result<readonly ApiKeyResponse[], ApiError>;
+  parseWithSchema(ApiKeyListSchema, raw, "api-keys");

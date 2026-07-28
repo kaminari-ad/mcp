@@ -48,7 +48,7 @@ describe("updateTagDefinitionTool", () => {
     const parsed = updateTagDefinitionTool.inputSchema.parse({
       slug: "x",
       show_in_public_report: true,
-    } as unknown as Record<string, unknown>);
+    });
     expect("show_in_public_report" in parsed).toBe(false);
   });
 

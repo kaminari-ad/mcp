@@ -19,4 +19,4 @@ const GeoSchema = schemas.GeoResponse.pick({
 const GeoListSchema = z.array(GeoSchema);
 
 export const parseGeoList = (raw: unknown): Result<readonly GeoResponse[], ApiError> =>
-  parseWithSchema(GeoListSchema, raw, "geos") as Result<readonly GeoResponse[], ApiError>;
+  parseWithSchema(GeoListSchema, raw, "geos");

@@ -120,7 +120,7 @@ const OrgSchema = schemas.OrgResponse.pick({
 }).strip();
 
 export const parseOrg = (raw: unknown): Result<OrgResponse, ApiError> =>
-  parseWithSchema(OrgSchema, raw, "org") as Result<OrgResponse, ApiError>;
+  parseWithSchema(OrgSchema, raw, "org");
 
 const UserSchema = schemas.UserResponse.pick({
   id: true,
@@ -133,7 +133,7 @@ const UserSchema = schemas.UserResponse.pick({
 }).strip();
 
 export const parseUser = (raw: unknown): Result<UserResponse, ApiError> =>
-  parseWithSchema(UserSchema, raw, "user") as Result<UserResponse, ApiError>;
+  parseWithSchema(UserSchema, raw, "user");
 
 const RoleSchema = schemas.RoleResponse.pick({
   id: true,
@@ -144,7 +144,7 @@ const RoleSchema = schemas.RoleResponse.pick({
 }).strip();
 
 export const parseRole = (raw: unknown): Result<RoleResponse, ApiError> =>
-  parseWithSchema(RoleSchema, raw, "role") as Result<RoleResponse, ApiError>;
+  parseWithSchema(RoleSchema, raw, "role");
 
 const LabelDefinitionSchema = schemas.LabelDefinitionResponse.pick({
   key: true,
@@ -154,10 +154,7 @@ const LabelDefinitionSchema = schemas.LabelDefinitionResponse.pick({
 }).strip();
 
 export const parseLabelDefinition = (raw: unknown): Result<LabelDefinitionResponse, ApiError> =>
-  parseWithSchema(LabelDefinitionSchema, raw, "label-definition") as Result<
-    LabelDefinitionResponse,
-    ApiError
-  >;
+  parseWithSchema(LabelDefinitionSchema, raw, "label-definition");
 
 const ApiKeyCreatedSchema = schemas.ApiKeyCreatedResponse.pick({
   id: true,
@@ -169,10 +166,7 @@ const ApiKeyCreatedSchema = schemas.ApiKeyCreatedResponse.pick({
 }).strip();
 
 export const parseApiKeyCreated = (raw: unknown): Result<ApiKeyCreatedResponse, ApiError> =>
-  parseWithSchema(ApiKeyCreatedSchema, raw, "api-key-created") as Result<
-    ApiKeyCreatedResponse,
-    ApiError
-  >;
+  parseWithSchema(ApiKeyCreatedSchema, raw, "api-key-created");
 
 const ScanTagSchema = schemas.ScanTagResponse.pick({
   id: true,
@@ -187,7 +181,7 @@ const ScanTagSchema = schemas.ScanTagResponse.pick({
 }).strip();
 
 export const parseScanTag = (raw: unknown): Result<ScanTagResponse, ApiError> =>
-  parseWithSchema(ScanTagSchema, raw, "scan-tag") as Result<ScanTagResponse, ApiError>;
+  parseWithSchema(ScanTagSchema, raw, "scan-tag");
 
 const RuleTestSchema = schemas.RuleTestResponse.pick({
   matched: true,
@@ -196,7 +190,7 @@ const RuleTestSchema = schemas.RuleTestResponse.pick({
 }).strip();
 
 export const parseRuleTest = (raw: unknown): Result<RuleTestResponse, ApiError> =>
-  parseWithSchema(RuleTestSchema, raw, "rule-test") as Result<RuleTestResponse, ApiError>;
+  parseWithSchema(RuleTestSchema, raw, "rule-test");
 
 const AlertStatsSchema = schemas.AlertStatsResponse.pick({
   open: true,
@@ -206,7 +200,7 @@ const AlertStatsSchema = schemas.AlertStatsResponse.pick({
 }).strip();
 
 export const parseAlertStats = (raw: unknown): Result<AlertStatsResponse, ApiError> =>
-  parseWithSchema(AlertStatsSchema, raw, "alert-stats") as Result<AlertStatsResponse, ApiError>;
+  parseWithSchema(AlertStatsSchema, raw, "alert-stats");
 
 const UsageSchema = schemas.UsageResponse.pick({
   id: true,
@@ -219,7 +213,7 @@ const UsageSchema = schemas.UsageResponse.pick({
 }).strip();
 
 export const parseUsage = (raw: unknown): Result<UsageResponse, ApiError> =>
-  parseWithSchema(UsageSchema, raw, "usage") as Result<UsageResponse, ApiError>;
+  parseWithSchema(UsageSchema, raw, "usage");
 
 const UsageSummarySchema = schemas.UsagePeriodSummaryResponse.pick({
   period_start: true,
@@ -232,10 +226,7 @@ const UsageSummarySchema = schemas.UsagePeriodSummaryResponse.pick({
 }).strip();
 
 export const parseUsageSummary = (raw: unknown): Result<UsagePeriodSummaryResponse, ApiError> =>
-  parseWithSchema(UsageSummarySchema, raw, "usage-summary") as Result<
-    UsagePeriodSummaryResponse,
-    ApiError
-  >;
+  parseWithSchema(UsageSummarySchema, raw, "usage-summary");
 
 const BalanceTxSchema = schemas.BalanceTransactionResponse.pick({
   id: true,
@@ -250,10 +241,7 @@ const BalanceTxSchema = schemas.BalanceTransactionResponse.pick({
 }).strip();
 
 export const parseBalanceTx = (raw: unknown): Result<BalanceTransactionResponse, ApiError> =>
-  parseWithSchema(BalanceTxSchema, raw, "balance-tx") as Result<
-    BalanceTransactionResponse,
-    ApiError
-  >;
+  parseWithSchema(BalanceTxSchema, raw, "balance-tx");
 
 const InvoiceSchema = schemas.InvoiceResponse.pick({
   id: true,
@@ -274,7 +262,7 @@ const InvoiceSchema = schemas.InvoiceResponse.pick({
 }).strip();
 
 export const parseInvoice = (raw: unknown): Result<InvoiceResponse, ApiError> =>
-  parseWithSchema(InvoiceSchema, raw, "invoice") as Result<InvoiceResponse, ApiError>;
+  parseWithSchema(InvoiceSchema, raw, "invoice");
 
 const WebhookDeliverySchema = schemas.DeliveryAttemptResponse.pick({
   id: true,
@@ -289,20 +277,14 @@ const WebhookDeliverySchema = schemas.DeliveryAttemptResponse.pick({
 }).strip();
 
 export const parseWebhookDelivery = (raw: unknown): Result<DeliveryAttemptResponse, ApiError> =>
-  parseWithSchema(WebhookDeliverySchema, raw, "webhook-delivery") as Result<
-    DeliveryAttemptResponse,
-    ApiError
-  >;
+  parseWithSchema(WebhookDeliverySchema, raw, "webhook-delivery");
 
 const EventCatalogSchema = schemas.EventCatalogResponse.pick({
   entries: true,
 }).strip();
 
 export const parseEventCatalog = (raw: unknown): Result<EventCatalogResponse, ApiError> =>
-  parseWithSchema(EventCatalogSchema, raw, "event-catalog") as Result<
-    EventCatalogResponse,
-    ApiError
-  >;
+  parseWithSchema(EventCatalogSchema, raw, "event-catalog");
 
 const AlertDestinationSchema = schemas.AlertNotificationDestinationResponse.pick({
   id: true,
@@ -327,10 +309,7 @@ const AlertDestinationSchema = schemas.AlertNotificationDestinationResponse.pick
 export const parseAlertDestination = (
   raw: unknown
 ): Result<AlertNotificationDestinationResponse, ApiError> =>
-  parseWithSchema(AlertDestinationSchema, raw, "alert-destination") as Result<
-    AlertNotificationDestinationResponse,
-    ApiError
-  >;
+  parseWithSchema(AlertDestinationSchema, raw, "alert-destination");
 
 const CampaignOverridesSchema = schemas.CampaignOverridesResponse.pick({
   campaign_id: true,
@@ -341,10 +320,7 @@ const CampaignOverridesSchema = schemas.CampaignOverridesResponse.pick({
 export const parseCampaignAlertOverrides = (
   raw: unknown
 ): Result<CampaignOverridesResponse, ApiError> =>
-  parseWithSchema(CampaignOverridesSchema, raw, "campaign-overrides") as Result<
-    CampaignOverridesResponse,
-    ApiError
-  >;
+  parseWithSchema(CampaignOverridesSchema, raw, "campaign-overrides");
 
 const BulkReplaySchema = schemas.BulkReplayResponse.pick({
   replayed: true,
@@ -352,7 +328,7 @@ const BulkReplaySchema = schemas.BulkReplayResponse.pick({
 }).strip();
 
 export const parseBulkReplay = (raw: unknown): Result<BulkReplayResponse, ApiError> =>
-  parseWithSchema(BulkReplaySchema, raw, "bulk-replay") as Result<BulkReplayResponse, ApiError>;
+  parseWithSchema(BulkReplaySchema, raw, "bulk-replay");
 
 const GroupActionSchema = schemas.GroupActionResponse.pick({
   group_id: true,

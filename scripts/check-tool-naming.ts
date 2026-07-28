@@ -129,7 +129,7 @@ async function main(): Promise<number> {
     const decl = toolExport[0];
     if (!decl) continue;
     const initializer = Node.isVariableDeclaration(decl) ? decl.getInitializer() : undefined;
-    if (!initializer || initializer.getKind() !== SyntaxKind.ObjectLiteralExpression) {
+    if (initializer?.getKind() !== SyntaxKind.ObjectLiteralExpression) {
       violations.push({
         file: rel,
         rule: "shape",
