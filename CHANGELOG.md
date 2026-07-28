@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commits the page document on that URL without fetching the publisher, so the
   creative renders as if embedded there. With `url` or `ad_discovery` it is
   where the visitor came from, sent as the `Referer` of the page request.
+  Scan and campaign responses surface `referrer` too, so an agent can confirm
+  what a scan actually ran with.
 
 ### Changed
 

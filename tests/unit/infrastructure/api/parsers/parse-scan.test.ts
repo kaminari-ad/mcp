@@ -78,6 +78,17 @@ describe("parseScan", () => {
     expect(scan.creative_kind).toBe("video");
     expect(scan.video?.vast_version).toBe("4.0");
   });
+  it("surfaces the referrer the scan actually ran with", () => {
+    const scan = parseScan({
+      ...VALID,
+      referrer: "https://publisher.example/news/article-1",
+    })._unsafeUnwrap();
+    expect(scan.referrer).toBe("https://publisher.example/news/article-1");
+  });
+  it("accepts a null referrer and an absent one alike", () => {
+    expect(parseScan({ ...VALID, referrer: null })._unsafeUnwrap().referrer).toBeNull();
+    expect(parseScan(VALID)._unsafeUnwrap().referrer ?? null).toBeNull();
+  });
   it("defaults creative_kind to banner and video to absent for non-VAST scans", () => {
     const scan = parseScan(VALID)._unsafeUnwrap();
     expect(scan.creative_kind).toBe("banner");
