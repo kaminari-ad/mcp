@@ -52,9 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capture is top-cropped past 2.5x its width, and to omit `width` when the
   whole page matters. `get_scan_creative_screenshot` never crops and is
   unchanged.
-- `get_campaign`, `list_campaigns`, and `list_scan_children` describe the
-  repeat / retry fields they return, and `get_scan` documents the creative's
-  `click_through` destination.
+- `get_campaign` and `list_campaigns` describe the repeat / retry settings they
+  echo, `list_scan_children` explains why those fields are always neutral on a
+  discovered-ad child, and `get_scan` documents the creative's `click_through`
+  destination.
 
 ## [0.8.0] - 2026-07-10
 
