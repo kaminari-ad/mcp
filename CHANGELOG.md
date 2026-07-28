@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-28
+
 ### Added
 
 - **Combo-rule match scope.** `create_custom_rule`, `update_custom_rule`, and
