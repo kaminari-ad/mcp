@@ -53,22 +53,13 @@ const TestWebhookResponseSchema = schemas.TestWebhookResponse.pick({
 }).strip();
 
 export const parseWebhook = (raw: unknown): Result<WebhookResponse, ApiError> =>
-  parseWithSchema(WebhookSchema, raw, "webhook") as Result<WebhookResponse, ApiError>;
+  parseWithSchema(WebhookSchema, raw, "webhook");
 
 export const parseWebhookList = (raw: unknown): Result<readonly WebhookResponse[], ApiError> =>
-  parseWithSchema(WebhookListSchema, raw, "webhooks") as Result<
-    readonly WebhookResponse[],
-    ApiError
-  >;
+  parseWithSchema(WebhookListSchema, raw, "webhooks");
 
 export const parseWebhookCreated = (raw: unknown): Result<WebhookCreatedResponse, ApiError> =>
-  parseWithSchema(WebhookCreatedSchema, raw, "webhook-created") as Result<
-    WebhookCreatedResponse,
-    ApiError
-  >;
+  parseWithSchema(WebhookCreatedSchema, raw, "webhook-created");
 
 export const parseTestWebhookResponse = (raw: unknown): Result<TestWebhookResponse, ApiError> =>
-  parseWithSchema(TestWebhookResponseSchema, raw, "test-webhook") as Result<
-    TestWebhookResponse,
-    ApiError
-  >;
+  parseWithSchema(TestWebhookResponseSchema, raw, "test-webhook");

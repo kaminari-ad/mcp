@@ -58,10 +58,10 @@ variables:
 setup:
   stage: setup
   script:
-    # `--legacy-peer-deps` papers over peer-dep mismatches between
-    # eslint 9.x and eslint-plugin-vitest's vendored typescript-eslint
-    # (vitest plugin lags). Safe to drop once the plugin catches up to
-    # @typescript-eslint/utils >= 8.x.
+    # `--legacy-peer-deps` is belt-and-suspenders since the eslint 10
+    # bump: the mismatch it papered over (eslint-plugin-vitest vendoring
+    # @typescript-eslint/utils 7.x) is gone with @vitest/eslint-plugin,
+    # and `npm ci` now resolves cleanly without the flag.
     - npm ci --ignore-scripts --legacy-peer-deps
   cache:
     key:

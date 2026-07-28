@@ -72,21 +72,12 @@ const ParseTaxonomyTextResponseSchema = schemas.ParseTaxonomyTextResponse.pick({
 export const parseCustomTaxonomyList = (
   raw: unknown
 ): Result<readonly CustomTaxonomyListItem[], ApiError> =>
-  parseWithSchema(CustomTaxonomyListSchema, raw, "custom-taxonomies") as Result<
-    readonly CustomTaxonomyListItem[],
-    ApiError
-  >;
+  parseWithSchema(CustomTaxonomyListSchema, raw, "custom-taxonomies");
 
 export const parseCustomTaxonomy = (raw: unknown): Result<CustomTaxonomyResponse, ApiError> =>
-  parseWithSchema(CustomTaxonomySchema, raw, "custom-taxonomy") as Result<
-    CustomTaxonomyResponse,
-    ApiError
-  >;
+  parseWithSchema(CustomTaxonomySchema, raw, "custom-taxonomy");
 
 export const parseTaxonomyTextPreview = (
   raw: unknown
 ): Result<ParseTaxonomyTextResponse, ApiError> =>
-  parseWithSchema(ParseTaxonomyTextResponseSchema, raw, "custom-taxonomy-parse-text") as Result<
-    ParseTaxonomyTextResponse,
-    ApiError
-  >;
+  parseWithSchema(ParseTaxonomyTextResponseSchema, raw, "custom-taxonomy-parse-text");

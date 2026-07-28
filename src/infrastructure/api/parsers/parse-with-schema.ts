@@ -109,7 +109,7 @@ export function parseArrayOrItemsWithSchema<S extends z.ZodTypeAny>(
     return parseWithSchema(z.array(itemSchema), raw, label);
   }
   if (raw !== null && typeof raw === "object" && "items" in raw) {
-    const items = (raw as { items: unknown }).items;
+    const items = raw.items;
     return parseWithSchema(z.array(itemSchema), items, label);
   }
   return err({

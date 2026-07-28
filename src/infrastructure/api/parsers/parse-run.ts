@@ -22,4 +22,4 @@ const RunSchema = schemas.RunResponse.pick({
 }).strip();
 
 export const parseRun = (raw: unknown): Result<RunResponse, ApiError> =>
-  parseWithSchema(RunSchema, raw, "run") as Result<RunResponse, ApiError>;
+  parseWithSchema(RunSchema, raw, "run");

@@ -26,4 +26,4 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
 }).strip();
 
 export const parseCustomRule = (raw: unknown): Result<CustomRuleResponse, ApiError> =>
-  parseWithSchema(CustomRuleSchema, raw, "custom-rule") as Result<CustomRuleResponse, ApiError>;
+  parseWithSchema(CustomRuleSchema, raw, "custom-rule");
