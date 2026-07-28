@@ -60,6 +60,7 @@ describe("getScanTool", () => {
         ad_system: "AdServer",
         is_vpaid: false,
         wrapper_depth: 1,
+        click_through: "https://landing.example/offer",
       },
       creative_screenshot_url: "",
       page_title: "",

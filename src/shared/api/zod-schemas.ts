@@ -153,6 +153,7 @@ const ProxyTargetRequest = z
   })
   .partial()
   .passthrough();
+const RepeatModeType = z.enum(["isolated", "shared"]);
 const CreateScanRequest = z
   .object({
     url: z.union([z.string(), z.null()]).optional(),
@@ -165,6 +166,9 @@ const CreateScanRequest = z
     campaign_id: z.union([z.string(), z.null()]).optional(),
     run_id: z.union([z.string(), z.null()]).optional(),
     ad_discovery: z.boolean().optional().default(false),
+    repeat_count: z.number().int().gte(1).optional().default(1),
+    repeat_mode: RepeatModeType.optional(),
+    retry_max_attempts: z.number().int().gte(0).optional().default(0),
   })
   .passthrough();
 const ScanStatus = z.enum([
@@ -211,6 +215,7 @@ const VideoMetaResponse = z
     ad_system: z.string().default(""),
     is_vpaid: z.boolean().default(false),
     wrapper_depth: z.number().int().default(0),
+    click_through: z.string().default(""),
   })
   .partial()
   .passthrough();
@@ -293,8 +298,11 @@ const ScanResponse = z
     public_report_url: z.string().optional().default(""),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
-    creative_kind: z.string().optional().default("banner"),
+    creative_kind: z.enum(["banner", "video"]).optional().default("banner"),
     creative_screenshot_url: z.string().optional().default(""),
+    creative_video_url: z.string().optional().default(""),
+    vast_xml_url: z.string().optional().default(""),
+    creative_html_url: z.string().optional().default(""),
     creative_width: z.number().int().optional().default(0),
     creative_height: z.number().int().optional().default(0),
     video: z.union([VideoMetaResponse, z.null()]).optional(),
@@ -311,6 +319,12 @@ const ScanResponse = z
     created_at: z.string().datetime({ offset: true }),
     completed_at: z.union([z.string(), z.null()]),
     landings: z.array(LandingResponse).optional(),
+    repeat_index: z.number().int().optional().default(0),
+    repeat_total: z.number().int().optional().default(1),
+    repeat_session_id: z.union([z.string(), z.null()]).optional(),
+    repeat_scan_ids: z.array(z.string().uuid()).optional(),
+    retry_attempt: z.number().int().optional().default(0),
+    retry_max_attempts: z.number().int().optional().default(0),
   })
   .passthrough();
 const status = z.union([z.string(), z.null()]).optional();
@@ -340,6 +354,11 @@ const ScanBriefResponse = z
     network: z.string().optional().default(""),
     emulator_display_name: z.string().optional().default(""),
     emulator_category: z.string().optional().default(""),
+    repeat_index: z.number().int().optional().default(0),
+    repeat_total: z.number().int().optional().default(1),
+    repeat_session_id: z.union([z.string(), z.null()]).optional(),
+    retry_attempt: z.number().int().optional().default(0),
+    retry_max_attempts: z.number().int().optional().default(0),
   })
   .passthrough();
 const PaginatedResponse_ScanBriefResponse_ = z
@@ -360,6 +379,9 @@ const BulkScanRequest = z
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
     labels: z.record(z.string()).optional(),
+    repeat_count: z.number().int().gte(1).optional().default(1),
+    repeat_mode: RepeatModeType.optional(),
+    retry_max_attempts: z.number().int().gte(0).optional().default(0),
   })
   .passthrough();
 const RecheckRequest = z
@@ -419,6 +441,7 @@ const GroupActionResponse = z
     failures: z.array(BulkCampaignFailure).optional(),
   })
   .passthrough();
+const RepeatMode = z.enum(["isolated", "shared"]);
 const CreateCampaignRequest = z
   .object({
     name: z.string().min(1).max(200),
@@ -435,6 +458,9 @@ const CreateCampaignRequest = z
     proxy_region: z.string().optional().default(""),
     proxy_city: z.string().optional().default(""),
     proxy_isp: z.string().optional().default(""),
+    repeat_count: z.number().int().gte(1).optional().default(1),
+    repeat_mode: RepeatMode.optional(),
+    retry_max_attempts: z.number().int().gte(0).optional().default(0),
     labels: z.record(z.string()).optional(),
     policy_set_id: z.union([z.string(), z.null()]).optional(),
     schedule_type: z.union([z.string(), z.null()]).optional(),
@@ -466,6 +492,9 @@ const CampaignResponse = z
     proxy_region: z.string().optional().default(""),
     proxy_city: z.string().optional().default(""),
     proxy_isp: z.string().optional().default(""),
+    repeat_count: z.number().int().optional().default(1),
+    repeat_mode: RepeatMode.optional(),
+    retry_max_attempts: z.number().int().optional().default(0),
     schedule_type: z.union([z.string(), z.null()]).optional(),
     schedule_weekly: z.union([z.record(z.array(z.number().int())), z.null()]).optional(),
     schedule_interval_seconds: z.union([z.number(), z.null()]).optional(),
@@ -511,6 +540,9 @@ const UpdateCampaignRequest = z
     proxy_region: z.union([z.string(), z.null()]),
     proxy_city: z.union([z.string(), z.null()]),
     proxy_isp: z.union([z.string(), z.null()]),
+    repeat_count: z.union([z.number(), z.null()]),
+    repeat_mode: z.union([RepeatMode, z.null()]),
+    retry_max_attempts: z.union([z.number(), z.null()]),
     labels: z.union([z.record(z.string()), z.null()]),
     policy_set_id: z.union([z.string(), z.null()]),
     schedule_type: z.union([z.string(), z.null()]),
@@ -641,6 +673,7 @@ const CreateCustomRuleRequest = z
     rule_type: z.string().max(50),
     config: z.object({}).partial().passthrough(),
     target: z.string().max(30).optional().default("page"),
+    tag_visibility: z.union([z.record(TagVisibility), z.null()]).optional(),
   })
   .passthrough();
 const CustomRuleResponse = z
@@ -655,6 +688,7 @@ const CustomRuleResponse = z
     is_active: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
     scope: z.string().optional().default("personal"),
+    tag_visibility: z.record(z.string()).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -673,6 +707,7 @@ const UpdateCustomRuleRequest = z
     config: z.union([z.object({}).partial().passthrough(), z.null()]),
     target: z.union([z.string(), z.null()]),
     is_active: z.union([z.boolean(), z.null()]),
+    tag_visibility: z.union([z.record(TagVisibility), z.null()]),
   })
   .partial()
   .passthrough();
@@ -966,6 +1001,7 @@ const BalanceTransactionType = z.enum([
   "refund",
   "invoice_settlement",
   "crypto_top_up",
+  "card_top_up",
 ]);
 const type = z.union([z.array(BalanceTransactionType), z.null()]).optional();
 const BalanceTransactionResponse = z
@@ -1269,6 +1305,7 @@ const UpdateCustomTaxonomyRequest = z.object({
   description: z.string().max(500).optional().default(""),
   nodes: z.array(TaxonomyNodeRequest).optional().default([]),
 });
+const TagMatchMode = z.enum(["any", "all"]);
 
 export const schemas = {
   OrganizationStatus,
@@ -1290,6 +1327,7 @@ export const schemas = {
   RoleResponse,
   CreateCustomRoleRequest,
   ProxyTargetRequest,
+  RepeatModeType,
   CreateScanRequest,
   ScanStatus,
   SubRequestResponse,
@@ -1317,6 +1355,7 @@ export const schemas = {
   UpdateCampaignGroupRequest,
   BulkCampaignFailure,
   GroupActionResponse,
+  RepeatMode,
   CreateCampaignRequest,
   EmulatorSelectionResponse,
   CampaignResponse,
@@ -1417,4 +1456,5 @@ export const schemas = {
   ParsedTaxonomyNode,
   ParseTaxonomyTextResponse,
   UpdateCustomTaxonomyRequest,
+  TagMatchMode,
 };
