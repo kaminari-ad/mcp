@@ -175,6 +175,54 @@ describe("createBulkScansTool", () => {
     ).toThrow();
   });
 
+  it("forwards referrer to every scan in the batch", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        vast_tag: "https://ad.server/vast?id=1",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        referrer: "https://publisher.example/watch",
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.referrer).toBe("https://publisher.example/watch");
+  });
+
+  it("omits the referrer key entirely when the input leaves it unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      { url: "https://x.com", country_codes: ["US"], emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect("referrer" in call.body).toBe(false);
+  });
+
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() =>
+        createBulkScansTool.inputSchema.parse({
+          url: "https://x.com",
+          country_codes: ["US"],
+          emulator_id: "default",
+          referrer,
+        })
+      ).toThrow();
+    }
+  });
+
   it("maps ApiError to ToolError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createBulkScans = err(makeApiError("forbidden", "billing suspended"));

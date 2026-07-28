@@ -47,6 +47,17 @@ describe("parseCampaign", () => {
   it("rejects non-uuid id", () => {
     expect(parseCampaign({ ...VALID, id: "not-uuid" }).isErr()).toBe(true);
   });
+  it("surfaces the referrer every scan of the campaign runs from", () => {
+    const c = parseCampaign({
+      ...VALID,
+      referrer: "https://publisher.example/watch",
+    })._unsafeUnwrap();
+    expect(c.referrer).toBe("https://publisher.example/watch");
+  });
+  it("accepts a null referrer and an absent one alike", () => {
+    expect(parseCampaign({ ...VALID, referrer: null })._unsafeUnwrap().referrer).toBeNull();
+    expect(parseCampaign(VALID)._unsafeUnwrap().referrer ?? null).toBeNull();
+  });
   it("surfaces vast_tag for vast-type campaigns", () => {
     const c = parseCampaign({
       ...VALID,

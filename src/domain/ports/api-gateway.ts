@@ -170,6 +170,7 @@ export type ScanResponse = Pick<
   | "public_report_url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "video"
   | "creative_screenshot_url"
   | "page_title"
@@ -245,6 +246,7 @@ export type CreateScanRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_code"
   | "emulator_id"
   | "labels"
@@ -259,7 +261,7 @@ export type CreateScanRequest = Pick<
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
-  "url" | "ad_tag" | "vast_tag" | "country_codes" | "emulator_id" | "labels"
+  "url" | "ad_tag" | "vast_tag" | "referrer" | "country_codes" | "emulator_id" | "labels"
 > & { readonly proxy?: ScanProxyTarget } & Partial<
     Pick<S["BulkScanRequest"], "repeat_count" | "repeat_mode" | "retry_max_attempts">
   >;
@@ -285,6 +287,7 @@ export type CampaignResponse = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_codes"
   | "group_id"
   | "emulator_selection"
@@ -357,6 +360,7 @@ export type CreateCampaignRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_codes"
   | "group_id"
   | "labels"
@@ -392,6 +396,7 @@ export type UpdateCampaignRequest = Pick<
   | "url"
   | "ad_tag"
   | "vast_tag"
+  | "referrer"
   | "country_codes"
   | "group_id"
   | "emulator_categories"

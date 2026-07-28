@@ -225,6 +225,68 @@ describe("createCampaignTool", () => {
     ).toThrow();
   });
 
+  it("forwards referrer — the publisher page a vast tag is embedded in", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Preroll",
+        campaign_type: "vast",
+        vast_tag: "https://ad.server/vast?id=1",
+        country_codes: ["US"],
+        referrer: "https://publisher.example/watch",
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.referrer).toBe("https://publisher.example/watch");
+  });
+
+  it("omits the referrer key entirely when the input leaves it unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      { name: "Y", campaign_type: "url", url: "https://x.com", country_codes: ["US"] },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect("referrer" in call.body).toBe(false);
+  });
+
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() =>
+        createCampaignTool.inputSchema.parse({
+          name: "X",
+          campaign_type: "url",
+          url: "https://x.com",
+          country_codes: ["US"],
+          referrer,
+        })
+      ).toThrow();
+    }
+  });
+
+  it("rejects a null referrer on create — only update can clear one", () => {
+    expect(() =>
+      createCampaignTool.inputSchema.parse({
+        name: "X",
+        campaign_type: "url",
+        url: "https://x.com",
+        country_codes: ["US"],
+        referrer: null,
+      })
+    ).toThrow();
+  });
+
   it("maps invalid-input error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createCampaign = err(makeApiError("invalid-input", "bad"));

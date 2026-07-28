@@ -11,7 +11,7 @@
  * `upstream` MCP error (with the zod issue message), not as a
  * runtime `undefined.id` crash.
  *
- * CI drift-checks this file the same way it drift-checks openapi.ts.
+ * Regen is manual and ungated, same as openapi.ts.
  */
 
 /* eslint-disable */
@@ -159,6 +159,7 @@ const CreateScanRequest = z
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
+    referrer: z.union([z.string(), z.null()]).optional(),
     country_code: z.string().min(2).max(2),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -298,6 +299,7 @@ const ScanResponse = z
     public_report_url: z.string().optional().default(""),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
+    referrer: z.union([z.string(), z.null()]).optional(),
     creative_kind: z.enum(["banner", "video"]).optional().default("banner"),
     creative_screenshot_url: z.string().optional().default(""),
     creative_video_url: z.string().optional().default(""),
@@ -375,6 +377,7 @@ const BulkScanRequest = z
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
+    referrer: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()).min(1),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -449,6 +452,7 @@ const CreateCampaignRequest = z
     url: z.union([z.string(), z.null()]).optional(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
+    referrer: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()).min(1),
     group_id: z.union([z.string(), z.null()]).optional(),
     emulator_categories: z.array(z.string()).optional(),
@@ -485,6 +489,7 @@ const CampaignResponse = z
     url: z.string(),
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
+    referrer: z.union([z.string(), z.null()]).optional(),
     country_codes: z.array(z.string()),
     group_id: z.string().uuid(),
     emulator_selection: EmulatorSelectionResponse,
@@ -531,6 +536,7 @@ const UpdateCampaignRequest = z
     url: z.union([z.string(), z.null()]),
     ad_tag: z.union([z.string(), z.null()]),
     vast_tag: z.union([z.string(), z.null()]),
+    referrer: z.union([z.string(), z.null()]),
     country_codes: z.union([z.array(z.string()), z.null()]),
     group_id: z.union([z.string(), z.null()]),
     emulator_categories: z.union([z.array(z.string()), z.null()]),

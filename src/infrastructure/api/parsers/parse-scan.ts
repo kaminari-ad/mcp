@@ -22,6 +22,7 @@ const ScanSchema = schemas.ScanResponse.pick({
   public_report_url: true,
   ad_tag: true,
   vast_tag: true,
+  referrer: true,
   creative_kind: true,
   video: true,
   creative_screenshot_url: true,

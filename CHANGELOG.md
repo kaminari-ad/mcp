@@ -27,6 +27,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than enforced. `get_custom_rule` and `list_custom_rules` now flag that
   the returned `config` may carry `match_scope` and that it must be resent
   verbatim, since `update_custom_rule` replaces `config` wholesale.
+- **`referrer` on scan and campaign creation.** `create_scan`,
+  `create_bulk_scans`, `create_campaign`, and `update_campaign` accept an
+  optional http(s) page URL the check is performed from. With `ad_tag` or
+  `vast_tag` it is the publisher page the tag is embedded in: the browser
+  commits the page document on that URL without fetching the publisher, so the
+  creative renders as if embedded there. With `url` or `ad_discovery` it is
+  where the visitor came from, sent as the `Referer` of the page request.
+  `update_campaign` also accepts `referrer: null` to clear a stored one.
+  Scan and campaign responses surface `referrer` too, so an agent can confirm
+  what a scan actually ran with.
+
+  **Release ordering — this depends on an unreleased API.** The snapshots were
+  generated from api `feat/scan-referrer`
+  ([api!341](https://gitlab.sdev.pw/adverif/api/-/merge_requests/341)). API
+  request DTOs are `extra="ignore"`, so an API without the field drops
+  `referrer` silently: no 422, the scan runs with no referrer, and the response
+  carries no `referrer` key — the agent gets a green result for a check it
+  believes ran from a publisher page. **Do not cut the npm tag or the
+  `kaminariad-mcp` image until api!341 is merged and deployed to
+  `kaminariadprod1`.** Nothing automated enforces this.
+
+### Changed
+
+- Regenerated the OpenAPI type + zod-schema snapshots so the `/api/v1` surface
+  they describe carries `referrer`. That field is their only delta versus the
+  0.10.0 snapshots.
 
 ## [0.10.0] - 2026-07-28
 

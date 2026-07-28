@@ -2,7 +2,7 @@
  * Tool: `update_campaign` — patch one campaign.
  *
  * Wraps `PATCH /api/v1/campaigns/{id}`. Only fields explicitly supplied
- * are updated. To clear `policy_set_id`, pass `null`.
+ * are updated. To clear `policy_set_id` or `referrer`, pass `null`.
  */
 
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
+import { campaignReferrerUpdateField } from "./_campaign-referrer-input.js";
 
 const UpdateCampaignInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID to update."),
@@ -36,6 +37,7 @@ const UpdateCampaignInputShape = {
       "New VAST video ad tag: an http(s) URL of a VAST endpoint OR raw VAST " +
         "XML (vast-type campaigns)."
     ),
+  referrer: campaignReferrerUpdateField,
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
   group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
   ...campaignConfigFields,
@@ -55,7 +57,7 @@ export type UpdateCampaignOutput = CampaignResponse;
 export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOutput> = {
   name: "update_campaign",
   description:
-    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding.",
+    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, and `referrer` accepts null to clear the publisher page scans are checked from.",
   annotations: {
     title: "Update Campaign",
     readOnlyHint: false,
@@ -70,6 +72,7 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
+      ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
       ...(input.country_codes !== undefined ? { country_codes: input.country_codes } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),

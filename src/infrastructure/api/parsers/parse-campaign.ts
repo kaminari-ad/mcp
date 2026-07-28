@@ -18,6 +18,7 @@ const CampaignSchema = schemas.CampaignResponse.pick({
   url: true,
   ad_tag: true,
   vast_tag: true,
+  referrer: true,
   country_codes: true,
   group_id: true,
   emulator_selection: true,

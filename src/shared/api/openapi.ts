@@ -5,8 +5,8 @@
  *          regen happens via `npm run gen:api-types`).
  * Tool   : openapi-typescript
  *
- * CI diffs this file against the committed copy; mismatches fail the
- * build, forcing the API-changing MR to bring this file along.
+ * Regen is manual and ungated: no CI job diffs this file against the
+ * live spec, so the MR that changes `/api/v1` must bring it along.
  */
 
 /* eslint-disable */
@@ -2252,6 +2252,11 @@ export interface components {
        * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Emulator Id */
@@ -2405,6 +2410,8 @@ export interface components {
       ad_tag?: string | null;
       /** Vast Tag */
       vast_tag?: string | null;
+      /** Referrer */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /**
@@ -2544,6 +2551,11 @@ export interface components {
        * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Required for vast campaigns.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes: string[];
       /** Group Id */
@@ -2698,6 +2710,11 @@ export interface components {
        * @description VAST video tag to check: an http(s) URL of a VAST endpoint OR raw VAST XML. Mutually exclusive with url/ad_tag.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
+       */
+      referrer?: string | null;
       /** Country Code */
       country_code: string;
       /** Emulator Id */
@@ -4249,6 +4266,8 @@ export interface components {
       ad_tag?: string | null;
       /** Vast Tag */
       vast_tag?: string | null;
+      /** Referrer */
+      referrer?: string | null;
       /**
        * Creative Kind
        * @default banner
@@ -4849,6 +4868,11 @@ export interface components {
        * @description VAST video tag: an http(s) URL of a VAST endpoint OR raw VAST XML. Only for vast campaigns.
        */
       vast_tag?: string | null;
+      /**
+       * Referrer
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
+       */
+      referrer?: string | null;
       /** Country Codes */
       country_codes?: string[] | null;
       /** Group Id */

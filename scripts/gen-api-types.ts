@@ -11,9 +11,8 @@
  *     type-safe HTTP client itself).
  *
  * Both files derive from the SAME live OpenAPI document, fetched once,
- * so they cannot drift relative to each other. CI drift-checks both
- * files: if the API spec changed but either file wasn't regenerated,
- * `git diff` fails.
+ * so they cannot drift relative to each other. Neither is checked
+ * against the live API by CI — see "not auto-run" below.
  *
  * Usage:
  *   npm run gen:api-types                                       # default URL
@@ -22,8 +21,9 @@
  *
  * The generator is intentionally not auto-run on every CI build —
  * that would couple this repo's CI to the API's runtime availability.
- * The MR that updates `/api/v1` is responsible for running this
- * script and committing the regenerated files.
+ * There is therefore no drift gate: the MR that updates `/api/v1` is
+ * responsible for running this script and committing both regenerated
+ * files, and review is the only thing that catches a missed regen.
  */
 
 import { promises as fs } from "node:fs";
@@ -47,8 +47,8 @@ function tsHeader(): string {
  *          regen happens via \`npm run gen:api-types\`).
  * Tool   : openapi-typescript
  *
- * CI diffs this file against the committed copy; mismatches fail the
- * build, forcing the API-changing MR to bring this file along.
+ * Regen is manual and ungated: no CI job diffs this file against the
+ * live spec, so the MR that changes \`/api/v1\` must bring it along.
  */
 
 /* eslint-disable */
@@ -70,7 +70,7 @@ function zodHeader(): string {
  * \`upstream\` MCP error (with the zod issue message), not as a
  * runtime \`undefined.id\` crash.
  *
- * CI drift-checks this file the same way it drift-checks openapi.ts.
+ * Regen is manual and ungated, same as openapi.ts.
  */
 
 /* eslint-disable */

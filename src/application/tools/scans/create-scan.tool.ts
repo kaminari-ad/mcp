@@ -14,6 +14,7 @@ import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
+import { scanReferrerField } from "./_scan-referrer-input.js";
 
 const CreateScanInputShape = {
   url: z
@@ -38,6 +39,7 @@ const CreateScanInputShape = {
         "document containing a <VAST> element). Fetched and played in a real " +
         "browser. Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
+  referrer: scanReferrerField,
   country_code: z
     .string()
     .length(2)
@@ -91,6 +93,7 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.url !== undefined ? { url: input.url } : {}),
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
+      ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
