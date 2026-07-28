@@ -19,7 +19,4 @@ const EmulatorSchema = schemas.EmulatorResponse.pick({
 const EmulatorListSchema = z.array(EmulatorSchema);
 
 export const parseEmulatorList = (raw: unknown): Result<readonly EmulatorResponse[], ApiError> =>
-  parseWithSchema(EmulatorListSchema, raw, "emulators") as Result<
-    readonly EmulatorResponse[],
-    ApiError
-  >;
+  parseWithSchema(EmulatorListSchema, raw, "emulators");

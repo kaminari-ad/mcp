@@ -31,7 +31,4 @@ const CampaignPickerArraySchema = z.array(CampaignPickerSchema);
 export const parseCampaignPickerArray = (
   raw: unknown
 ): Result<readonly CampaignPickerItem[], ApiError> =>
-  parseWithSchema(CampaignPickerArraySchema, raw, "campaigns-picker") as Result<
-    readonly CampaignPickerItem[],
-    ApiError
-  >;
+  parseWithSchema(CampaignPickerArraySchema, raw, "campaigns-picker");

@@ -70,18 +70,12 @@ const TagDetailSchema = schemas.TagDefinitionDetailResponse.pick({
   .strip();
 
 export const parseTag = (raw: unknown): Result<TagDefinitionResponse, ApiError> =>
-  parseWithSchema(TagDefinitionSchema, raw, "tag-definition") as Result<
-    TagDefinitionResponse,
-    ApiError
-  >;
+  parseWithSchema(TagDefinitionSchema, raw, "tag-definition");
 
 export const parseTagDefinitionArray = (
   raw: unknown
 ): Result<readonly TagDefinitionResponse[], ApiError> =>
-  parseWithSchema(TagDefinitionArraySchema, raw, "tag-definitions") as Result<
-    readonly TagDefinitionResponse[],
-    ApiError
-  >;
+  parseWithSchema(TagDefinitionArraySchema, raw, "tag-definitions");
 
 export const parseTagDetail = (raw: unknown): Result<TagDefinitionDetailResponse, ApiError> =>
   parseWithSchema(TagDetailSchema, raw, "tag-definition") as Result<
