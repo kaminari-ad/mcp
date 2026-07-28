@@ -44,11 +44,35 @@ describe("repeatRetryFields", () => {
     expect(described).toMatch(/billing/i);
   });
 
+  it("keeps the shared text free of a fan-out formula", () => {
+    // The four tools fan out differently (create_scan not at all,
+    // create_bulk_scans per country, the campaign tools per country x
+    // device), so a concrete formula here is wrong for three of them and
+    // overstated 12x on create_scan. Each tool states its own.
+    const described = repeatRetryFields.repeat_count.description ?? "";
+    expect(described).not.toMatch(/\bURLs\b/);
+    expect(described).not.toMatch(/\bx \d/);
+    expect(described).toMatch(/tool's (own )?(fan-out|description)/i);
+  });
+
+  it("warns that the ceilings are operator kill switches, not a fixed contract", () => {
+    for (const field of [repeatRetryFields.repeat_count, repeatRetryFields.retry_max_attempts]) {
+      const described = field.description ?? "";
+      expect(described).toMatch(/operator/i);
+      expect(described).toMatch(/422/);
+    }
+  });
+
   it("tells the agent that shared is refused together with ad discovery", () => {
     const described = repeatRetryFields.repeat_mode.description ?? "";
     expect(described).toMatch(/422/);
     expect(described).toMatch(/ad_discovery/);
+    // Create path: the pairing the caller chooses in the same request.
     expect(described).toMatch(/campaign_type/);
+    // Update path: campaign_type cannot be set there, so the reachable
+    // rule is the campaign's pre-existing type.
+    expect(described).toMatch(/updating/i);
+    expect(described).toMatch(/cannot be changed|immutable/i);
   });
 
   it("tells the agent that a retry is not billed twice", () => {

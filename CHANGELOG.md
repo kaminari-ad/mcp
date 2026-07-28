@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   those except `repeat_scan_ids`; campaign responses echo `repeat_count`,
   `repeat_mode`, and `retry_max_attempts`.
 
+### Fixed
+
+- **`list_balance_history` can filter on `card_top_up`.** The API has emitted
+  that transaction type for a while — an unfiltered call already returned the
+  rows — but the tool's own enum stopped at `crypto_top_up`, so
+  `type: ["card_top_up"]` was rejected locally and never reached the API. The
+  filter's length cap was one short for the same reason.
+  `BalanceTransactionType` is now aliased off the generated schema instead of
+  hand-mirrored, so the next regen turns a new value into a compile error.
+
 ### Changed
 
 - Regenerated the OpenAPI type + zod-schema snapshots against `/api/v1`
@@ -33,6 +43,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `video.click_through`, `creative_kind` as an enum, `tag_visibility` on custom
   rules, the `card_top_up` balance-transaction type, and the `tag_match` scan
   filter.
+- `creative_kind` is surfaced as an open string rather than the regenerated
+  `banner | video` enum, following the same forward-compat policy as
+  `block_reason`. A creative kind added on the API side now degrades that one
+  field instead of failing the entire `get_scan` / `create_scan` /
+  `create_bulk_scans` response until an MCP release ships.
+- `get_scan_screenshot` and `get_scan_landing_screenshot` warn that a resized
+  capture is top-cropped past 2.5x its width, and to omit `width` when the
+  whole page matters. `get_scan_creative_screenshot` never crops and is
+  unchanged.
+- `get_campaign`, `list_campaigns`, and `list_scan_children` describe the
+  repeat / retry fields they return, and `get_scan` documents the creative's
+  `click_through` destination.
 
 ## [0.8.0] - 2026-07-10
 

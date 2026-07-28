@@ -73,6 +73,22 @@ describe("parseCampaign", () => {
     expect(c.repeat_count).toBe(1);
     expect(c.retry_max_attempts).toBe(0);
   });
+  it("defaults repeat_mode rather than leaving it undefined", () => {
+    // openapi-zod-client drops the openapi `default` from a $ref'd enum,
+    // so an omitted repeat_mode would otherwise reach the agent as
+    // `undefined` behind a port field typed as always-present.
+    const c = parseCampaign(VALID)._unsafeUnwrap();
+    expect(c.repeat_mode).toBe("isolated");
+  });
+  it("defaults repeat_mode on every row of a page", () => {
+    const page = parseCampaignPage({
+      items: [VALID],
+      total: 1,
+      page: 1,
+      limit: 50,
+    })._unsafeUnwrap();
+    expect(page.items[0]?.repeat_mode).toBe("isolated");
+  });
   it("rejects an unknown repeat_mode", () => {
     expect(parseCampaign({ ...VALID, repeat_mode: "session" }).isErr()).toBe(true);
   });

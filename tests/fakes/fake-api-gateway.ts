@@ -426,7 +426,7 @@ export const DEFAULT_SCAN: ScanResponse = {
   retry_max_attempts: 0,
 };
 
-const DEFAULT_CAMPAIGN: CampaignResponse = {
+export const DEFAULT_CAMPAIGN: CampaignResponse = {
   id: "00000000-0000-0000-0000-000000000ccc",
   name: "Test Campaign",
   campaign_type: "url",

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { createCampaignTool } from "../../../../src/application/tools/campaigns/create-campaign.tool.js";
-import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
+import {
+  createFakeApiGateway,
+  DEFAULT_CAMPAIGN,
+  err,
+  makeApiError,
+  ok,
+} from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("createCampaignTool", () => {
@@ -127,6 +133,16 @@ describe("createCampaignTool", () => {
 
   it("forwards the repeat / retry trio and echoes the campaign's settings back", async () => {
     const api = createFakeApiGateway();
+    // The tool's description tells the agent to read the settings back off
+    // the response, so the fake must answer with what was sent — asserting
+    // on the fake's untouched defaults would pass even if the tool dropped
+    // the fields on the floor.
+    api.state.responses.createCampaign = ok({
+      ...DEFAULT_CAMPAIGN,
+      repeat_count: 3,
+      repeat_mode: "shared",
+      retry_max_attempts: 2,
+    });
     const ctx = makeToolContext({ api });
     const r = await createCampaignTool.handler(
       {
@@ -146,9 +162,29 @@ describe("createCampaignTool", () => {
     expect(call.body.repeat_mode).toBe("shared");
     expect(call.body.retry_max_attempts).toBe(2);
     const campaign = r._unsafeUnwrap();
-    expect(campaign.repeat_count).toBe(1);
-    expect(campaign.repeat_mode).toBe("isolated");
-    expect(campaign.retry_max_attempts).toBe(0);
+    expect(campaign.repeat_count).toBe(3);
+    expect(campaign.repeat_mode).toBe("shared");
+    expect(campaign.retry_max_attempts).toBe(2);
+  });
+
+  it("leaves the shared + ad_discovery 422 to the API", async () => {
+    // Deliberate: MCP does not pre-validate the pairing. The API owns the
+    // rule (it also fires on update, where campaign_type is immutable), and
+    // duplicating it here would drift the moment the API relaxes it.
+    const api = createFakeApiGateway();
+    const input = {
+      name: "Publisher page",
+      campaign_type: "ad_discovery" as const,
+      url: "https://publisher.example/article",
+      country_codes: ["DE"],
+      repeat_mode: "shared" as const,
+      repeat_count: 2,
+    };
+    expect(() => createCampaignTool.inputSchema.parse(input)).not.toThrow();
+    await createCampaignTool.handler(input, makeToolContext({ api }));
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.repeat_mode).toBe("shared");
   });
 
   it("rejects an out-of-range repeat_count at validation", () => {

@@ -217,6 +217,14 @@ describe("createScanTool", () => {
     expect(scan.retry_max_attempts).toBe(2);
   });
 
+  it("states its own fan-out formula and that it takes a single URL", () => {
+    // The shared repeat_count text is deliberately dimension-free, so this
+    // description is the only place an agent learns how many scans (and how
+    // many credits) one create_scan call costs.
+    expect(createScanTool.description).toMatch(/exactly `repeat_count` scans/);
+    expect(createScanTool.description).toMatch(/no multi-URL form/i);
+  });
+
   it("maps invalid-input ApiError to ToolError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createScan = err(makeApiError("invalid-input", "url required"));
