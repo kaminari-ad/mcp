@@ -177,14 +177,34 @@ describe("createCampaignTool", () => {
     expect("referrer" in call.body).toBe(false);
   });
 
-  it("rejects a referrer that is not an absolute URL", () => {
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() =>
+        createCampaignTool.inputSchema.parse({
+          name: "X",
+          campaign_type: "url",
+          url: "https://x.com",
+          country_codes: ["US"],
+          referrer,
+        })
+      ).toThrow();
+    }
+  });
+
+  it("rejects a null referrer on create — only update can clear one", () => {
     expect(() =>
       createCampaignTool.inputSchema.parse({
         name: "X",
         campaign_type: "url",
         url: "https://x.com",
         country_codes: ["US"],
-        referrer: "publisher.example",
+        referrer: null,
       })
     ).toThrow();
   });

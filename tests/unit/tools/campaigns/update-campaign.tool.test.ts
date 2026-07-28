@@ -118,10 +118,28 @@ describe("updateCampaignTool", () => {
     expect("referrer" in withoutReferrer.body).toBe(false);
   });
 
-  it("rejects a referrer that is not an absolute URL", () => {
-    expect(() =>
-      updateCampaignTool.inputSchema.parse({ campaign_id: CID, referrer: "publisher.example" })
-    ).toThrow();
+  it("forwards a null referrer to clear the publisher page", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    // Parsed, not hand-built: the schema is what used to reject `null`.
+    const input = updateCampaignTool.inputSchema.parse({ campaign_id: CID, referrer: null });
+    await updateCampaignTool.handler(input, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong");
+    expect("referrer" in call.body).toBe(true);
+    expect(call.body.referrer).toBeNull();
+  });
+
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() => updateCampaignTool.inputSchema.parse({ campaign_id: CID, referrer })).toThrow();
+    }
   });
 
   it("maps ApiError", async () => {

@@ -170,15 +170,58 @@ describe("createScanTool", () => {
     expect("referrer" in call.body).toBe(false);
   });
 
-  it("rejects a referrer that is not an absolute URL", () => {
-    expect(() =>
-      createScanTool.inputSchema.parse({
-        url: "https://x.com",
+  it("forwards referrer with a plain url target — where the visitor came from", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://ad.example.com/a",
         country_code: "US",
         emulator_id: "default",
-        referrer: "publisher.example/news",
-      })
-    ).toThrow();
+        referrer: "https://publisher.example/news/article-1",
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.referrer).toBe("https://publisher.example/news/article-1");
+  });
+
+  it("forwards the referrer un-normalised — the API normalises before storing", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const raw = "https://Publisher.Example:443/news/../a?b=1&b=2#frag";
+    await createScanTool.handler(
+      {
+        url: "https://ad.example.com/a",
+        country_code: "US",
+        emulator_id: "default",
+        referrer: raw,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.referrer).toBe(raw);
+  });
+
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example/news",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() =>
+        createScanTool.inputSchema.parse({
+          url: "https://x.com",
+          country_code: "US",
+          emulator_id: "default",
+          referrer,
+        })
+      ).toThrow();
+    }
   });
 
   it("maps invalid-input ApiError to ToolError", async () => {

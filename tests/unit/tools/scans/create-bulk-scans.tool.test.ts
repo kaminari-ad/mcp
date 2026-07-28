@@ -119,15 +119,23 @@ describe("createBulkScansTool", () => {
     expect("referrer" in call.body).toBe(false);
   });
 
-  it("rejects a referrer that is not an absolute URL", () => {
-    expect(() =>
-      createBulkScansTool.inputSchema.parse({
-        url: "https://x.com",
-        country_codes: ["US"],
-        emulator_id: "default",
-        referrer: "publisher.example",
-      })
-    ).toThrow();
+  it("rejects a referrer the API would 422", () => {
+    for (const referrer of [
+      "publisher.example",
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,<b>x",
+      `https://publisher.example/${"a".repeat(2048)}`,
+    ]) {
+      expect(() =>
+        createBulkScansTool.inputSchema.parse({
+          url: "https://x.com",
+          country_codes: ["US"],
+          emulator_id: "default",
+          referrer,
+        })
+      ).toThrow();
+    }
   });
 
   it("maps ApiError to ToolError", async () => {
