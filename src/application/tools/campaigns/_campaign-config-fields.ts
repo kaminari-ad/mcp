@@ -1,14 +1,18 @@
 /**
  * Shared zod fields + body-builder for the campaign emulator / proxy /
- * schedule configuration.
+ * repeat / schedule configuration.
  *
  * `create_campaign` and `update_campaign` both expose the exact same
- * emulator-selection, proxy-targeting, and schedule-definition fields
- * (flat field names that match the API request DTOs). Keeping them in
- * one module means the two tools never drift, the per-field
- * `.describe()` text stays consistent for the agent, and the repeated
- * "forward only what was supplied" branching lives in a single
- * unit-tested helper.
+ * emulator-selection, proxy-targeting, repeat/retry, and
+ * schedule-definition fields (flat field names that match the API
+ * request DTOs). Keeping them in one module means the two tools never
+ * drift, the per-field `.describe()` text stays consistent for the
+ * agent, and the repeated "forward only what was supplied" branching
+ * lives in a single unit-tested helper.
+ *
+ * The repeat / retry trio is spread in from {@link repeatRetryFields}
+ * rather than declared here, because the two scan-creation tools carry
+ * the identical fields.
  *
  * Every field is `.optional()`: on create the API applies its own
  * defaults (`emulator_categories: ["android_phone"]`,
@@ -16,6 +20,13 @@
  * on update an omitted field is left unchanged.
  */
 import { z } from "zod";
+
+import {
+  pickRepeatRetryBody,
+  type RepeatRetryBody,
+  repeatRetryFields,
+  type RepeatRetryInput,
+} from "../_shared/repeat-retry-fields.js";
 
 /**
  * The shared raw zod shape spread into both campaign tools'
@@ -56,6 +67,7 @@ export const campaignConfigFields = {
     .describe("Proxy region/state targeting (free-text; only honoured for a single country)."),
   proxy_city: z.string().optional().describe("Proxy city targeting."),
   proxy_isp: z.string().optional().describe("Proxy ISP targeting."),
+  ...repeatRetryFields,
   schedule_type: z
     .enum(["weekly", "interval"])
     .optional()
@@ -90,7 +102,7 @@ export const campaignConfigFields = {
  * are present, so the result is safe to spread into a request body
  * regardless of `exactOptionalPropertyTypes`.
  */
-export interface CampaignConfigBody {
+export interface CampaignConfigBody extends RepeatRetryBody {
   emulator_categories?: string[];
   emulator_specific_ids?: string[];
   emulator_mode?: "random" | "all";
@@ -110,7 +122,7 @@ export interface CampaignConfigBody {
  * input (which carries `T | undefined`) matches under
  * `exactOptionalPropertyTypes`.
  */
-interface CampaignConfigInput {
+interface CampaignConfigInput extends RepeatRetryInput {
   readonly emulator_categories?: string[] | undefined;
   readonly emulator_specific_ids?: string[] | undefined;
   readonly emulator_mode?: ("random" | "all") | undefined;
@@ -130,7 +142,7 @@ interface CampaignConfigInput {
  * its defaults (create) or the existing value (update).
  */
 export function pickCampaignConfigBody(input: CampaignConfigInput): CampaignConfigBody {
-  const body: CampaignConfigBody = {};
+  const body: CampaignConfigBody = { ...pickRepeatRetryBody(input) };
   if (input.emulator_categories !== undefined) body.emulator_categories = input.emulator_categories;
   if (input.emulator_specific_ids !== undefined) {
     body.emulator_specific_ids = input.emulator_specific_ids;

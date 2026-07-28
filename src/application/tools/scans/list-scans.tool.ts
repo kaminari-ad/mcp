@@ -86,7 +86,7 @@ export type ListScansOutput = PaginatedResponse<ScanBriefResponse>;
 export const listScansTool: Tool<ListScansInputShape, ListScansOutput> = {
   name: "list_scans",
   description:
-    "List scans for the caller's organization with optional filters (status, country, URL substring, date range, run/campaign/group, tag, AI/IAB/brand category, dynamic labels). Returns a paginated envelope; each brief carries `is_ad_tag` and `is_vast` flags, an absolute screenshot URL plus report_url (auth dashboard) and public_report_url (shareable) deep-links — link users with those, never hand-build URLs.",
+    "List scans for the caller's organization with optional filters (status, country, URL substring, date range, run/campaign/group, tag, AI/IAB/brand category, dynamic labels). Returns a paginated envelope; each brief carries `is_ad_tag` and `is_vast` flags, an absolute screenshot URL plus report_url (auth dashboard) and public_report_url (shareable) deep-links — link users with those, never hand-build URLs. Repeated scans look like near-duplicate rows: `repeat_index` / `repeat_total` place each one inside its repeat group (0-based) and a non-null `repeat_session_id` means the group ran in `shared` mode (one browser, one IP, cookies carried across repeats) — group by it to compare the repeats of one combination. `retry_attempt` / `retry_max_attempts` count technical re-crawls of that same scan, not extra scans. `repeat_scan_ids` is not part of this response; use `get_scan` for a single scan's full detail.",
   annotations: {
     title: "List Scans",
     readOnlyHint: true,

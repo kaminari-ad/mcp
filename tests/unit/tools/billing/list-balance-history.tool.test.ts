@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 
 import { listBalanceHistoryTool } from "../../../../src/application/tools/billing/list-balance-history.tool.js";
+import { schemas } from "../../../../src/shared/api/zod-schemas.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
+
+/** The enum inside `type: z.array(TransactionTypeEnum).max(...).optional()`. */
+const transactionTypeOptions = (): readonly string[] =>
+  (
+    listBalanceHistoryTool.inputSchema.shape.type.unwrap().element as z.ZodEnum<
+      [string, ...string[]]
+    >
+  ).options;
 
 describe("listBalanceHistoryTool", () => {
   it("read-only", () => {
@@ -42,6 +52,33 @@ describe("listBalanceHistoryTool", () => {
     expect(() =>
       listBalanceHistoryTool.inputSchema.parse({ type: ["weird"], page: 1, limit: 50 })
     ).toThrow();
+  });
+
+  it("offers exactly the transaction types the generated schema declares", () => {
+    // Drift here is invisible to tsc — a value the API returns but this
+    // enum lacks is unfilterable while unfiltered calls still show it.
+    expect([...transactionTypeOptions()].sort()).toEqual(
+      [...schemas.BalanceTransactionType.options].sort()
+    );
+  });
+
+  it("accepts every transaction type in one filter", () => {
+    // Guards the `.max()` ceiling against going stale as the enum grows.
+    const all = [...schemas.BalanceTransactionType.options];
+    expect(
+      listBalanceHistoryTool.inputSchema.parse({ type: all, page: 1, limit: 50 }).type
+    ).toEqual(all);
+  });
+
+  it("forwards a card_top_up filter to the API", async () => {
+    const api = createFakeApiGateway();
+    await listBalanceHistoryTool.handler(
+      { type: ["card_top_up"], page: 1, limit: 50 },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listBalanceHistory") throw new Error("wrong");
+    expect(call.filters.type).toEqual(["card_top_up"]);
   });
   it("maps error", async () => {
     const api = createFakeApiGateway();

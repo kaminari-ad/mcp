@@ -32,6 +32,11 @@ const ScanBriefSchema = schemas.ScanBriefResponse.pick({
   ad_kind: true,
   network: true,
   created_at: true,
+  repeat_index: true,
+  repeat_total: true,
+  repeat_session_id: true,
+  retry_attempt: true,
+  retry_max_attempts: true,
 }).strip();
 
 export const parseScanPage = (

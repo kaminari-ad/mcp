@@ -94,6 +94,73 @@ describe("parseScan", () => {
     expect(scan.creative_kind).toBe("banner");
     expect(scan.video ?? null).toBeNull();
   });
+  it("passes through a creative_kind the generated enum does not know", () => {
+    // Forward-compat policy (see `ScanResponse.creative_kind`): a new API
+    // value must degrade one field, not fail the whole scan parse.
+    const r = parseScan({ ...VALID, creative_kind: "html" });
+    expect(r.isOk()).toBe(true);
+    expect(r._unsafeUnwrap().creative_kind).toBe("html");
+  });
+  it("surfaces the creative's click_through destination", () => {
+    const scan = parseScan({
+      ...VALID,
+      creative_kind: "video",
+      video: {
+        duration_ms: 15000,
+        mediafile_url: "https://cdn.example/ad.mp4",
+        click_through: "https://advertiser.example/offer",
+        vast_version: "4.0",
+        ad_system: "AdServer",
+        is_vpaid: false,
+        wrapper_depth: 1,
+      },
+    })._unsafeUnwrap();
+    expect(scan.video?.click_through).toBe("https://advertiser.example/offer");
+  });
+  it("keeps the repeat / retry block through the pick whitelist", () => {
+    const scan = parseScan({
+      ...VALID,
+      repeat_index: 2,
+      repeat_total: 5,
+      repeat_session_id: "00000000-0000-0000-0000-0000000005e5",
+      repeat_scan_ids: [
+        "00000000-0000-0000-0000-000000000ab1",
+        "00000000-0000-0000-0000-000000000ab2",
+      ],
+      retry_attempt: 1,
+      retry_max_attempts: 3,
+    })._unsafeUnwrap();
+    expect(scan.repeat_index).toBe(2);
+    expect(scan.repeat_total).toBe(5);
+    expect(scan.repeat_session_id).toBe("00000000-0000-0000-0000-0000000005e5");
+    expect(scan.repeat_scan_ids).toEqual([
+      "00000000-0000-0000-0000-000000000ab1",
+      "00000000-0000-0000-0000-000000000ab2",
+    ]);
+    expect(scan.retry_attempt).toBe(1);
+    expect(scan.retry_max_attempts).toBe(3);
+  });
+  it("distinguishes an empty repeat_scan_ids from an absent one", () => {
+    // The API declares `list[UUID] = []`, so list and detail responses send
+    // `[]` rather than omitting the key. The spec still marks it optional
+    // (defaulted), and the generated schema carries no zod default, so an
+    // omitted key must parse cleanly and simply not appear — never `[]`
+    // invented here, never a failed parse.
+    expect(parseScan({ ...VALID, repeat_scan_ids: [] })._unsafeUnwrap().repeat_scan_ids).toEqual(
+      []
+    );
+    const absent = parseScan(VALID);
+    expect(absent.isOk()).toBe(true);
+    expect("repeat_scan_ids" in absent._unsafeUnwrap()).toBe(false);
+  });
+  it("defaults the repeat / retry block to a single un-retried scan", () => {
+    const scan = parseScan(VALID)._unsafeUnwrap();
+    expect(scan.repeat_index).toBe(0);
+    expect(scan.repeat_total).toBe(1);
+    expect(scan.repeat_session_id ?? null).toBeNull();
+    expect(scan.retry_attempt).toBe(0);
+    expect(scan.retry_max_attempts).toBe(0);
+  });
 });
 
 describe("parseScanArray", () => {

@@ -76,7 +76,7 @@ export type CreateCampaignOutput = CampaignResponse;
 export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOutput> = {
   name: "create_campaign",
   description:
-    "Create a recurring scan campaign (template). The schedule produces N scans per run where N = number of countries times number of device profiles. Scans cost credits when they run, not when the campaign is created.",
+    "Create a recurring scan campaign (template). The schedule produces N scans per run where N = number of countries times number of device profiles times `repeat_count`. Scans cost credits when they run, not when the campaign is created, so a high `repeat_count` multiplies the bill on every run. The returned campaign echoes `repeat_count`, `repeat_mode`, and `retry_max_attempts`, so read it back to confirm what the campaign will do.",
   annotations: {
     title: "Create Campaign",
     readOnlyHint: false,

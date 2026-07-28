@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
@@ -52,6 +53,7 @@ const CreateBulkScansInputShape = {
     .record(z.string())
     .optional()
     .describe("Arbitrary metadata copied onto every created scan."),
+  ...repeatRetryFields,
 } as const;
 type CreateBulkScansInputShape = typeof CreateBulkScansInputShape;
 
@@ -63,7 +65,7 @@ export interface CreateBulkScansOutput {
 export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScansOutput> = {
   name: "create_bulk_scans",
   description:
-    "Queue one new scan per country in a single call (e.g. test the same URL, ad-tag, or VAST video tag from US + DE + JP). COSTS N CREDITS where N = number of countries. Returns the list of created scans.",
+    "Queue one new scan per country in a single call (e.g. test the same URL, ad-tag, or VAST video tag from US + DE + JP). COSTS N CREDITS where N = number of countries times `repeat_count`. Returns one entry per country; each entry's `repeat_scan_ids` lists that country's extra repeats.",
   annotations: {
     title: "Create Bulk Scans",
     readOnlyHint: false,
@@ -82,6 +84,7 @@ export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScan
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
+      ...pickRepeatRetryBody(input),
     };
     const result = await ctx.api.createBulkScans(body);
     if (result.isErr()) return err(mapApiError(result.error));

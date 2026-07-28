@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { createBulkScansTool } from "../../../../src/application/tools/scans/create-bulk-scans.tool.js";
-import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
+import {
+  createFakeApiGateway,
+  DEFAULT_SCAN,
+  err,
+  makeApiError,
+  ok,
+} from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("createBulkScansTool", () => {
@@ -88,6 +94,85 @@ describe("createBulkScansTool", () => {
     const call = api.state.calls[0];
     if (call?.method !== "createBulkScans") throw new Error("wrong method");
     expect(call.body.proxy).toEqual({ proxy_type: "residential", region: "CA" });
+  });
+
+  it("forwards the repeat / retry trio, which multiplies the batch per country", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        url: "https://x.com",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        repeat_count: 4,
+        repeat_mode: "isolated",
+        retry_max_attempts: 1,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.repeat_count).toBe(4);
+    expect(call.body.repeat_mode).toBe("isolated");
+    expect(call.body.retry_max_attempts).toBe(1);
+  });
+
+  it("omits the repeat / retry keys when the input leaves them unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      { url: "https://x.com", country_codes: ["US"], emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect("repeat_count" in call.body).toBe(false);
+    expect("repeat_mode" in call.body).toBe(false);
+    expect("retry_max_attempts" in call.body).toBe(false);
+  });
+
+  it("returns one leader per country under repeats, each with its own siblings", async () => {
+    // What the description promises: `total` counts countries, not scans,
+    // and the extra repeats are reachable only through `repeat_scan_ids`.
+    const api = createFakeApiGateway();
+    api.state.responses.createBulkScans = ok([
+      {
+        ...DEFAULT_SCAN,
+        country_code: "US",
+        repeat_total: 2,
+        repeat_scan_ids: ["00000000-0000-0000-0000-000000000ab1"],
+      },
+      {
+        ...DEFAULT_SCAN,
+        country_code: "DE",
+        repeat_total: 2,
+        repeat_scan_ids: ["00000000-0000-0000-0000-000000000ab2"],
+      },
+    ]);
+    const result = await createBulkScansTool.handler(
+      {
+        url: "https://x.com",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        repeat_count: 2,
+      },
+      makeToolContext({ api })
+    );
+    const out = result._unsafeUnwrap();
+    expect(out.total).toBe(2);
+    expect(out.items.map((s) => s.country_code)).toEqual(["US", "DE"]);
+    expect(out.items.map((s) => s.repeat_scan_ids)).toEqual([
+      ["00000000-0000-0000-0000-000000000ab1"],
+      ["00000000-0000-0000-0000-000000000ab2"],
+    ]);
+  });
+
+  it("rejects an out-of-range repeat_count at the zod boundary", () => {
+    const base = { url: "https://x.com", country_codes: ["US"], emulator_id: "default" };
+    expect(() => createBulkScansTool.inputSchema.parse({ ...base, repeat_count: 0 })).toThrow();
+    expect(() =>
+      createBulkScansTool.inputSchema.parse({ ...base, retry_max_attempts: 6 })
+    ).toThrow();
   });
 
   it("forwards referrer to every scan in the batch", async () => {

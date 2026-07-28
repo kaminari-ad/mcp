@@ -2254,7 +2254,7 @@ export interface components {
       vast_tag?: string | null;
       /**
        * Referrer
-       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
       /** Country Codes */
@@ -2553,7 +2553,7 @@ export interface components {
       vast_tag?: string | null;
       /**
        * Referrer
-       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
       /** Country Codes */
@@ -2712,7 +2712,7 @@ export interface components {
       vast_tag?: string | null;
       /**
        * Referrer
-       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
       /** Country Code */
@@ -4870,7 +4870,7 @@ export interface components {
       vast_tag?: string | null;
       /**
        * Referrer
-       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher.
+       * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
       /** Country Codes */

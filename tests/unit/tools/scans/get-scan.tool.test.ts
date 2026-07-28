@@ -60,7 +60,7 @@ describe("getScanTool", () => {
         ad_system: "AdServer",
         is_vpaid: false,
         wrapper_depth: 1,
-        click_through: "https://offer.example",
+        click_through: "https://landing.example/offer",
       },
       creative_screenshot_url: "",
       page_title: "",
@@ -73,6 +73,11 @@ describe("getScanTool", () => {
       network: "",
       created_at: "2026-05-16T12:00:00Z",
       completed_at: "2026-05-16T12:00:01Z",
+      repeat_index: 0,
+      repeat_total: 1,
+      repeat_session_id: null,
+      retry_attempt: 0,
+      retry_max_attempts: 0,
     };
     api.state.responses.getScan = ok(vastScan);
     const ctx = makeToolContext({ api });

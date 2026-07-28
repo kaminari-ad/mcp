@@ -91,6 +91,25 @@ describe("updateCampaignTool", () => {
     expect(call.body.vast_tag).toBe("https://ad.server/vast?id=2");
   });
 
+  it("patches the repeat / retry trio and leaves it untouched when omitted", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler(
+      { campaign_id: CID, repeat_count: 2, repeat_mode: "isolated", retry_max_attempts: 5 },
+      ctx
+    );
+    const patched = api.state.calls[0];
+    if (patched?.method !== "updateCampaign") throw new Error("wrong");
+    expect(patched.body.repeat_count).toBe(2);
+    expect(patched.body.repeat_mode).toBe("isolated");
+    expect(patched.body.retry_max_attempts).toBe(5);
+
+    await updateCampaignTool.handler({ campaign_id: CID, name: "renamed" }, ctx);
+    const renamed = api.state.calls[1];
+    if (renamed?.method !== "updateCampaign") throw new Error("wrong");
+    expect(Object.keys(renamed.body)).toEqual(["name"]);
+  });
+
   it("rejects invalid emulator_mode / proxy_type / schedule_type", () => {
     expect(() =>
       updateCampaignTool.inputSchema.parse({ campaign_id: CID, emulator_mode: "x" })

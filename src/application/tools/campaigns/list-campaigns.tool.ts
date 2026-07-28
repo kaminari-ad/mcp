@@ -36,7 +36,7 @@ export type ListCampaignsOutput = PaginatedResponse<CampaignResponse>;
 export const listCampaignsTool: Tool<ListCampaignsInputShape, ListCampaignsOutput> = {
   name: "list_campaigns",
   description:
-    "List campaigns for the caller's organization, optionally filtered by group, archived flag, or name substring. Paginated.",
+    "List campaigns for the caller's organization, optionally filtered by group, archived flag, or name substring. Paginated. Each row carries the same fields as `get_campaign`, including the repeat / retry settings (`repeat_count`, `repeat_mode`, `retry_max_attempts`) — use them to spot the campaigns that multiply their per-run scan count.",
   annotations: {
     title: "List Campaigns",
     readOnlyHint: true,
