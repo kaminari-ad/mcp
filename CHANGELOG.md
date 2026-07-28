@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-07-28
+
+### Added
+
+- **Repeats and retries.** `create_scan`, `create_bulk_scans`,
+  `create_campaign`, and `update_campaign` accept `repeat_count` (1-20),
+  `repeat_mode` (`isolated` | `shared`), and `retry_max_attempts` (0-5).
+  `repeat_count` multiplies the scans created — and billed — per
+  `url x country x device` combination; `shared` runs a combination's repeats
+  in one browser behind one IP with cookies carried over (rejected with 422
+  together with ad discovery); `retry_max_attempts` re-crawls the same scan
+  after a transient failure without billing twice.
+- **Repeat / retry fields on the read side.** Scan detail surfaces
+  `repeat_index`, `repeat_total`, `repeat_session_id`, `repeat_scan_ids`,
+  `retry_attempt`, and `retry_max_attempts`; the scan-list brief carries all of
+  those except `repeat_scan_ids`; campaign responses echo `repeat_count`,
+  `repeat_mode`, and `retry_max_attempts`.
+
+### Changed
+
+- Regenerated the OpenAPI type + zod-schema snapshots against `/api/v1`
+  v1.27.0. Besides the repeat / retry fields this picks up the
+  `creative-html` / `creative-video` / `vast-xml` artifact endpoints,
+  `video.click_through`, `creative_kind` as an enum, `tag_visibility` on custom
+  rules, the `card_top_up` balance-transaction type, and the `tag_match` scan
+  filter.
+
 ## [0.8.0] - 2026-07-10
 
 ### Added
