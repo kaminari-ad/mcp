@@ -35,7 +35,4 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
 export const parseCustomRulePage = (
   raw: unknown
 ): Result<PaginatedResponse<CustomRuleResponse>, ApiError> =>
-  parsePagedWithItemSchema(CustomRuleSchema, raw, "custom-rules") as Result<
-    PaginatedResponse<CustomRuleResponse>,
-    ApiError
-  >;
+  parsePagedWithItemSchema(CustomRuleSchema, raw, "custom-rules");

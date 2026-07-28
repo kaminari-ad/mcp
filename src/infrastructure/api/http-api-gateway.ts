@@ -263,10 +263,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     // primitive shape in Node 18+ (undici backs both). The narrow
     // assertion here is the cross-library boundary.
     /* eslint-disable @typescript-eslint/consistent-type-assertions */
-    return undiciFetch(
-      input.url,
-      baseInit as Parameters<typeof undiciFetch>[1]
-    ) as unknown as Response;
+    return undiciFetch(input.url, baseInit) as unknown as Response;
     /* eslint-enable @typescript-eslint/consistent-type-assertions */
   };
 
@@ -402,10 +399,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       };
       if (dispatcher !== undefined) init["dispatcher"] = dispatcher;
       /* eslint-disable @typescript-eslint/consistent-type-assertions */
-      response = (await undiciFetch(
-        url,
-        init as Parameters<typeof undiciFetch>[1]
-      )) as unknown as Response;
+      response = (await undiciFetch(url, init)) as unknown as Response;
       /* eslint-enable @typescript-eslint/consistent-type-assertions */
       /* c8 ignore start — network failure path, exercised via the typed call() helper coverage */
     } catch (cause) {

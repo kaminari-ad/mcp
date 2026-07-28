@@ -22,7 +22,7 @@ import type { ApiError } from "../../domain/ports/api-gateway.js";
 function detail(parsed: unknown): string {
   if (parsed === null || typeof parsed !== "object") return "Upstream error";
   if (!("detail" in parsed)) return "Upstream error";
-  const d = (parsed as { detail: unknown }).detail;
+  const d = parsed.detail;
   if (typeof d === "string") return d;
   if (Array.isArray(d)) {
     const messages = d
@@ -44,7 +44,7 @@ function detail(parsed: unknown): string {
 
 function errCode(parsed: unknown): string | undefined {
   if (parsed !== null && typeof parsed === "object" && "code" in parsed) {
-    const c = (parsed as { code: unknown }).code;
+    const c = parsed.code;
     if (typeof c === "string") return c;
   }
   return undefined;

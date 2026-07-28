@@ -50,12 +50,7 @@ const TS = "2026-05-17T12:00:00Z";
 
 describe("parsePageOf", () => {
   const inner = (raw: unknown): Result<{ id: string }, ApiError> => {
-    if (
-      typeof raw === "object" &&
-      raw !== null &&
-      "id" in raw &&
-      typeof (raw as { id: unknown }).id === "string"
-    ) {
+    if (typeof raw === "object" && raw !== null && "id" in raw && typeof raw.id === "string") {
       return ok({ id: (raw as { id: string }).id });
     }
     return err({ kind: "upstream", detail: "bad" });
@@ -80,7 +75,7 @@ describe("parsePageOf", () => {
 describe("parseArrayOf", () => {
   const inner = (raw: unknown): Result<{ id: string }, ApiError> =>
     typeof raw === "object" && raw !== null && "id" in raw
-      ? ok({ id: String((raw as { id: unknown }).id) })
+      ? ok({ id: String(raw.id) })
       : err({ kind: "upstream", detail: "x" });
   it("Ok valid array", () => {
     const r = parseArrayOf(inner)([{ id: "a" }, { id: "b" }]);
