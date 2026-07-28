@@ -16,8 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commits the page document on that URL without fetching the publisher, so the
   creative renders as if embedded there. With `url` or `ad_discovery` it is
   where the visitor came from, sent as the `Referer` of the page request.
+  `update_campaign` also accepts `referrer: null` to clear a stored one.
   Scan and campaign responses surface `referrer` too, so an agent can confirm
   what a scan actually ran with.
+
+  **Release ordering — this depends on an unreleased API.** The snapshots were
+  generated from api `feat/scan-referrer`
+  ([api!341](https://gitlab.sdev.pw/adverif/api/-/merge_requests/341)). API
+  request DTOs are `extra="ignore"`, so an API without the field drops
+  `referrer` silently: no 422, the scan runs with no referrer, and the response
+  carries no `referrer` key — the agent gets a green result for a check it
+  believes ran from a publisher page. **Do not cut the npm tag or the
+  `kaminariad-mcp` image until api!341 is merged and deployed to
+  `kaminariadprod1`.** Nothing automated enforces this.
 
 ### Changed
 
@@ -25,7 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   surface. Besides `referrer`, they catch up with API fields that shipped
   after the last regen: scan/campaign repeats and retries, VAST
   `click_through`, creative video/XML/HTML artefact URLs, custom-rule tag
-  visibility, and the `card_top_up` balance-transaction type.
+  visibility, the `card_top_up` balance-transaction type, the `tag_match`
+  (`any` | `all`) scan-list query parameter with its `TagMatchMode` schema,
+  and `creative_kind` narrowed from `string` to a `banner` | `video` enum.
+  The `creative_kind` narrowing is the one delta with runtime effect:
+  `parse-scan.ts` validates the field, so a third value from a future API
+  would now fail the parse instead of passing through.
 
 ## [0.8.0] - 2026-07-10
 

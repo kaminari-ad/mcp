@@ -11,7 +11,7 @@
  * `upstream` MCP error (with the zod issue message), not as a
  * runtime `undefined.id` crash.
  *
- * CI drift-checks this file the same way it drift-checks openapi.ts.
+ * Regen is manual and ungated, same as openapi.ts.
  */
 
 /* eslint-disable */

@@ -5,8 +5,8 @@
  *          regen happens via `npm run gen:api-types`).
  * Tool   : openapi-typescript
  *
- * CI diffs this file against the committed copy; mismatches fail the
- * build, forcing the API-changing MR to bring this file along.
+ * Regen is manual and ungated: no CI job diffs this file against the
+ * live spec, so the MR that changes `/api/v1` must bring it along.
  */
 
 /* eslint-disable */
