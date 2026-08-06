@@ -540,7 +540,13 @@ export interface paths {
     };
     /**
      * List Groups
-     * @description List campaign groups filtered by archive status.
+     * @description List campaign groups with optional name + date filters.
+     *
+     *     ``created_*`` and ``last_run_*`` are inclusive calendar days
+     *     interpreted in ``timezone`` (IANA name, defaults to UTC). A group's
+     *     last run is the newest run across its campaigns, so a group whose
+     *     campaigns have never run is excluded once either last-run bound is
+     *     set.
      */
     get: operations["list_groups_api_v1_campaign_groups_get"];
     put?: never;
@@ -709,6 +715,12 @@ export interface paths {
     /**
      * List Campaigns
      * @description List campaigns with optional filters + pagination.
+     *
+     *     ``created_from`` / ``created_to`` and ``last_run_from`` /
+     *     ``last_run_to`` are inclusive calendar days interpreted in
+     *     ``timezone`` (IANA name, defaults to UTC). "Last run" is the newest
+     *     run of the campaign, so a campaign that has never run is excluded
+     *     once either last-run bound is set.
      *
      *     ``limit`` is capped at 200; requests above that are rejected with 422
      *     rather than silently downgraded. Use ``page`` + ``limit`` to iterate
@@ -1244,6 +1256,11 @@ export interface paths {
      * List Alerts
      * @description List alerts for the caller's organization with pagination + filters.
      *
+     *     ``policy_set_id``, ``tag`` and ``country_code`` accept comma-separated
+     *     values and match alerts carrying any of them. ``date_from``/``date_to``
+     *     are inclusive calendar dates interpreted in ``timezone`` and bound
+     *     ``created_at``; omitting both lists all time.
+     *
      *     ``limit`` is capped at 200; requests above that return 422 rather
      *     than a silently downgraded response. Iterate through all results
      *     using ``page``/``limit`` and the returned ``total``/``pages``.
@@ -1294,8 +1311,9 @@ export interface paths {
      * @description Change status for many alerts at once.
      *
      *     Provide either an explicit ``ids`` list or ``all_matching=true`` with
-     *     optional ``filter_status`` / ``filter_campaign_id``. Alerts already in
-     *     a non-transitionable state are skipped. Returns updated/skipped counts.
+     *     the optional ``filter_*`` fields, which mirror this endpoint's list
+     *     filters. Alerts already in a non-transitionable state are skipped.
+     *     Returns updated/skipped counts.
      */
     post: operations["bulk_update_alert_status_api_v1_alerts_bulk_status_post"];
     delete?: never;
@@ -1313,7 +1331,13 @@ export interface paths {
     };
     /**
      * Get Alert Stats
-     * @description Get alert statistics grouped by status.
+     * @description Get alert counts grouped by status.
+     *
+     *     Accepts every filter the list endpoint does except ``status`` — the
+     *     response buckets by status, so the four counts sum to the ``total``
+     *     that ``GET /api/v1/alerts`` reports for the same query. Omitting the
+     *     dates means all time, matching the list endpoint; it previously meant
+     *     the last 30 days, which broke that sum.
      */
     get: operations["get_alert_stats_api_v1_alerts_stats_get"];
     put?: never;
@@ -1934,6 +1958,11 @@ export interface components {
      *     is therefore ``None``. Together they let API + MCP consumers render
      *     kind-aware copy without re-deriving from synthetic ``tag_slug``
      *     keys (e.g. ``custom_taxonomy:sections:Finance > Lending``).
+     *
+     *     ``policy_set_name`` is the display name of the policy set that raised
+     *     the alert, denormalized so clients can render it without a second
+     *     lookup. ``None`` when the alert predates policy-set attribution or the
+     *     set has since been deleted.
      */
     AlertResponse: {
       /**
@@ -1980,6 +2009,8 @@ export interface components {
       offer_url: string;
       /** Tag Display Name */
       tag_display_name: string;
+      /** Policy Set Name */
+      policy_set_name?: string | null;
       /**
        * Rule Type
        * @default tag
@@ -2287,9 +2318,13 @@ export interface components {
      *
      *     * ``ids`` — an explicit, non-empty list of alert ids (capped at
      *       1000 to bound the request).
-     *     * ``all_matching=True`` — every alert matching the optional
-     *       ``filter_status`` / ``filter_campaign_id`` (omitting both selects
-     *       the whole org). This is the "Select all" path for large inboxes.
+     *     * ``all_matching=True`` — every alert matching the ``filter_*``
+     *       fields (omitting all of them selects the whole org). This is the
+     *       "Select all" path for large inboxes.
+     *
+     *     The ``filter_*`` fields mirror the list endpoint's query params
+     *     one-for-one. They have to: "select all matching" must act on exactly
+     *     the rows the caller can see in the table, never a wider set.
      *
      *     ``status`` is the target; invalid transitions per alert are skipped.
      */
@@ -2305,6 +2340,18 @@ export interface components {
       filter_status?: components["schemas"]["AlertStatus"] | null;
       /** Filter Campaign Id */
       filter_campaign_id?: string | null;
+      /** Filter Policy Set Ids */
+      filter_policy_set_ids?: string[] | null;
+      /** Filter Tag Slugs */
+      filter_tag_slugs?: string[] | null;
+      /** Filter Country Codes */
+      filter_country_codes?: string[] | null;
+      /** Filter Date From */
+      filter_date_from?: string | null;
+      /** Filter Date To */
+      filter_date_to?: string | null;
+      /** Filter Timezone */
+      filter_timezone?: string | null;
     };
     /**
      * BulkUpdateAlertStatusResponse
@@ -2345,6 +2392,8 @@ export interface components {
       created_at: string;
       /** Campaign Count */
       campaign_count?: number | null;
+      /** Last Run At */
+      last_run_at?: string | null;
     };
     /**
      * CampaignOverridesResponse
@@ -3007,6 +3056,10 @@ export interface components {
     /**
      * EndpointHealthResponse
      * @description Wire representation of :class:`EndpointHealth`.
+     *
+     *     ``failing_since`` is what the UI should render — it says how long the
+     *     partner has actually been down. ``consecutive_failures`` counts
+     *     concurrent attempts and is kept for diagnostics only.
      */
     EndpointHealthResponse: {
       /** Consecutive Failures */
@@ -3017,6 +3070,10 @@ export interface components {
       last_delivery_status: number | null;
       /** Success Rate 7D */
       success_rate_7d: number;
+      /** Failing Since */
+      failing_since: string | null;
+      /** Paused Until */
+      paused_until: string | null;
     };
     /**
      * EventCatalogEntryResponse
@@ -6148,6 +6205,12 @@ export interface operations {
     parameters: {
       query?: {
         archived?: boolean;
+        q?: string | null;
+        created_from?: string | null;
+        created_to?: string | null;
+        last_run_from?: string | null;
+        last_run_to?: string | null;
+        timezone?: string;
       };
       header?: never;
       path?: never;
@@ -6466,6 +6529,11 @@ export interface operations {
         archived?: boolean;
         group_id?: string | null;
         q?: string | null;
+        created_from?: string | null;
+        created_to?: string | null;
+        last_run_from?: string | null;
+        last_run_to?: string | null;
+        timezone?: string;
         page?: number;
         limit?: number;
       };
@@ -7527,6 +7595,12 @@ export interface operations {
       query?: {
         campaign_id?: string | null;
         status?: components["schemas"]["AlertStatus"] | null;
+        policy_set_id?: string | null;
+        tag?: string | null;
+        country_code?: string | null;
+        date_from?: string | null;
+        date_to?: string | null;
+        timezone?: string;
         page?: number;
         limit?: number;
       };
@@ -7624,7 +7698,15 @@ export interface operations {
   };
   get_alert_stats_api_v1_alerts_stats_get: {
     parameters: {
-      query?: never;
+      query?: {
+        campaign_id?: string | null;
+        policy_set_id?: string | null;
+        tag?: string | null;
+        country_code?: string | null;
+        date_from?: string | null;
+        date_to?: string | null;
+        timezone?: string;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -7638,6 +7720,15 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AlertStatsResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

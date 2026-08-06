@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`get_alert_stats` counts all time.** The API used to count only the last
+  30 days when no dates were given, while `list_alerts` listed all time, so
+  the four buckets never summed to the list's `total`. The API now defaults
+  both to all time; the tool description says so, so a model comparing the
+  two no longer has to guess which window it got. Requires the API deploy
+  that ships the new default — against an older API the counts still cover
+  30 days.
+- **Regenerated `/api/v1` types and zod schemas.** Picks up the new alert
+  filters (`policy_set_id`, `tag`, `country_code`, `date_from`, `date_to`,
+  `timezone` on list + stats, and the matching `filter_*` fields on
+  bulk-status), `policy_set_name` on `AlertResponse`, plus drift that had
+  accumulated since the last regen: `last_run_at` on campaign groups,
+  campaign/group date filters, and `failing_since` / `paused_until` on
+  webhook endpoint health.
+
 ## [0.11.0] - 2026-07-28
 
 ### Added

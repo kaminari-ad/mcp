@@ -18,7 +18,7 @@ export type GetAlertStatsOutput = AlertStatsResponse;
 export const getAlertStatsTool: Tool<GetAlertStatsInputShape, GetAlertStatsOutput> = {
   name: "get_alert_stats",
   description:
-    "Get alert counts grouped by status: open, escalated, resolved, dismissed (total is implicit in the sum). Status names match the canonical AlertStatus enum used by `list_alerts` and `update_alert_status`.",
+    "Get alert counts grouped by status: open, escalated, resolved, dismissed. Counts cover the whole organization over all time and are not filtered, so the four sum to the `total` an unfiltered `list_alerts` reports. Status names match the canonical AlertStatus enum used by `list_alerts` and `update_alert_status`.",
   annotations: {
     title: "Get Alert Stats",
     readOnlyHint: true,

@@ -182,6 +182,8 @@ describe("parseWebhook / parseWebhookList / parseWebhookCreated", () => {
       last_delivery_at: null,
       last_delivery_status: null,
       success_rate_7d: 1,
+      failing_since: null,
+      paused_until: null,
     },
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
