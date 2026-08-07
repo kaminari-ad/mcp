@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Bump `undici` 8.5.0 to 8.10.0** to clear the npm-audit gate after the
+  upstream disclosure of one high-severity advisory
+  (GHSA-4cwx-7wf7-3272 — a malformed `private` Cache-Control directive
+  makes a shared cache store a per-user response and serve it to other
+  users) and four medium ones (GHSA-jr45-8vmc-qm54,
+  GHSA-m8rv-5g2x-5cg5, GHSA-8xcm-r25x-g524, GHSA-v3r7-h72x-cjcm). All
+  five are fixed in 8.9.0. `undici` is a direct dependency.
+
 ### Changed
 
+- **Requires api >= v1.33.0 for the webhook tools.** The regenerated zod
+  schemas make `failing_since` and `paused_until` required on
+  `EndpointHealthResponse`, and the webhook parser picks the whole nested
+  `health` object, so against an older API every webhook tool
+  (`list_webhooks`, `get_webhook`, `create_webhook`, `update_webhook`,
+  `rotate_webhook_secret`) fails with
+  `upstream: malformed webhook: health.failing_since: Invalid input`.
+- **README tool list matches the registry again.** It documented 83 tools
+  and had drifted 15 behind: the custom-taxonomy domain, the three
+  screenshot fetchers, `get_invoice_pdf`, `list_scan_children`,
+  `create_custom_role`, and the two account-label tools were all
+  registered but undocumented — and the screenshot fetchers and invoice
+  PDF were still listed as deliberately not exposed.
 - **`get_alert_stats` counts all time.** The API used to count only the last
   30 days when no dates were given, while `list_alerts` listed all time, so
   the four buckets never summed to the list's `total`. The API now defaults

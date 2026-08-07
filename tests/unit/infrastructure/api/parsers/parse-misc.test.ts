@@ -199,6 +199,13 @@ describe("parseWebhook / parseWebhookList / parseWebhookCreated", () => {
   it("rejects non-string event_types entries (strict)", () => {
     expect(parseWebhook({ ...VALID, event_types: ["a", 1] }).isErr()).toBe(true);
   });
+  it("rejects a health object missing failing_since (api < v1.33.0)", () => {
+    const { failing_since: _omit, ...healthWithoutFailingSince } = VALID.health;
+    const r = parseWebhook({ ...VALID, health: healthWithoutFailingSince });
+    const e = r._unsafeUnwrapErr();
+    expect(e.kind).toBe("upstream");
+    expect(e.detail).toBe("malformed webhook: health.failing_since: Invalid input");
+  });
   it("list parser Ok / rejects non-array / bad item", () => {
     expect(parseWebhookList([VALID]).isOk()).toBe(true);
     expect(parseWebhookList({}).isErr()).toBe(true);

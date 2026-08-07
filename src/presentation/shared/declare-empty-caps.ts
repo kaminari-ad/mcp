@@ -13,7 +13,7 @@
  * `-32601` is spec-compliant, but Cursor's client SDK mistranslates
  * it into `"Failed to list MCP resources: MCP error -32000:
  * Connection closed"` (functional impact: zero — connection stays
- * open and all 83 tools remain callable, but downstream agent log
+ * open and every tool remains callable, but downstream agent log
  * parsers may interpret the warning as a real tool error, polluting
  * one log line per session per server).
  *

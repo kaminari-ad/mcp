@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kaminari-ad/mcp",
   "title": "Kaminari Ad",
-  "description": "Real-device ad verification — scans, custom AI policy, antivirus vendor aggregation, webhooks. 83 tools to manage ad verification via AI agents.",
+  "description": "Real-device ad verification — scans, custom AI policy, antivirus vendor aggregation, webhooks. 98 tools to manage ad verification via AI agents.",
   "websiteUrl": "https://kaminari.ad",
   "repository": {
     "url": "https://github.com/kaminari-ad/mcp",
