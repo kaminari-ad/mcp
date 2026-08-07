@@ -422,6 +422,7 @@ const CampaignGroupResponse = z
     schedule_paused: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
     campaign_count: z.union([z.number(), z.null()]).optional(),
+    last_run_at: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const UpdateCampaignGroupRequest = z
@@ -909,6 +910,7 @@ const AlertResponse = z
     scan_url: z.string(),
     offer_url: z.string(),
     tag_display_name: z.string(),
+    policy_set_name: z.union([z.string(), z.null()]).optional(),
     rule_type: z.string().optional().default("tag"),
     matched_value: z.union([z.string(), z.null()]).optional(),
   })
@@ -930,6 +932,12 @@ const BulkUpdateAlertStatusRequest = z
     all_matching: z.boolean().optional().default(false),
     filter_status: z.union([AlertStatus, z.null()]).optional(),
     filter_campaign_id: z.union([z.string(), z.null()]).optional(),
+    filter_policy_set_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(),
+    filter_tag_slugs: z.union([z.array(z.string()), z.null()]).optional(),
+    filter_country_codes: z.union([z.array(z.string()), z.null()]).optional(),
+    filter_date_from: z.union([z.string(), z.null()]).optional(),
+    filter_date_to: z.union([z.string(), z.null()]).optional(),
+    filter_timezone: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const BulkUpdateAlertStatusResponse = z
@@ -1039,6 +1047,8 @@ const EndpointHealthResponse = z
     last_delivery_at: z.union([z.string(), z.null()]),
     last_delivery_status: z.union([z.number(), z.null()]),
     success_rate_7d: z.number(),
+    failing_since: z.union([z.string(), z.null()]),
+    paused_until: z.union([z.string(), z.null()]),
   })
   .passthrough();
 const WebhookResponse = z

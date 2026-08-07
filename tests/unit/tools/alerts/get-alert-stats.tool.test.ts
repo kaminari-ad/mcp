@@ -9,6 +9,12 @@ describe("getAlertStatsTool", () => {
     expect(getAlertStatsTool.name).toBe("get_alert_stats");
     expect(getAlertStatsTool.annotations.readOnlyHint).toBe(true);
   });
+  it("tells the model the counts are unfiltered and all-time", () => {
+    // The endpoint used to default to the last 30 days, so a model that
+    // compared these counts against `list_alerts` saw them disagree.
+    expect(getAlertStatsTool.description).toContain("all time");
+    expect(getAlertStatsTool.description).toContain("list_alerts");
+  });
   it("returns stats", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getAlertStats = ok({

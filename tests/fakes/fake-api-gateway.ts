@@ -522,6 +522,8 @@ const DEFAULT_WEBHOOK: WebhookResponse = {
     last_delivery_at: null,
     last_delivery_status: null,
     success_rate_7d: 1,
+    failing_since: null,
+    paused_until: null,
   },
   created_at: "2026-05-16T00:00:00Z",
   updated_at: "2026-05-16T00:00:00Z",
