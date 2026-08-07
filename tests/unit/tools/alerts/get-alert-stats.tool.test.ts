@@ -13,7 +13,13 @@ describe("getAlertStatsTool", () => {
     // The endpoint used to default to the last 30 days, so a model that
     // compared these counts against `list_alerts` saw them disagree.
     expect(getAlertStatsTool.description).toContain("all time");
-    expect(getAlertStatsTool.description).toContain("list_alerts");
+    expect(getAlertStatsTool.description).toContain(
+      "sum to the `total` an unfiltered `list_alerts` reports"
+    );
+  });
+  it("scopes the counts to the caller's organization", () => {
+    expect(getAlertStatsTool.description).toContain("the caller's organization");
+    expect(getAlertStatsTool.description).not.toContain("the whole organization");
   });
   it("returns stats", async () => {
     const api = createFakeApiGateway();
