@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-07
+
 ### Security
 
 - **Bump `undici` 8.5.0 to 8.10.0** to clear the npm-audit gate after the
@@ -1023,7 +1025,16 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/kaminari-ad/mcp/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/kaminari-ad/mcp/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/kaminari-ad/mcp/compare/v0.8.0...v0.10.0
+[0.8.0]: https://github.com/kaminari-ad/mcp/compare/v0.6.0...v0.8.0
+[0.6.0]: https://github.com/kaminari-ad/mcp/compare/v0.5.2...v0.6.0
+[0.5.2]: https://github.com/kaminari-ad/mcp/compare/v0.5.0...v0.5.2
+[0.5.0]: https://github.com/kaminari-ad/mcp/compare/v0.3.0...v0.5.0
+[0.3.0]: https://github.com/kaminari-ad/mcp/compare/v0.2.2...v0.3.0
+[0.2.2]: https://github.com/kaminari-ad/mcp/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/kaminari-ad/mcp/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/kaminari-ad/mcp/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/kaminari-ad/mcp/compare/v0.1.0...v0.1.5
