@@ -4439,7 +4439,7 @@ export interface components {
      *     fresh ``expected_parts``. Both transitions bypass the forward-only
      *     ``advance_status()`` guard via dedicated repository methods.
      *
-     *     Why RECHECKING exists: stale ``check.results`` messages for a now-
+     *     Why RECHECKING exists: stale ``check.parts.*`` messages for a now-
      *     rechecking scan must NOT write tags (those would survive the wipe
      *     without tombstones, corrupting the post-recheck tag set). Consumers
      *     check ``WRITE_BLOCKED_STATUSES`` and skip the message when the scan
