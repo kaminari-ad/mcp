@@ -11,15 +11,44 @@ describe("testCustomRuleTool", () => {
     expect(testCustomRuleTool.name).toBe("test_custom_rule");
     expect(testCustomRuleTool.annotations.readOnlyHint).toBe(true);
   });
+
+  it("documents regexp_request_url config and URL coverage", () => {
+    const { rule_type, config, target } = testCustomRuleTool.inputSchema.shape;
+
+    expect(testCustomRuleTool.description).toContain("`rule_type='regexp_request_url'`");
+    expect(testCustomRuleTool.description).toContain("{ pattern: string, flags: string }");
+    expect(testCustomRuleTool.description).toContain("all captured network request URLs");
+    expect(testCustomRuleTool.description).toContain("including subresources");
+    expect(testCustomRuleTool.description).toContain("first matching request URL in its detail");
+    expect(testCustomRuleTool.description).toContain(
+      "`rule_type='regexp_url'` remains redirect-chain-only"
+    );
+    expect(rule_type.description).toContain("`regexp_request_url`");
+    expect(config.description).toContain("{ pattern: string, flags: string }");
+    expect(config.description).toContain("all captured network and subresource URLs");
+    expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
+    expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+  });
+
   it("forwards full body", async () => {
     const api = createFakeApiGateway();
     await testCustomRuleTool.handler(
-      { rule_type: "regexp_content", config: { p: "x" }, target: "page", scan_id: SID },
+      {
+        rule_type: "regexp_request_url",
+        config: { pattern: "tracker\\.example", flags: "i" },
+        target: "page",
+        scan_id: SID,
+      },
       makeToolContext({ api })
     );
     const call = api.state.calls[0];
     if (call?.method !== "testCustomRule") throw new Error("wrong");
-    expect(call.body.scan_id).toBe(SID);
+    expect(call.body).toEqual({
+      rule_type: "regexp_request_url",
+      config: { pattern: "tracker\\.example", flags: "i" },
+      target: "page",
+      scan_id: SID,
+    });
   });
   it("previews a per-URL combo config and rejects an unknown match_scope", async () => {
     const api = createFakeApiGateway();

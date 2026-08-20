@@ -33,10 +33,10 @@ const CreateCustomRuleInputShape = {
     .string()
     .max(50)
     .describe(
-      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `blacklist_domain`, `combo`, `llm`. The API validates."
+      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `blacklist_domain`, `combo`, `llm`. `regexp_url` checks redirect-chain URLs only; `regexp_request_url` checks every captured network request URL, including subresources. The API validates."
     ),
   config: ruleConfigField.describe(
-    "Rule-type-specific configuration object. Shape depends on `rule_type`. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
+    "Rule-type-specific configuration object. Shape depends on `rule_type`. For `rule_type='regexp_request_url'`, use `{ pattern: string, flags: string }` with `target='page'`; it inspects all captured network and subresource URLs, while `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
       COMBO_MATCH_SCOPE_DOC
   ),
   target: z
@@ -44,7 +44,7 @@ const CreateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule (e.g. 'page' for landing HTML). Default: page. See API docs for the full set of valid values."
+      "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` requires `target='page'`. Default: page. See API docs for the full set of valid values."
     ),
 } as const;
 type CreateCustomRuleInputShape = typeof CreateCustomRuleInputShape;
@@ -54,7 +54,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. The API auto-registers a tag definition for each slug the rule emits (`tag_slug` for non-LLM rules; `config.tags` keys for `rule_type='llm'`); slugs that collide with a built-in system tag are rejected with HTTP 422 / code `checking.system_slug_reserved`. For `rule_type='combo'` set `config.match_scope='url'` when the thresholds must be met inside one link instead of anywhere on the scan (default `'scan'`). Matches tag every future scan; existing scans are untouched until you call `recheck_scans`.",
+    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` with `config={ pattern: string, flags: string }` and `target='page'` to inspect all captured network request URLs, including subresources; `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each slug the rule emits (`tag_slug` for non-LLM rules; `config.tags` keys for `rule_type='llm'`); slugs that collide with a built-in system tag are rejected with HTTP 422 / code `checking.system_slug_reserved`. For `rule_type='combo'` set `config.match_scope='url'` when the thresholds must be met inside one link instead of anywhere on the scan (default `'scan'`). Matches tag every future scan; existing scans are untouched until you call `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,

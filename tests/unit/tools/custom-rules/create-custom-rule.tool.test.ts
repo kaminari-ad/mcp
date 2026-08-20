@@ -16,6 +16,23 @@ describe("createCustomRuleTool", () => {
     ).toThrow();
   });
 
+  it("documents regexp_request_url config and URL coverage", () => {
+    const { rule_type, config, target } = createCustomRuleTool.inputSchema.shape;
+
+    expect(createCustomRuleTool.description).toContain("`rule_type='regexp_request_url'`");
+    expect(createCustomRuleTool.description).toContain("{ pattern: string, flags: string }");
+    expect(createCustomRuleTool.description).toContain("all captured network request URLs");
+    expect(createCustomRuleTool.description).toContain("including subresources");
+    expect(createCustomRuleTool.description).toContain(
+      "`rule_type='regexp_url'` remains redirect-chain-only"
+    );
+    expect(rule_type.description).toContain("`regexp_request_url`");
+    expect(config.description).toContain("{ pattern: string, flags: string }");
+    expect(config.description).toContain("all captured network and subresource URLs");
+    expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
+    expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+  });
+
   it("forwards body and omits absent optionals", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
@@ -96,8 +113,8 @@ describe("createCustomRuleTool", () => {
       {
         name: "RX",
         tag_slug: "ml_spam",
-        rule_type: "regexp_content",
-        config: { pattern: "x" },
+        rule_type: "regexp_request_url",
+        config: { pattern: "tracker\\.example", flags: "i" },
         target: "page",
       },
       ctx
@@ -105,6 +122,8 @@ describe("createCustomRuleTool", () => {
     const call = api.state.calls[0];
     if (call?.method !== "createCustomRule") throw new Error("wrong");
     expect(call.body.tag_slug).toBe("ml_spam");
+    expect(call.body.rule_type).toBe("regexp_request_url");
+    expect(call.body.config).toEqual({ pattern: "tracker\\.example", flags: "i" });
     expect(call.body.target).toBe("page");
   });
 
