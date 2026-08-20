@@ -8,13 +8,14 @@
  * here keeps all five custom-rule tools (the three writers plus the
  * `get_custom_rule` / `list_custom_rules` readers) in sync.
  *
- * `match_scope` is the one value checked client-side. The API validates
- * it as well (create, update, and the rule-test preview), so this is
- * early feedback for the agent, not the durable guarantee — the rest of
- * a combo config is validated only for admin-authored system rules.
+ * `match_scope` is checked here because it can occur on the otherwise
+ * open config object. Writer schemas additionally advertise the strict
+ * request-URL shape; create/test handlers enforce it conditionally.
  */
 
 import { z } from "zod";
+
+import { requestUrlRuleConfigSchema } from "./_request-url-rule-input.js";
 
 /**
  * Agent-facing documentation of the combo-rule `match_scope` key.
@@ -45,13 +46,18 @@ export const COMBO_MATCH_SCOPE_READ_DOC =
  */
 export const ruleConfigField = z.record(z.unknown()).superRefine((config, ctx) => {
   const scope = config["match_scope"];
-  if (scope === undefined || scope === "scan" || scope === "url") {
-    return;
+  if (scope !== undefined && scope !== "scan" && scope !== "url") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["match_scope"],
+      message:
+        'config.match_scope must be "scan" or "url". Omit the key for scan-wide matching (the default).',
+    });
   }
-  ctx.addIssue({
-    code: z.ZodIssueCode.custom,
-    path: ["match_scope"],
-    message:
-      'config.match_scope must be "scan" or "url". Omit the key for scan-wide matching (the default).',
-  });
 });
+
+/** Writer config schema with the strict request-URL shape plus legacy open configs. */
+export const requestUrlAwareRuleConfigField = z.union([
+  requestUrlRuleConfigSchema,
+  ruleConfigField,
+]);

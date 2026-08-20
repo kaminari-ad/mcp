@@ -13,7 +13,8 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-import { COMBO_MATCH_SCOPE_DOC, ruleConfigField } from "./_rule-config-input.js";
+import { REQUEST_URL_RULE_CONFIG_DOC } from "./_request-url-rule-input.js";
+import { COMBO_MATCH_SCOPE_DOC, requestUrlAwareRuleConfigField } from "./_rule-config-input.js";
 
 const UpdateCustomRuleInputShape = {
   rule_id: z.string().uuid().describe("Rule UUID to update."),
@@ -23,19 +24,21 @@ const UpdateCustomRuleInputShape = {
     .max(200)
     .optional()
     .describe(
-      "New display name. For non-LLM rules this also becomes the new `display_name` of the auto-registered tag definition."
+      "New rule display name. For PERSONAL non-LLM rules this refreshes the auto-registered tag's display name. A same-slug GLOBAL rule keeps its separately managed tag metadata unchanged; use `update_tag_definition` for that tag."
     ),
   tag_slug: z
     .string()
     .max(100)
     .optional()
     .describe(
-      "New tag slug to assign on match. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. Re-registering an existing custom slug refreshes its tag definition's `display_name` / `description`."
+      "New tag slug to assign on match. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. Leaving a GLOBAL rule on the same slug preserves its admin-managed tag metadata."
     ),
-  config: ruleConfigField
+  config: requestUrlAwareRuleConfigField
     .optional()
     .describe(
       "New rule-type-specific config object. Replaces the stored config wholesale — resend every key you want to keep, including a combo rule's `match_scope`. For `rule_type='llm'` the keys of `config.tags` are auto-registered as tag definitions; any key that collides with a system slug returns the same 422 contract. " +
+        REQUEST_URL_RULE_CONFIG_DOC +
+        " Read the rule first because `rule_type` is immutable and is not repeated in this update input. " +
         COMBO_MATCH_SCOPE_DOC
     ),
   target: z
@@ -43,7 +46,7 @@ const UpdateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule (e.g. 'page' for landing HTML). See API docs for the full set of valid values."
+      "Where to apply the rule. `regexp_request_url` is fixed to `page`; do not change it. See API docs for the valid targets of other rule types."
     ),
   is_active: z.boolean().optional().describe("Enable/disable the rule."),
 } as const;
@@ -54,7 +57,7 @@ export type UpdateCustomRuleOutput = CustomRuleResponse;
 export const updateCustomRuleTool: Tool<UpdateCustomRuleInputShape, UpdateCustomRuleOutput> = {
   name: "update_custom_rule",
   description:
-    "Update a custom tag-detection rule. Only supplied fields are sent, but a supplied `config` replaces the stored one wholesale (omitting a combo rule's `match_scope` reverts it to the scan-wide default). Changing `tag_slug` (or `config.tags` keys for `rule_type='llm'`) onto a built-in system slug returns HTTP 422 / code `checking.system_slug_reserved`. To toggle activation, pass `is_active`. Existing tagged scans are NOT re-evaluated — call `recheck_scans` for that. (Rule engine `rule_type` cannot be changed after creation; create a new rule instead.)",
+    "Update a custom tag-detection rule. Only supplied fields are sent, but `config` replaces the stored object wholesale; read the rule first and resend every required key. `regexp_request_url` needs a non-empty pattern (max 4,096), flags `''`/`'i'`, and the fixed `page` target. Same-slug GLOBAL rule edits preserve separately managed tag metadata; use `update_tag_definition` to change it. Existing scans are not re-evaluated until `recheck_scans`.",
   annotations: {
     title: "Update Custom Rule",
     readOnlyHint: false,

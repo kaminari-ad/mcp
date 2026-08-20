@@ -101,4 +101,34 @@ describe("updateCustomRuleTool", () => {
       }
     }
   });
+
+  it("documents strict request-URL replacement and GLOBAL tag ownership", () => {
+    const shape = updateCustomRuleTool.inputSchema.shape;
+
+    expect(updateCustomRuleTool.description).toContain(
+      "`regexp_request_url` needs a non-empty pattern"
+    );
+    expect(updateCustomRuleTool.description).toContain("fixed `page` target");
+    expect(updateCustomRuleTool.description).toContain(
+      "Same-slug GLOBAL rule edits preserve separately managed tag metadata"
+    );
+    expect(shape.config.description).toContain("flags?: '' | 'i'");
+    expect(shape.config.description).toContain("Replaces the stored config wholesale");
+    expect(shape.config.description).toContain("Read the rule first");
+    expect(shape.name.description).toContain("use `update_tag_definition`");
+    expect(shape.tag_slug.description).toContain("preserves its admin-managed tag metadata");
+    expect(shape.target.description).toContain("`regexp_request_url` is fixed to `page`");
+  });
+
+  it("keeps config open because the immutable rule type is not in update input", () => {
+    const parsed = updateCustomRuleTool.inputSchema.safeParse({
+      rule_id: RID,
+      config: { pattern: "", flags: "im" },
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(updateCustomRuleTool.inputSchema.shape.config.description).toContain(
+      "Read the rule first"
+    );
+  });
 });

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `regexp_request_url` support to `create_custom_rule`,
+  `test_custom_rule`, and `update_custom_rule`. Create and preview inputs
+  validate the strict config (`pattern`, optional `flags: "" | "i"`) and fixed
+  `page` target before dispatch; update documents the API-enforced,
+  full-replacement contract because its immutable rule type is not part of the
+  update payload. Fresh scans evaluate up to 5,000 captured URLs; stored-scan
+  tests and rechecks reconstruct a reduced request tree and are best-effort.
+
 ## [0.12.0] - 2026-08-07
 
 ### Security

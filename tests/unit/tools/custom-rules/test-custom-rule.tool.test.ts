@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { requestUrlRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_request-url-rule-input.js";
 import { testCustomRuleTool } from "../../../../src/application/tools/custom-rules/test-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -15,19 +16,38 @@ describe("testCustomRuleTool", () => {
   it("documents regexp_request_url config and URL coverage", () => {
     const { rule_type, config, target } = testCustomRuleTool.inputSchema.shape;
 
-    expect(testCustomRuleTool.description).toContain("`rule_type='regexp_request_url'`");
-    expect(testCustomRuleTool.description).toContain("{ pattern: string, flags: string }");
-    expect(testCustomRuleTool.description).toContain("all captured network request URLs");
-    expect(testCustomRuleTool.description).toContain("including subresources");
-    expect(testCustomRuleTool.description).toContain("first matching request URL in its detail");
+    expect(testCustomRuleTool.description).toContain("at most 200 persisted subrequests");
+    expect(testCustomRuleTool.description).toContain("a no-match does not prove");
     expect(testCustomRuleTool.description).toContain(
-      "`rule_type='regexp_url'` remains redirect-chain-only"
+      "does not expose the matched request URL separately"
     );
     expect(rule_type.description).toContain("`regexp_request_url`");
-    expect(config.description).toContain("{ pattern: string, flags: string }");
-    expect(config.description).toContain("all captured network and subresource URLs");
+    expect(config.description).toContain("flags?: '' | 'i'");
+    expect(config.description).toContain("at most 4,096 characters");
+    expect(config.description).toContain("up to 200 persisted subrequests");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
     expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+  });
+
+  it("rejects malformed request-URL input before the gateway call", async () => {
+    expect(requestUrlRuleConfigSchema.safeParse({ pattern: "tracker", flags: "im" }).success).toBe(
+      false
+    );
+
+    const api = createFakeApiGateway();
+    const result = await testCustomRuleTool.handler(
+      {
+        rule_type: "regexp_request_url",
+        config: {},
+        target: "creative",
+        scan_id: SID,
+      },
+      makeToolContext({ api })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.kind).toBe("invalid-input");
+    expect(api.state.calls).toEqual([]);
   });
 
   it("forwards full body", async () => {

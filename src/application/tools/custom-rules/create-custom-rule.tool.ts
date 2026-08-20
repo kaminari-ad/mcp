@@ -12,7 +12,11 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-import { COMBO_MATCH_SCOPE_DOC, ruleConfigField } from "./_rule-config-input.js";
+import {
+  REQUEST_URL_RULE_CONFIG_DOC,
+  requestUrlRuleInputError,
+} from "./_request-url-rule-input.js";
+import { COMBO_MATCH_SCOPE_DOC, requestUrlAwareRuleConfigField } from "./_rule-config-input.js";
 
 const CreateCustomRuleInputShape = {
   name: z
@@ -33,10 +37,12 @@ const CreateCustomRuleInputShape = {
     .string()
     .max(50)
     .describe(
-      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `blacklist_domain`, `combo`, `llm`. `regexp_url` checks redirect-chain URLs only; `regexp_request_url` checks every captured network request URL, including subresources. The API validates."
+      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `blacklist_domain`, `combo`, `llm`. `regexp_url` checks redirect-chain URLs only; `regexp_request_url` checks captured network and subresource URLs. The API validates."
     ),
-  config: ruleConfigField.describe(
-    "Rule-type-specific configuration object. Shape depends on `rule_type`. For `rule_type='regexp_request_url'`, use `{ pattern: string, flags: string }` with `target='page'`; it inspects all captured network and subresource URLs, while `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
+  config: requestUrlAwareRuleConfigField.describe(
+    "Rule-type-specific configuration object. Shape depends on `rule_type`. " +
+      REQUEST_URL_RULE_CONFIG_DOC +
+      " `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
       COMBO_MATCH_SCOPE_DOC
   ),
   target: z
@@ -54,7 +60,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` with `config={ pattern: string, flags: string }` and `target='page'` to inspect all captured network request URLs, including subresources; `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each slug the rule emits (`tag_slug` for non-LLM rules; `config.tags` keys for `rule_type='llm'`); slugs that collide with a built-in system tag are rejected with HTTP 422 / code `checking.system_slug_reserved`. For `rule_type='combo'` set `config.match_scope='url'` when the thresholds must be met inside one link instead of anywhere on the scan (default `'scan'`). Matches tag every future scan; existing scans are untouched until you call `recheck_scans`.",
+    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs on the fixed `page` target; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,
@@ -64,6 +70,8 @@ export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustom
   },
   inputSchema: z.object(CreateCustomRuleInputShape),
   handler: async (input, ctx): Promise<Result<CreateCustomRuleOutput, ToolError>> => {
+    const inputError = requestUrlRuleInputError(input);
+    if (inputError) return err(inputError);
     const body: {
       name: string;
       rule_type: string;

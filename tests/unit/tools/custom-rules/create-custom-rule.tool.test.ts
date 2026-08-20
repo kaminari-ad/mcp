@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { requestUrlRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_request-url-rule-input.js";
 import { createCustomRuleTool } from "../../../../src/application/tools/custom-rules/create-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -20,17 +21,61 @@ describe("createCustomRuleTool", () => {
     const { rule_type, config, target } = createCustomRuleTool.inputSchema.shape;
 
     expect(createCustomRuleTool.description).toContain("`rule_type='regexp_request_url'`");
-    expect(createCustomRuleTool.description).toContain("{ pattern: string, flags: string }");
-    expect(createCustomRuleTool.description).toContain("all captured network request URLs");
-    expect(createCustomRuleTool.description).toContain("including subresources");
+    expect(createCustomRuleTool.description).toContain("up to 5,000 URLs");
+    expect(createCustomRuleTool.description).toContain("best-effort");
     expect(createCustomRuleTool.description).toContain(
       "`rule_type='regexp_url'` remains redirect-chain-only"
     );
     expect(rule_type.description).toContain("`regexp_request_url`");
-    expect(config.description).toContain("{ pattern: string, flags: string }");
-    expect(config.description).toContain("all captured network and subresource URLs");
+    expect(config.description).toContain("flags?: '' | 'i'");
+    expect(config.description).toContain("at most 4,096 characters");
+    expect(config.description).toContain("up to 200 persisted subrequests");
+    expect(config.description).toContain("historical matching is best-effort");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
     expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+  });
+
+  it("rejects malformed request-URL config and target before the gateway call", async () => {
+    expect(
+      createCustomRuleTool.inputSchema.safeParse({
+        name: "RX",
+        rule_type: "regexp_request_url",
+        config: { pattern: "tracker", flags: "i" },
+        target: "page",
+      }).success
+    ).toBe(true);
+    expect(
+      requestUrlRuleConfigSchema.safeParse({
+        pattern: ["tracker"],
+        flags: "im",
+      }).success
+    ).toBe(false);
+
+    const api = createFakeApiGateway();
+    const invalidConfigResult = await createCustomRuleTool.handler(
+      {
+        name: "RX",
+        rule_type: "regexp_request_url",
+        config: {},
+        target: "page",
+      },
+      makeToolContext({ api })
+    );
+    const invalidTargetResult = await createCustomRuleTool.handler(
+      {
+        name: "RX",
+        rule_type: "regexp_request_url",
+        config: {},
+        target: "creative",
+      },
+      makeToolContext({ api })
+    );
+
+    expect(invalidConfigResult.isErr()).toBe(true);
+    expect(invalidTargetResult.isErr()).toBe(true);
+    if (invalidConfigResult.isErr()) expect(invalidConfigResult.error.kind).toBe("invalid-input");
+    if (invalidTargetResult.isErr()) expect(invalidTargetResult.error.kind).toBe("invalid-input");
+    expect(api.state.calls).toEqual([]);
   });
 
   it("forwards body and omits absent optionals", async () => {
