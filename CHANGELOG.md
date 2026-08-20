@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-20
+
 ### Added
 
 - Added `regexp_request_url` support to `create_custom_rule`,
@@ -1035,7 +1037,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/kaminari-ad/mcp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/kaminari-ad/mcp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/kaminari-ad/mcp/compare/v0.8.0...v0.10.0
