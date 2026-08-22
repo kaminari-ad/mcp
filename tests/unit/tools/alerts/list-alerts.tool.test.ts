@@ -48,8 +48,42 @@ describe("listAlertsTool", () => {
     await listAlertsTool.handler({ page: 1, limit: 50 }, ctx);
     const call = api.state.calls[0];
     if (call?.method !== "listAlerts") throw new Error("wrong");
-    expect(call.filters.campaign_id).toBeUndefined();
-    expect(call.filters.status).toBeUndefined();
+    expect(call.filters).toEqual({ page: 1, limit: 50 });
+  });
+
+  // The API grew these filters and the tool did not follow, so an agent
+  // could only ever narrow alerts by campaign and status.
+  it("forwards the policy-set, tag, country and date filters", async () => {
+    const api = createFakeApiGateway();
+    await listAlertsTool.handler(
+      {
+        policy_set_id: "p1,p2",
+        tag: "malware,phishing",
+        country_code: "DE,US",
+        date_from: "2026-08-01",
+        date_to: "2026-08-31",
+        timezone: "Europe/Berlin",
+        page: 1,
+        limit: 50,
+      },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listAlerts") throw new Error("wrong");
+    expect(call.filters).toEqual({
+      page: 1,
+      limit: 50,
+      policy_set_id: "p1,p2",
+      tag: "malware,phishing",
+      country_code: "DE,US",
+      date_from: "2026-08-01",
+      date_to: "2026-08-31",
+      timezone: "Europe/Berlin",
+    });
+  });
+
+  it("rejects a malformed date bound", () => {
+    expect(() => listAlertsTool.inputSchema.parse({ date_from: "01/08/2026" })).toThrow();
   });
 
   it("maps error", async () => {

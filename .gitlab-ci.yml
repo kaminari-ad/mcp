@@ -128,6 +128,24 @@ check:no-handwritten-parsers:
   # zod schema from `src/shared/api/zod-schemas.ts`.
   script: npm run check:no-handwritten-parsers
 
+check:api-coverage:
+  stage: arch_gates
+  needs: [setup]
+  # KAMIAD-158: the generated types were current while four endpoints
+  # had no gateway method and six tools were missing filters the API
+  # had grown. Asserts every `/api/v1` path + method in the generated
+  # `openapi.ts` is reachable from the gateway, AND that each of their
+  # query parameters is representable by the gateway method.
+  script: npm run check:api-coverage
+
+check:tool-enum-drift:
+  stage: arch_gates
+  needs: [setup]
+  # KAMIAD-158's actual symptom: a hand-written `z.enum` that offered
+  # values the API rejects. Requires every tool enum to be a subset of
+  # a generated one, or to carry a justified exemption.
+  script: npm run check:tool-enum-drift
+
 # ─────────────────────────────────────────────────────────────────────
 # 4. SECURITY (parallel)
 # ─────────────────────────────────────────────────────────────────────
@@ -189,6 +207,8 @@ build:
     - check:shared-state
     - check:tool-naming
     - check:no-handwritten-parsers
+    - check:api-coverage
+    - check:tool-enum-drift
     - audit:deps
     - audit:licenses
     - test:unit

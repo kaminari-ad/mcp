@@ -32,6 +32,7 @@ import { getCampaignAlertOverridesTool } from "./tools/alert-notifications/get-c
 import { listAlertDestinationsTool } from "./tools/alert-notifications/list-alert-destinations.tool.js";
 import { setAlertDestinationVersionTool } from "./tools/alert-notifications/set-alert-destination-version.tool.js";
 import { setCampaignAlertOverridesTool } from "./tools/alert-notifications/set-campaign-alert-overrides.tool.js";
+import { bulkUpdateAlertStatusTool } from "./tools/alerts/bulk-update-alert-status.tool.js";
 import { getAlertStatsTool } from "./tools/alerts/get-alert-stats.tool.js";
 import { listAlertsTool } from "./tools/alerts/list-alerts.tool.js";
 import { updateAlertStatusTool } from "./tools/alerts/update-alert-status.tool.js";
@@ -76,9 +77,12 @@ import { listEmulatorsTool } from "./tools/emulators/list-emulators.tool.js";
 import { listGeosTool } from "./tools/geos/list-geos.tool.js";
 import { getInvoicePdfTool } from "./tools/invoicing/get-invoice-pdf.tool.js";
 import { listInvoicesTool } from "./tools/invoicing/list-invoices.tool.js";
+import { attachPolicySetCampaignsTool } from "./tools/policy-sets/attach-policy-set-campaigns.tool.js";
 import { createPolicySetTool } from "./tools/policy-sets/create-policy-set.tool.js";
 import { deletePolicySetTool } from "./tools/policy-sets/delete-policy-set.tool.js";
+import { detachPolicySetCampaignsTool } from "./tools/policy-sets/detach-policy-set-campaigns.tool.js";
 import { getPolicySetTool } from "./tools/policy-sets/get-policy-set.tool.js";
+import { listPolicySetCampaignsTool } from "./tools/policy-sets/list-policy-set-campaigns.tool.js";
 import { listPolicySetsTool } from "./tools/policy-sets/list-policy-sets.tool.js";
 import { requestPolicySetApprovalTool } from "./tools/policy-sets/request-policy-set-approval.tool.js";
 import { updatePolicySetTool } from "./tools/policy-sets/update-policy-set.tool.js";
@@ -89,9 +93,12 @@ import { cancelScanTool } from "./tools/scans/cancel-scan.tool.js";
 import { createBulkScansTool } from "./tools/scans/create-bulk-scans.tool.js";
 import { createScanTool } from "./tools/scans/create-scan.tool.js";
 import { getScanTool } from "./tools/scans/get-scan.tool.js";
+import { getScanCreativeHtmlTool } from "./tools/scans/get-scan-creative-html.tool.js";
 import { getScanCreativeScreenshotTool } from "./tools/scans/get-scan-creative-screenshot.tool.js";
+import { getScanCreativeVideoTool } from "./tools/scans/get-scan-creative-video.tool.js";
 import { getScanLandingScreenshotTool } from "./tools/scans/get-scan-landing-screenshot.tool.js";
 import { getScanScreenshotTool } from "./tools/scans/get-scan-screenshot.tool.js";
+import { getScanVastXmlTool } from "./tools/scans/get-scan-vast-xml.tool.js";
 import { listScanChildrenTool } from "./tools/scans/list-scan-children.tool.js";
 import { listScansTool } from "./tools/scans/list-scans.tool.js";
 import { recheckScansTool } from "./tools/scans/recheck-scans.tool.js";
@@ -146,6 +153,9 @@ export function registerAllTools(register: RegisterTool): void {
   register(getScanScreenshotTool);
   register(getScanCreativeScreenshotTool);
   register(getScanLandingScreenshotTool);
+  register(getScanCreativeHtmlTool);
+  register(getScanCreativeVideoTool);
+  register(getScanVastXmlTool);
   // campaigns
   register(getCampaignTool);
   register(listCampaignsTool);
@@ -200,9 +210,13 @@ export function registerAllTools(register: RegisterTool): void {
   register(updatePolicySetTool);
   register(deletePolicySetTool);
   register(requestPolicySetApprovalTool);
+  register(listPolicySetCampaignsTool);
+  register(attachPolicySetCampaignsTool);
+  register(detachPolicySetCampaignsTool);
   // alerts
   register(listAlertsTool);
   register(updateAlertStatusTool);
+  register(bulkUpdateAlertStatusTool);
   register(getAlertStatsTool);
   // webhooks
   register(listWebhooksTool);

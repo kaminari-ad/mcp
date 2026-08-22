@@ -28,7 +28,8 @@ The most common contribution is a new tool that wraps an existing `/api/v1` endp
 3. Export a single `const <camelName>Tool: Tool<Input, Output> = { ... }`:
    - `name`: snake_case, unique across all tools.
    - `description`: 1-2 sentences, written **for the agent** (clear, action-oriented).
-   - `inputSchema`: a `zod` schema. Every field must have `.describe()` text.
+   - `inputSchema`: a `zod` schema. Every field must have `.describe()` text. For an enum field, prefer `schemas.<EnumName>` from `src/shared/api/zod-schemas.ts` over a hand-written `z.enum([...])` — a restated value list is free to drift, and did: the MCP offered `include`/`exclude` for campaign alert routing for months while the API only ever accepted `override`/`silence`. The `check:tool-enum-drift` gate requires every hand-written enum to be a subset of a generated one, or to carry a justified exemption for a field the API does not type.
+   - Cross-field rules (this field only with that value, exactly one of these two) go in the `handler`, not in `inputSchema`. The `Tool` contract requires a plain `ZodObject` so the SDK can publish the JSON Schema, and `.superRefine()` returns a `ZodEffects`. Return an `invalid-input` `ToolError` with a message the agent can act on.
    - `handler`: receives `(input, ctx)`. Calls **exactly one** `ctx.api.<method>(...)`. Returns `Result<Output, ToolError>`. Does NOT `throw`. Does NOT access globals.
 4. Register it in `src/application/tool-registry.ts`.
 5. Add a unit test at `tests/unit/tools/<domain>/<name>.tool.test.ts`. Cover the success path and at least one error path with a `FakeApiGateway`.
@@ -59,7 +60,7 @@ Tools call the API exclusively through `src/domain/ports/api-gateway.ts` + `src/
    The `.pick({...})` mask is type-checked against the schema, so a wrong key fails `tsc`. The `.strip()` keeps the runtime object tight (drops keys not in the mask). The cast at the end is runtime-safe because `parseWithSchema` strips `undefined`-valued keys to match `exactOptionalPropertyTypes`. **Hand-written parsers are forbidden** — the `check:no-handwritten-parsers` CI gate enforces this. The two documented exempt files (`parse-empty.ts`, `parse-count-envelope.ts`) cover the edge cases where no DTO maps cleanly.
 5. **Add a unit test** at `tests/unit/infrastructure/api/http-api-gateway.test.ts` and a per-parser smoke at `tests/unit/infrastructure/api/parsers/*.test.ts`. Fixtures MUST be schema-valid (UUIDs for `id` fields, ISO datetimes with offset for `created_at`, enum members from the OpenAPI source for `status`/`source`/etc.). Loose stubs no longer parse.
 6. **Update `tests/fakes/fake-api-gateway.ts`** if you added a new method — the fake is the only allowed in-memory substitute for the gateway in tool tests.
-7. **Run `npm run check:no-handwritten-parsers && npm test`.**
+7. **Run `npm run check:no-handwritten-parsers && npm run check:api-coverage && npm test`.** `check:api-coverage` is the gate that would have caught the four endpoints that sat unreachable until KAMIAD-158: it requires every `/api/v1` path + method in the generated `openapi.ts` to be reachable from the gateway, and every query parameter of those operations to be representable by the gateway method — so adding a filter to a `*Filters` interface is part of adding the endpoint, not a follow-up.
 
 ## Coding standards
 

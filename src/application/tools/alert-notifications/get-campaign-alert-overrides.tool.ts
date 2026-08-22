@@ -24,7 +24,7 @@ export const getCampaignAlertOverridesTool: Tool<
 > = {
   name: "get_campaign_alert_overrides",
   description:
-    "Get the per-campaign override of which alert destinations receive its alerts. `mode` is one of `inherit` (use org defaults), `include` (use the listed destinations), or `exclude` (use everything EXCEPT the listed destinations).",
+    "Get the per-campaign override of which alert destinations receive its alerts. `mode` is one of `inherit` (no override — the campaign follows the org-wide destinations), `override` (alerts go ONLY to the returned `destination_ids`), or `silence` (the campaign sends nothing).",
   annotations: {
     title: "Get Campaign Alert Overrides",
     readOnlyHint: true,

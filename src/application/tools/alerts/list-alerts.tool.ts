@@ -9,9 +9,10 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import { alertFilterFields, toAlertFilterQuery } from "./_alert-filter-fields.js";
 
 const ListAlertsInputShape = {
-  campaign_id: z.string().uuid().optional().describe("Filter to one campaign's alerts."),
+  ...alertFilterFields,
   status: z
     .enum(["open", "escalated", "resolved", "dismissed"])
     .optional()
@@ -28,7 +29,7 @@ export type ListAlertsOutput = PaginatedResponse<AlertResponse>;
 export const listAlertsTool: Tool<ListAlertsInputShape, ListAlertsOutput> = {
   name: "list_alerts",
   description:
-    "List violation alerts (one per scan + violating rule combo) with offer URL, country, status, scan back-reference, and the kind-aware fields `rule_type` (tag / iab_v3 / brand / ai_category / custom_taxonomy) + `matched_value` (the canonical text the scan matched against).",
+    "List violation alerts (one per scan + violating rule combo) with offer URL, country, status, scan back-reference, and the kind-aware fields `rule_type` (tag / iab_v3 / brand / ai_category / custom_taxonomy) + `matched_value` (the canonical text the scan matched against). Filter by campaign, status, policy set, tag, country and creation-date range; `policy_set_id`, `tag` and `country_code` take comma-separated values and match any of them. Pass the same filters to `get_alert_stats` to get counts that agree with this list.",
   annotations: {
     title: "List Alerts",
     readOnlyHint: true,
@@ -41,7 +42,7 @@ export const listAlertsTool: Tool<ListAlertsInputShape, ListAlertsOutput> = {
     const filters = {
       page: input.page,
       limit: input.limit,
-      ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
+      ...toAlertFilterQuery(input),
       ...(input.status !== undefined ? { status: input.status } : {}),
     };
     const result = await ctx.api.listAlerts(filters);

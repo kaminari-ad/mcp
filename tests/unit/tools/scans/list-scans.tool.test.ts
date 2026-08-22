@@ -152,4 +152,38 @@ describe("listScansTool", () => {
       expect(Object.keys(call.filters).sort()).toEqual(["limit", "page"]);
     }
   });
+
+  // Without `tag_match` the tool could only ever ask for "any of these
+  // tags", so a request for scans carrying ALL of them was unanswerable.
+  it("forwards tag_match so multiple tags can be ANDed", async () => {
+    const api = createFakeApiGateway();
+    await listScansTool.handler(
+      { page: 1, limit: 50, tag: "malware,redirect", tag_match: "all" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listScans") throw new Error("wrong");
+    expect(call.filters.tag_match).toBe("all");
+  });
+
+  it("rejects a tag_match outside any|all", () => {
+    expect(() => listScansTool.inputSchema.parse({ tag_match: "either" })).toThrow();
+  });
+
+  it("forwards parent_scan_id for ad-discovery children", async () => {
+    const api = createFakeApiGateway();
+    const parent = "00000000-0000-0000-0000-00000000eeee";
+    await listScansTool.handler(
+      { page: 1, limit: 50, parent_scan_id: parent },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listScans") throw new Error("wrong");
+    expect(call.filters.parent_scan_id).toBe(parent);
+  });
+
+  it("documents rechecking as a filterable status", () => {
+    const status = listScansTool.inputSchema.shape.status.description ?? "";
+    expect(status).toContain("rechecking");
+  });
 });

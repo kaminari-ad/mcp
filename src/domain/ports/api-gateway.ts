@@ -575,6 +575,25 @@ export type UpdatePolicySetRequest = Pick<
   "name" | "description" | "entries"
 >;
 
+/** One campaign bound to a policy set. */
+export type LinkedCampaignResponse = Pick<
+  S["LinkedCampaignResponse"],
+  "id" | "name" | "is_archived"
+>;
+
+export type AttachCampaignsRequest = Pick<S["AttachCampaignsRequest"], "campaign_ids">;
+
+export type DetachCampaignsRequest = Pick<
+  S["DetachCampaignsRequest"],
+  "campaign_ids" | "detach_all"
+>;
+
+export interface ListPolicySetCampaignsFilters {
+  readonly q?: string;
+  readonly page: number;
+  readonly limit: number;
+}
+
 // ── Custom taxonomies ─────────────────────────────────────────────
 
 /**
@@ -717,6 +736,26 @@ export type AlertStatsResponse = Pick<
 >;
 
 export type UpdateAlertStatusRequest = Pick<S["UpdateAlertStatusRequest"], "status">;
+
+export type BulkUpdateAlertStatusRequest = Pick<
+  S["BulkUpdateAlertStatusRequest"],
+  | "status"
+  | "ids"
+  | "all_matching"
+  | "filter_status"
+  | "filter_campaign_id"
+  | "filter_policy_set_ids"
+  | "filter_tag_slugs"
+  | "filter_country_codes"
+  | "filter_date_from"
+  | "filter_date_to"
+  | "filter_timezone"
+>;
+
+export type BulkUpdateAlertStatusResponse = Pick<
+  S["BulkUpdateAlertStatusResponse"],
+  "updated" | "skipped"
+>;
 
 // ── Webhooks ──────────────────────────────────────────────────────
 
@@ -953,7 +992,10 @@ export interface ListScansFilters {
   readonly run_id?: string;
   readonly campaign_id?: string;
   readonly group_id?: string;
+  readonly parent_scan_id?: string;
   readonly tag?: string;
+  /** `any` (default) matches at least one `tag`; `all` requires every one. */
+  readonly tag_match?: string;
   readonly ai_category?: string;
   readonly iab_v3_category?: string;
   readonly iab_category?: string;
@@ -964,12 +1006,27 @@ export interface ListScansFilters {
   readonly [labelKey: `label_${string}`]: string | number | undefined;
 }
 
+/**
+ * Filters for `GET /api/v1/alerts`. `policy_set_id`, `tag` and
+ * `country_code` accept comma-separated values and match any of them.
+ * `date_from` / `date_to` are inclusive calendar days read in
+ * `timezone`; omitting both spans all time.
+ */
 export interface ListAlertsFilters {
   readonly campaign_id?: string;
   readonly status?: string;
+  readonly policy_set_id?: string;
+  readonly tag?: string;
+  readonly country_code?: string;
+  readonly date_from?: string;
+  readonly date_to?: string;
+  readonly timezone?: string;
   readonly page: number;
   readonly limit: number;
 }
+
+/** Every {@link ListAlertsFilters} field except `status` + paging. */
+export type AlertStatsFilters = Omit<ListAlertsFilters, "status" | "page" | "limit">;
 
 /**
  * Filters for `GET /api/v1/billing/usage`. ``date_from`` /
@@ -1030,6 +1087,14 @@ export interface ListWebhookDeliveriesFilters extends PageFilters {
 
 export interface ListTagsFilters {
   readonly category?: string;
+  /** Archived definitions are excluded unless this is `true`. */
+  readonly include_archived?: boolean;
+}
+
+/** Filters for `GET /api/v1/custom-taxonomies` (not paginated). */
+export interface ListCustomTaxonomiesFilters {
+  /** Soft-deleted taxonomies are excluded unless this is `true`. */
+  readonly include_inactive?: boolean;
 }
 
 // ── Account labels ────────────────────────────────────────────────
@@ -1072,8 +1137,31 @@ export interface PageFilters {
   readonly limit: number;
 }
 
-export interface ListCampaignsFilters extends PageFilters {
+/**
+ * Inclusive calendar-day bounds shared by the campaign and
+ * campaign-group lists, read in `timezone` (IANA name, UTC by
+ * default). "Last run" is the newest run, so setting either last-run
+ * bound excludes anything that has never run.
+ */
+export interface CampaignDateFilters {
+  readonly created_from?: string;
+  readonly created_to?: string;
+  readonly last_run_from?: string;
+  readonly last_run_to?: string;
+  readonly timezone?: string;
+}
+
+export interface ListCampaignsFilters extends PageFilters, CampaignDateFilters {
   readonly group_id?: string;
+  readonly archived?: boolean;
+  readonly q?: string;
+}
+
+/**
+ * Filters for `GET /api/v1/campaign-groups`. The endpoint returns a
+ * bare array — no `page` / `limit`.
+ */
+export interface ListCampaignGroupsFilters extends CampaignDateFilters {
   readonly archived?: boolean;
   readonly q?: string;
 }
@@ -1179,12 +1267,12 @@ export interface ApiGateway {
 
   // Campaign groups
   /**
-   * API returns a bare `CampaignGroupResponse[]` (not paginated).
-   * Documented query param is only `archived?: boolean` — no `page` / `limit`.
+   * API returns a bare `CampaignGroupResponse[]` (not paginated) — no
+   * `page` / `limit`.
    */
-  listCampaignGroups(filters?: {
-    readonly archived?: boolean;
-  }): Promise<Result<readonly CampaignGroupResponse[], ApiError>>;
+  listCampaignGroups(
+    filters?: ListCampaignGroupsFilters
+  ): Promise<Result<readonly CampaignGroupResponse[], ApiError>>;
   getCampaignGroup(id: string): Promise<Result<CampaignGroupResponse, ApiError>>;
   createCampaignGroup(
     body: CreateCampaignGroupRequest
@@ -1236,6 +1324,23 @@ export interface ApiGateway {
     body: UpdatePolicySetRequest
   ): Promise<Result<PolicySetResponse, ApiError>>;
   deletePolicySet(id: string): Promise<Result<null, ApiError>>;
+  listPolicySetCampaigns(
+    id: string,
+    filters: ListPolicySetCampaignsFilters
+  ): Promise<Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>>;
+  /**
+   * Incremental bind. API returns 204 No Content; gateway surfaces
+   * `null`. Unlike `updatePolicySet`, existing bindings survive.
+   */
+  attachPolicySetCampaigns(
+    id: string,
+    body: AttachCampaignsRequest
+  ): Promise<Result<null, ApiError>>;
+  /** Incremental unbind. API returns 204 No Content. */
+  detachPolicySetCampaigns(
+    id: string,
+    body: DetachCampaignsRequest
+  ): Promise<Result<null, ApiError>>;
 
   // Account labels
   listAccountLabels(): Promise<Result<readonly LabelDefinitionResponse[], ApiError>>;
@@ -1256,10 +1361,18 @@ export interface ApiGateway {
     landingOrd: number,
     w?: number
   ): Promise<Result<BinaryDownload, ApiError>>;
+  /** Generated creative markup, served as `text/plain` (ad-tag scans). */
+  getScanCreativeHtml(scanId: string): Promise<Result<BinaryDownload, ApiError>>;
+  /** Stored VAST MediaFile MP4 (VAST scans). */
+  getScanCreativeVideo(scanId: string): Promise<Result<BinaryDownload, ApiError>>;
+  /** Resolved/unwrapped VAST XML (VAST scans). */
+  getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>>;
   getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>>;
 
   // Custom taxonomies
-  listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>>;
+  listCustomTaxonomies(
+    filters?: ListCustomTaxonomiesFilters
+  ): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>>;
   getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>>;
   createCustomTaxonomy(
     body: CreateCustomTaxonomyRequest
@@ -1285,7 +1398,10 @@ export interface ApiGateway {
     alertId: string,
     body: UpdateAlertStatusRequest
   ): Promise<Result<null, ApiError>>;
-  getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>>;
+  bulkUpdateAlertStatus(
+    body: BulkUpdateAlertStatusRequest
+  ): Promise<Result<BulkUpdateAlertStatusResponse, ApiError>>;
+  getAlertStats(filters: AlertStatsFilters): Promise<Result<AlertStatsResponse, ApiError>>;
 
   // Webhooks
   listWebhooks(): Promise<Result<readonly WebhookResponse[], ApiError>>;

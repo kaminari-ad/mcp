@@ -972,10 +972,25 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/policy-sets/${PID}/request-approval`, method: "POST" })
         .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({
+          path: `/api/v1/policy-sets/${PID}/campaigns?page=1&limit=50`,
+          method: "GET",
+        })
+        .reply(200, { items: [], total: 0, page: 1, limit: 50, pages: 0 });
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/campaigns/attach`, method: "POST" })
+        .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/campaigns/detach`, method: "POST" })
+        .reply(204, "");
       // ── alerts ─────────────────────────────────────────────
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/alerts/${AID}/status`, method: "PATCH" })
         .reply(204, "");
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/alerts/bulk-status", method: "POST" })
+        .reply(200, { updated: 1, skipped: 0 });
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/alerts/stats", method: "GET" })
         .reply(200, { open: 0, escalated: 0, resolved: 0, dismissed: 0 });
@@ -1236,8 +1251,14 @@ describe("HttpApiGateway", () => {
       ).toBe(true);
       expect((await gw.deletePolicySet(PID)).isOk()).toBe(true);
       expect((await gw.requestPolicySetApproval(PID)).isOk()).toBe(true);
+      expect((await gw.listPolicySetCampaigns(PID, { page: 1, limit: 50 })).isOk()).toBe(true);
+      expect((await gw.attachPolicySetCampaigns(PID, { campaign_ids: [CID] })).isOk()).toBe(true);
+      expect((await gw.detachPolicySetCampaigns(PID, { detach_all: true })).isOk()).toBe(true);
       expect((await gw.updateAlertStatus(AID, { status: "escalated" })).isOk()).toBe(true);
-      expect((await gw.getAlertStats()).isOk()).toBe(true);
+      expect(
+        (await gw.bulkUpdateAlertStatus({ status: "resolved", all_matching: true })).isOk()
+      ).toBe(true);
+      expect((await gw.getAlertStats({})).isOk()).toBe(true);
       expect((await gw.runCampaign(CID)).isOk()).toBe(true);
       expect((await gw.cancelCampaign(CID)).isOk()).toBe(true);
       expect((await gw.unarchiveCampaign(CID)).isOk()).toBe(true);
@@ -1440,6 +1461,20 @@ describe("HttpApiGateway", () => {
         .get(ORIGIN)
         .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
         .reply(200, PDF, { headers: { "content-type": "application/pdf" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-html`, method: "GET" })
+        .reply(200, "<div>ad</div>", { headers: { "content-type": "text/plain" } });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-video`, method: "GET" })
+        .reply(200, Buffer.from([0x00, 0x00, 0x00, 0x18]), {
+          headers: { "content-type": "video/mp4" },
+        });
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/vast-xml`, method: "GET" })
+        .reply(200, "<VAST/>", { headers: { "content-type": "application/xml" } });
 
       const gw = buildGateway(agent);
       const ss1 = await gw.getScanScreenshot(SID);
@@ -1455,6 +1490,14 @@ describe("HttpApiGateway", () => {
         expect(pdf.value.contentType).toBe("application/pdf");
         expect(Array.from(pdf.value.bytes.slice(0, 4))).toEqual([0x25, 0x50, 0x44, 0x46]);
       }
+      // Text artifacts ride the same binary path; the tool decodes.
+      const html = await gw.getScanCreativeHtml(SID);
+      expect(html.isOk()).toBe(true);
+      if (html.isOk()) expect(html.value.contentType).toBe("text/plain");
+      expect((await gw.getScanCreativeVideo(SID)).isOk()).toBe(true);
+      const vast = await gw.getScanVastXml(SID);
+      expect(vast.isOk()).toBe(true);
+      if (vast.isOk()) expect(vast.value.contentType).toBe("application/xml");
     });
 
     it("binary download — 404 on screenshot is mapped to not-found", async () => {

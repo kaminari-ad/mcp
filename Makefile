@@ -3,6 +3,7 @@
         lint lint-fix format format-check typecheck \
         test test-unit test-integration test-isolation test-cov \
         check check-file-sizes check-imports check-shared-state check-tool-naming \
+        check-no-handwritten-parsers check-api-coverage check-tool-enum-drift \
         audit license-check \
         gen-api-types \
         install-hooks \
@@ -46,6 +47,9 @@ help:
 	@echo "    check-imports      dependency-cruiser layering rules"
 	@echo "    check-shared-state no module-level mutable state (tenant isolation)"
 	@echo "    check-tool-naming  1 file = 1 tool, names match"
+	@echo "    check-no-handwritten-parsers  parsers backed by generated schemas"
+	@echo "    check-api-coverage /api/v1 paths + query params reachable"
+	@echo "    check-tool-enum-drift  tool enums match the generated ones"
 	@echo ""
 	@echo "  Security"
 	@echo "    audit            npm audit --audit-level=moderate"
@@ -128,6 +132,15 @@ check-shared-state:
 check-tool-naming:
 	$(RUN) npm run check:tool-naming
 
+check-no-handwritten-parsers:
+	$(RUN) npm run check:no-handwritten-parsers
+
+check-api-coverage:
+	$(RUN) npm run check:api-coverage
+
+check-tool-enum-drift:
+	$(RUN) npm run check:tool-enum-drift
+
 # ── Security ──────────────────────────────────────────────────────────
 
 audit:
@@ -143,7 +156,7 @@ gen-api-types:
 
 # ── Composite ─────────────────────────────────────────────────────────
 
-check: lint format-check typecheck check-imports check-file-sizes check-shared-state check-tool-naming audit license-check test-cov
+check: lint format-check typecheck check-imports check-file-sizes check-shared-state check-tool-naming check-no-handwritten-parsers check-api-coverage check-tool-enum-drift audit license-check test-cov
 
 # ── Hooks ─────────────────────────────────────────────────────────────
 

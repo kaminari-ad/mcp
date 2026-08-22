@@ -10,17 +10,21 @@
 import type {
   AlertNotificationDestinationResponse,
   AlertResponse,
+  AlertStatsFilters,
   AlertStatsResponse,
   ApiError,
   ApiGateway,
   ApiKeyCreatedResponse,
   ApiKeyResponse,
+  AttachCampaignsRequest,
   BalanceTransactionResponse,
   BillingSummaryResponse,
   BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
+  BulkUpdateAlertStatusRequest,
+  BulkUpdateAlertStatusResponse,
   CampaignGroupResponse,
   CampaignOverridesResponse,
   CampaignPickerItem,
@@ -39,6 +43,7 @@ import type {
   CustomTaxonomyListItem,
   CustomTaxonomyResponse,
   DeliveryAttemptResponse,
+  DetachCampaignsRequest,
   EmulatorResponse,
   EventCatalogResponse,
   GeoResponse,
@@ -46,11 +51,14 @@ import type {
   InviteUserRequest,
   InvoiceResponse,
   LabelDefinitionResponse,
+  LinkedCampaignResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
   ListCampaignsFilters,
   ListCampaignsPickerFilters,
+  ListCustomTaxonomiesFilters,
   ListInvoicesFilters,
+  ListPolicySetCampaignsFilters,
   ListPolicySetsFilters,
   ListScansFilters,
   ListTagsFilters,
@@ -130,6 +138,9 @@ type Call =
       readonly landingOrd: number;
       readonly w: number | undefined;
     }
+  | { readonly method: "getScanCreativeHtml"; readonly scanId: string }
+  | { readonly method: "getScanCreativeVideo"; readonly scanId: string }
+  | { readonly method: "getScanVastXml"; readonly scanId: string }
   | { readonly method: "getInvoicePdf"; readonly invoiceId: string }
   | { readonly method: "listApiKeys" }
   | { readonly method: "createApiKey"; readonly body: CreateApiKeyRequest }
@@ -218,7 +229,25 @@ type Call =
     }
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
-  | { readonly method: "listCustomTaxonomies" }
+  | {
+      readonly method: "listPolicySetCampaigns";
+      readonly id: string;
+      readonly filters: ListPolicySetCampaignsFilters;
+    }
+  | {
+      readonly method: "attachPolicySetCampaigns";
+      readonly id: string;
+      readonly body: AttachCampaignsRequest;
+    }
+  | {
+      readonly method: "detachPolicySetCampaigns";
+      readonly id: string;
+      readonly body: DetachCampaignsRequest;
+    }
+  | {
+      readonly method: "listCustomTaxonomies";
+      readonly filters: ListCustomTaxonomiesFilters | undefined;
+    }
   | { readonly method: "getCustomTaxonomy"; readonly id: string }
   | { readonly method: "createCustomTaxonomy"; readonly body: CreateCustomTaxonomyRequest }
   | {
@@ -235,7 +264,8 @@ type Call =
       readonly alertId: string;
       readonly body: UpdateAlertStatusRequest;
     }
-  | { readonly method: "getAlertStats" }
+  | { readonly method: "bulkUpdateAlertStatus"; readonly body: BulkUpdateAlertStatusRequest }
+  | { readonly method: "getAlertStats"; readonly filters: AlertStatsFilters }
   | { readonly method: "listWebhooks" }
   | { readonly method: "getWebhook"; readonly id: string }
   | { readonly method: "createWebhook"; readonly body: CreateWebhookRequest }
@@ -299,6 +329,9 @@ export interface FakeApiGatewayState {
     getScanScreenshot?: Result<BinaryDownload, ApiError>;
     getScanCreativeScreenshot?: Result<BinaryDownload, ApiError>;
     getScanLandingScreenshot?: Result<BinaryDownload, ApiError>;
+    getScanCreativeHtml?: Result<BinaryDownload, ApiError>;
+    getScanCreativeVideo?: Result<BinaryDownload, ApiError>;
+    getScanVastXml?: Result<BinaryDownload, ApiError>;
     getInvoicePdf?: Result<BinaryDownload, ApiError>;
     listApiKeys?: Result<readonly ApiKeyResponse[], ApiError>;
     createApiKey?: Result<ApiKeyCreatedResponse, ApiError>;
@@ -352,6 +385,9 @@ export interface FakeApiGatewayState {
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
+    listPolicySetCampaigns?: Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>;
+    attachPolicySetCampaigns?: Result<null, ApiError>;
+    detachPolicySetCampaigns?: Result<null, ApiError>;
     listCustomTaxonomies?: Result<readonly CustomTaxonomyListItem[], ApiError>;
     getCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
     createCustomTaxonomy?: Result<CustomTaxonomyResponse, ApiError>;
@@ -361,6 +397,7 @@ export interface FakeApiGatewayState {
     parseCustomTaxonomyText?: Result<ParseTaxonomyTextResponse, ApiError>;
     listAlerts?: Result<PaginatedResponse<AlertResponse>, ApiError>;
     updateAlertStatus?: Result<null, ApiError>;
+    bulkUpdateAlertStatus?: Result<BulkUpdateAlertStatusResponse, ApiError>;
     getAlertStats?: Result<AlertStatsResponse, ApiError>;
     listWebhooks?: Result<readonly WebhookResponse[], ApiError>;
     getWebhook?: Result<WebhookResponse, ApiError>;
@@ -647,6 +684,12 @@ const DEFAULT_POLICY_SET_LIST_ITEM: PolicySetListItemResponse = {
   created_at: "2026-05-16T00:00:00Z",
 };
 
+const DEFAULT_LINKED_CAMPAIGN: LinkedCampaignResponse = {
+  id: "00000000-0000-0000-0000-0000000000c1",
+  name: "Bound campaign",
+  is_archived: false,
+};
+
 const DEFAULT_ALERT_DESTINATION: AlertNotificationDestinationResponse = {
   id: "00000000-0000-0000-0000-000000000999",
   channel: "slack",
@@ -779,6 +822,39 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         ok<BinaryDownload, ApiError>({
           bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
           contentType: "image/png",
+        })
+      );
+    },
+    async getScanCreativeHtml(scanId) {
+      push({ method: "getScanCreativeHtml", scanId });
+      await Promise.resolve();
+      return (
+        state.responses.getScanCreativeHtml ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new TextEncoder().encode("<div>creative</div>"),
+          contentType: "text/plain; charset=utf-8",
+        })
+      );
+    },
+    async getScanCreativeVideo(scanId) {
+      push({ method: "getScanCreativeVideo", scanId });
+      await Promise.resolve();
+      return (
+        state.responses.getScanCreativeVideo ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x00, 0x00, 0x00, 0x18]),
+          contentType: "video/mp4",
+        })
+      );
+    },
+    async getScanVastXml(scanId) {
+      push({ method: "getScanVastXml", scanId });
+      await Promise.resolve();
+      return (
+        state.responses.getScanVastXml ??
+        ok<BinaryDownload, ApiError>({
+          bytes: new TextEncoder().encode('<VAST version="4.0"></VAST>'),
+          contentType: "application/xml",
         })
       );
     },
@@ -1169,6 +1245,29 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return state.responses.deletePolicySet ?? ok<null, ApiError>(null);
     },
+    async listPolicySetCampaigns(id, filters) {
+      push({ method: "listPolicySetCampaigns", id, filters });
+      await Promise.resolve();
+      return (
+        state.responses.listPolicySetCampaigns ??
+        ok<PaginatedResponse<LinkedCampaignResponse>, ApiError>({
+          items: [DEFAULT_LINKED_CAMPAIGN],
+          total: 1,
+          page: filters.page,
+          limit: filters.limit,
+        })
+      );
+    },
+    async attachPolicySetCampaigns(id, body) {
+      push({ method: "attachPolicySetCampaigns", id, body });
+      await Promise.resolve();
+      return state.responses.attachPolicySetCampaigns ?? ok<null, ApiError>(null);
+    },
+    async detachPolicySetCampaigns(id, body) {
+      push({ method: "detachPolicySetCampaigns", id, body });
+      await Promise.resolve();
+      return state.responses.detachPolicySetCampaigns ?? ok<null, ApiError>(null);
+    },
     async requestPolicySetApproval(id) {
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
@@ -1176,8 +1275,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     },
 
     // ── Custom taxonomies ──────────────────────────────────────
-    async listCustomTaxonomies() {
-      push({ method: "listCustomTaxonomies" });
+    async listCustomTaxonomies(filters) {
+      push({ method: "listCustomTaxonomies", filters });
       await Promise.resolve();
       return (
         state.responses.listCustomTaxonomies ?? ok<readonly CustomTaxonomyListItem[], ApiError>([])
@@ -1248,8 +1347,16 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return state.responses.updateAlertStatus ?? ok<null, ApiError>(null);
     },
-    async getAlertStats() {
-      push({ method: "getAlertStats" });
+    async bulkUpdateAlertStatus(body) {
+      push({ method: "bulkUpdateAlertStatus", body });
+      await Promise.resolve();
+      return (
+        state.responses.bulkUpdateAlertStatus ??
+        ok<BulkUpdateAlertStatusResponse, ApiError>({ updated: 0, skipped: 0 })
+      );
+    },
+    async getAlertStats(filters) {
+      push({ method: "getAlertStats", filters });
       await Promise.resolve();
       return (
         state.responses.getAlertStats ??

@@ -34,6 +34,7 @@ import type {
   ApiKeyCreatedResponse,
   BalanceTransactionResponse,
   BulkReplayResponse,
+  BulkUpdateAlertStatusResponse,
   CampaignOverridesResponse,
   DeliveryAttemptResponse,
   EventCatalogResponse,
@@ -201,6 +202,16 @@ const AlertStatsSchema = schemas.AlertStatsResponse.pick({
 
 export const parseAlertStats = (raw: unknown): Result<AlertStatsResponse, ApiError> =>
   parseWithSchema(AlertStatsSchema, raw, "alert-stats");
+
+const BulkUpdateAlertStatusSchema = schemas.BulkUpdateAlertStatusResponse.pick({
+  updated: true,
+  skipped: true,
+}).strip();
+
+export const parseBulkUpdateAlertStatus = (
+  raw: unknown
+): Result<BulkUpdateAlertStatusResponse, ApiError> =>
+  parseWithSchema(BulkUpdateAlertStatusSchema, raw, "bulk-update-alert-status");
 
 const UsageSchema = schemas.UsageResponse.pick({
   id: true,

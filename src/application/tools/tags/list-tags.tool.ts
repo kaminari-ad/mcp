@@ -23,6 +23,12 @@ const ListTagsInputShape = {
     .describe(
       "Filter to tags in one category slug (e.g. 'security', 'malware', 'compliance'). Use the slug exactly as it appears in `category` of an existing tag."
     ),
+  include_archived: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include archived tag definitions, which are excluded by default. Archived tags still appear on the scans that carry them, so pass `true` when resolving a slug seen on an older scan."
+    ),
 } as const;
 type ListTagsInputShape = typeof ListTagsInputShape;
 
@@ -34,7 +40,7 @@ export interface ListTagsOutput {
 export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
   name: "list_tags",
   description:
-    "List every tag definition the platform knows (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category.",
+    "List every tag definition the platform knows (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category, and pass `include_archived` to also see retired definitions.",
   annotations: {
     title: "List Tags",
     readOnlyHint: true,
@@ -44,7 +50,10 @@ export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
   },
   inputSchema: z.object(ListTagsInputShape),
   handler: async (input, ctx): Promise<Result<ListTagsOutput, ToolError>> => {
-    const filters = input.category !== undefined ? { category: input.category } : undefined;
+    const filters = {
+      ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.include_archived !== undefined ? { include_archived: input.include_archived } : {}),
+    };
     const result = await ctx.api.listTags(filters);
     if (result.isErr()) return err(mapApiError(result.error));
     return ok({ items: result.value, total: result.value.length });

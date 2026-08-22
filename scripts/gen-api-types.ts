@@ -33,6 +33,7 @@ import process from "node:process";
 
 import openapiTS, { astToString } from "openapi-typescript";
 import { generateZodClientFromOpenAPI } from "openapi-zod-client";
+import * as prettier from "prettier";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const TS_OUTPUT = path.join(REPO_ROOT, "src", "shared", "api", "openapi.ts");
@@ -78,6 +79,21 @@ function zodHeader(): string {
 `;
 }
 
+/**
+ * Write `source` to `target`, Prettier-formatted with the repo config.
+ *
+ * Both generators emit 4-space TypeScript, while `format:check` covers
+ * `src/**` — so writing the raw output makes `make check` fail and
+ * produces a ~17k-line indentation diff that buries the real schema
+ * change. Formatting here keeps a no-op regen a no-op.
+ */
+async function writeFormatted(target: string, source: string): Promise<void> {
+  const options = await prettier.resolveConfig(target);
+  const formatted = await prettier.format(source, { ...options, filepath: target });
+  await fs.writeFile(target, formatted, "utf8");
+  process.stderr.write(`gen-api-types: wrote ${target} (${String(formatted.length)} bytes)\n`);
+}
+
 async function fetchSpec(url: string): Promise<{ raw: unknown; text: string }> {
   process.stderr.write(`gen-api-types: pulling ${url}\n`);
   const res = await fetch(url);
@@ -97,9 +113,7 @@ async function writeTypes(text: string): Promise<void> {
   try {
     await fs.writeFile(tmpfile, text, "utf8");
     const ast = await openapiTS(new URL(`file://${tmpfile}`));
-    const body = astToString(ast);
-    await fs.writeFile(TS_OUTPUT, tsHeader() + body, "utf8");
-    process.stderr.write(`gen-api-types: wrote ${TS_OUTPUT} (${String(body.length)} bytes)\n`);
+    await writeFormatted(TS_OUTPUT, tsHeader() + astToString(ast));
   } finally {
     await fs.rm(tmpdir, { recursive: true, force: true });
   }
@@ -129,9 +143,7 @@ async function writeZodSchemas(spec: unknown): Promise<void> {
       shouldExportAllTypes: false,
     },
   });
-  const body = stripZodiosRuntime(raw);
-  await fs.writeFile(ZOD_OUTPUT, zodHeader() + body, "utf8");
-  process.stderr.write(`gen-api-types: wrote ${ZOD_OUTPUT} (${String(body.length)} bytes)\n`);
+  await writeFormatted(ZOD_OUTPUT, zodHeader() + stripZodiosRuntime(raw));
 }
 
 /**

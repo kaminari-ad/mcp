@@ -33,17 +33,21 @@ import { type Dispatcher, fetch as undiciFetch } from "undici";
 import type {
   AlertNotificationDestinationResponse,
   AlertResponse,
+  AlertStatsFilters,
   AlertStatsResponse,
   ApiError,
   ApiGateway,
   ApiKeyCreatedResponse,
   ApiKeyResponse,
+  AttachCampaignsRequest,
   BalanceTransactionResponse,
   BillingSummaryResponse,
   BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
+  BulkUpdateAlertStatusRequest,
+  BulkUpdateAlertStatusResponse,
   CampaignGroupResponse,
   CampaignOverridesResponse,
   CampaignPickerItem,
@@ -62,6 +66,7 @@ import type {
   CustomTaxonomyListItem,
   CustomTaxonomyResponse,
   DeliveryAttemptResponse,
+  DetachCampaignsRequest,
   EmulatorResponse,
   EventCatalogResponse,
   GeoResponse,
@@ -69,11 +74,15 @@ import type {
   InviteUserRequest,
   InvoiceResponse,
   LabelDefinitionResponse,
+  LinkedCampaignResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
+  ListCampaignGroupsFilters,
   ListCampaignsFilters,
   ListCampaignsPickerFilters,
+  ListCustomTaxonomiesFilters,
   ListInvoicesFilters,
+  ListPolicySetCampaignsFilters,
   ListPolicySetsFilters,
   ListScansFilters,
   ListTagsFilters,
@@ -148,6 +157,7 @@ import {
   parseArrayOf,
   parseBalanceTx,
   parseBulkReplay,
+  parseBulkUpdateAlertStatus,
   parseCampaignAlertOverrides,
   parseEventCatalog,
   parseGroupAction,
@@ -164,6 +174,7 @@ import {
   parseWebhookDelivery,
 } from "./parsers/parse-generic.js";
 import { parseGeoList } from "./parsers/parse-geo-list.js";
+import { parseLinkedCampaignPage } from "./parsers/parse-linked-campaign-page.js";
 import { parsePolicySet } from "./parsers/parse-policy-set.js";
 import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
 import { parseRun } from "./parsers/parse-run.js";
@@ -364,8 +375,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    * two of those:
    *   - **no** `content-type` — there is no request body, so the
    *     header would be a misleading no-op.
-   *   - `accept` widened to `image/*, application/pdf,
-   *     application/octet-stream` — the API returns binary, not JSON.
+   *   - `accept` widened to the artifact media types the API serves
+   *     (images, PDF, MP4, and the `text/plain` creative source +
+   *     VAST XML) — never JSON.
    *
    * The remaining three keys (auth, user-agent, x-request-id) match
    * the JSON path exactly. The Bearer is pulled from the same
@@ -392,7 +404,8 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         // update + a tenant-isolation review.
         headers: {
           authorization: bearer.toAuthorizationHeader(),
-          accept: "image/*, application/pdf, application/octet-stream",
+          accept:
+            "image/*, application/pdf, video/mp4, text/plain, application/xml, text/xml, application/octet-stream",
           "user-agent": "kaminari-ad-mcp",
           "x-request-id": requestId,
         },
@@ -515,6 +528,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         `/api/v1/scans/${scanId}/landings/${String(landingOrd)}/screenshot`,
         w !== undefined ? { w } : undefined
       );
+    },
+    async getScanCreativeHtml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/creative-html`);
+    },
+    async getScanCreativeVideo(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/creative-video`);
+    },
+    async getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/vast-xml`);
     },
     async getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`);
@@ -706,9 +728,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Campaign groups ───────────────────────────────────────────
-    async listCampaignGroups(filters?: {
-      readonly archived?: boolean;
-    }): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
+    async listCampaignGroups(
+      filters?: ListCampaignGroupsFilters
+    ): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
       return call(
         "GET",
         "/api/v1/campaign-groups",
@@ -915,6 +937,39 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
+    async listPolicySetCampaigns(
+      id: string,
+      filters: ListPolicySetCampaignsFilters
+    ): Promise<Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns",
+        { params: { path: { policy_set_id: id }, query: filters } },
+        parseLinkedCampaignPage
+      );
+    },
+    async attachPolicySetCampaigns(
+      id: string,
+      body: AttachCampaignsRequest
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns/attach",
+        { params: { path: { policy_set_id: id } }, body },
+        parseEmpty
+      );
+    },
+    async detachPolicySetCampaigns(
+      id: string,
+      body: DetachCampaignsRequest
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns/detach",
+        { params: { path: { policy_set_id: id } }, body },
+        parseEmpty
+      );
+    },
     async requestPolicySetApproval(id: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
@@ -925,8 +980,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Custom taxonomies ─────────────────────────────────────────
-    async listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>> {
-      return call("GET", "/api/v1/custom-taxonomies", {}, parseCustomTaxonomyList);
+    async listCustomTaxonomies(
+      filters?: ListCustomTaxonomiesFilters
+    ): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/custom-taxonomies",
+        { params: { query: filters ?? {} } },
+        parseCustomTaxonomyList
+      );
     },
     async getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>> {
       return call(
@@ -996,8 +1058,13 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
-    async getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>> {
-      return call("GET", "/api/v1/alerts/stats", {}, parseAlertStats);
+    async bulkUpdateAlertStatus(
+      body: BulkUpdateAlertStatusRequest
+    ): Promise<Result<BulkUpdateAlertStatusResponse, ApiError>> {
+      return call("POST", "/api/v1/alerts/bulk-status", { body }, parseBulkUpdateAlertStatus);
+    },
+    async getAlertStats(filters: AlertStatsFilters): Promise<Result<AlertStatsResponse, ApiError>> {
+      return call("GET", "/api/v1/alerts/stats", { params: { query: filters } }, parseAlertStats);
     },
 
     // ── Webhooks ──────────────────────────────────────────────────
