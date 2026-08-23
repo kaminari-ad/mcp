@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getScanCreativeVideoTool } from "../../../../src/application/tools/scans/get-scan-creative-video.tool.js";
-import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
+import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 const SID = "00000000-0000-0000-0000-000000000555";
@@ -29,34 +29,24 @@ describe("getScanCreativeVideoTool", () => {
     expect(api.state.calls[0]).toEqual({ method: "getScanCreativeVideo", scanId: SID });
   });
 
-  // The API caps nothing and base64 inflates by a third, so the
-  // gateway refuses while reading the socket rather than buffering a
-  // 200 MiB MediaFile into the hosted process. The fake mirrors that
-  // ceiling so this stays a real test.
-  it("refuses a video over the 8 MiB limit", async () => {
+  // The ceiling itself lives in the gateway, which refuses while
+  // reading the socket — see the binary-download tests in
+  // `http-api-gateway.test.ts`. What this tool owes the agent is a
+  // legible surfacing of that refusal, so the refusal is injected
+  // rather than re-derived here.
+  it("surfaces the gateway's size refusal instead of swallowing it", async () => {
     const api = createFakeApiGateway();
-    api.state.responses.getScanCreativeVideo = ok({
-      bytes: new Uint8Array(8 * 1024 * 1024 + 1),
-      contentType: "video/mp4",
-    });
+    api.state.responses.getScanCreativeVideo = err(
+      makeApiError("upstream", "Artifact is larger than the 8.0 MiB this tool will transfer.")
+    );
     const r = await getScanCreativeVideoTool.handler({ scan_id: SID }, makeToolContext({ api }));
     expect(r.isErr()).toBe(true);
     const error = r._unsafeUnwrapErr();
-    expect(error.kind).toBe("invalid-input");
+    expect(error.kind).toBe("upstream");
     expect(error.message).toContain("8.0 MiB");
   });
   it("points at the cheaper alternatives so the agent can recover", () => {
     expect(getScanCreativeVideoTool.description).toContain("get_scan_creative_screenshot");
-  });
-  it("accepts a video exactly at the limit", async () => {
-    const api = createFakeApiGateway();
-    api.state.responses.getScanCreativeVideo = ok({
-      bytes: new Uint8Array(8 * 1024 * 1024),
-      contentType: "video/mp4",
-    });
-    expect(
-      (await getScanCreativeVideoTool.handler({ scan_id: SID }, makeToolContext({ api }))).isOk()
-    ).toBe(true);
   });
   it("maps a not-found from a non-VAST scan", async () => {
     const api = createFakeApiGateway();

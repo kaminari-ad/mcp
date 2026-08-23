@@ -370,44 +370,78 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   /**
    * Read an artifact body, refusing to buffer more than `maxBytes`.
    *
-   * Returns `null` once the cap is passed. The `content-length`
-   * check is the fast path; the streaming count is what actually
-   * protects us, because the header is advisory and absent under
-   * chunked transfer. `arrayBuffer()` would materialise the whole
-   * body first, which on an uncapped artifact endpoint means one
-   * oversized MediaFile decides the server's memory ceiling.
+   * `arrayBuffer()` would materialise the whole body first, which on
+   * an uncapped artifact endpoint means one oversized MediaFile
+   * decides the server's memory ceiling.
    */
-  async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array | null> {
-    const declared = Number(response.headers.get("content-length") ?? Number.NaN);
-    if (Number.isFinite(declared) && declared > maxBytes) return null;
+  async function readCapped(
+    response: Response,
+    maxBytes: number
+  ): Promise<Result<Uint8Array, ApiError>> {
+    const tooLarge = err<Uint8Array, ApiError>({
+      kind: "upstream",
+      detail:
+        `Artifact is larger than the ${formatBytes(maxBytes)} this tool will transfer. ` +
+        `Open the report URL from \`get_scan\` to view it instead.`,
+    });
 
     // `response` is the undici body cast to the DOM `Response` shape,
     // so the stream generics arrive as `any`; pin them here rather
     // than letting `any` leak into the byte arithmetic below.
     const body: ReadableStream<Uint8Array> | null = response.body;
-    /* c8 ignore next — undici always exposes a body on a 2xx. */
-    if (body === null) return new Uint8Array(0);
+    /* c8 ignore next 3 — undici always exposes a body on a 2xx. */
+    if (body === null) {
+      return err({ kind: "upstream", detail: "Artifact response had no body." });
+    }
+
+    // Refusing on the declared size avoids reading the socket at all,
+    // but the header is advisory and absent under chunked transfer,
+    // so the streaming count below is the guarantee. Either way the
+    // body must be cancelled — abandoning it keeps the connection
+    // checked out of undici's global pool until GC.
+    const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      await body.cancel();
+      return tooLarge;
+    }
 
     const reader: ReadableStreamDefaultReader<Uint8Array> = body.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        return null;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel();
+          return tooLarge;
+        }
+        chunks.push(value);
       }
-      chunks.push(value);
+      /* c8 ignore start — a mid-body socket drop; MockAgent delivers
+         the buffered chunks and closes cleanly instead of rejecting
+         the read, so the harness cannot reach this. Same reason the
+         fetch-level catch above is ignored. */
+    } catch (cause) {
+      // Without this the rejection escapes the Result contract
+      // entirely: it is raised after the fetch-level catch, so the
+      // agent gets an opaque SDK failure rather than a typed error.
+      await reader.cancel().catch(() => undefined);
+      return err({
+        kind: "upstream",
+        detail: cause instanceof Error ? cause.message : "artifact stream failed",
+      });
     }
+    /* c8 ignore stop */
+
     const out = new Uint8Array(total);
     let offset = 0;
     for (const chunk of chunks) {
       out.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    return out;
+    return ok(out);
   }
 
   /**
@@ -481,15 +515,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       "api.done"
     );
     if (status >= 200 && status < 300) {
-      const bytes = await readCapped(response, maxBytes);
-      if (bytes === null) {
-        return err({
-          kind: "invalid-input",
-          detail: `Artifact exceeds the ${formatBytes(maxBytes)} limit this tool will transfer.`,
-        });
-      }
+      const read = await readCapped(response, maxBytes);
+      if (read.isErr()) return err(read.error);
       return ok<BinaryDownload, ApiError>({
-        bytes,
+        bytes: read.value,
         contentType: response.headers.get("content-type") ?? "application/octet-stream",
       });
     }

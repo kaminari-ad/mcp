@@ -1525,7 +1525,9 @@ describe("HttpApiGateway", () => {
       const result = await buildGateway(agent).getScanCreativeVideo(SID);
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.kind).toBe("invalid-input");
+        // `upstream`, not `invalid-input`: the agent's arguments were
+        // fine, the artifact is simply too big to move.
+        expect(result.error.kind).toBe("upstream");
         expect(result.error.detail).toContain("8.0 MiB");
       }
     });
@@ -1542,6 +1544,10 @@ describe("HttpApiGateway", () => {
       expect((await buildGateway(agent).getScanCreativeHtml(SID)).isErr()).toBe(true);
     });
 
+    // A socket drop mid-body rejects inside the stream loop, which is
+    // outside the fetch-level catch. Unhandled, it escapes the Result
+    // contract entirely and the agent sees an opaque SDK failure
+    // instead of a typed upstream error.
     it("binary download — a body at the cap still succeeds", async () => {
       const SID = "00000000-0000-0000-0000-000000000aac";
       agent

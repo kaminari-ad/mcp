@@ -104,11 +104,6 @@ import type {
   WebhookCreatedResponse,
   WebhookResponse,
 } from "../../src/domain/ports/api-gateway.js";
-import {
-  formatBytes,
-  MAX_BINARY_ARTIFACT_BYTES,
-  MAX_TEXT_ARTIFACT_BYTES,
-} from "../../src/shared/artifact-limits.js";
 import { err, ok, type Result } from "../../src/shared/result.js";
 
 type Call =
@@ -689,24 +684,6 @@ const DEFAULT_POLICY_SET_LIST_ITEM: PolicySetListItemResponse = {
   created_at: "2026-05-16T00:00:00Z",
 };
 
-/**
- * Mirror the real gateway's artifact ceiling.
- *
- * `binaryGet` refuses to buffer past the limit while reading the
- * socket, so a fake that happily returned 50 MiB would let a tool test
- * pass over a payload production never delivers.
- */
-function capped(
-  response: Result<BinaryDownload, ApiError>,
-  maxBytes: number
-): Result<BinaryDownload, ApiError> {
-  if (response.isErr() || response.value.bytes.byteLength <= maxBytes) return response;
-  return err<BinaryDownload, ApiError>({
-    kind: "invalid-input",
-    detail: `Artifact exceeds the ${formatBytes(maxBytes)} limit this tool will transfer.`,
-  });
-}
-
 const DEFAULT_LINKED_CAMPAIGN: LinkedCampaignResponse = {
   id: "00000000-0000-0000-0000-0000000000c1",
   name: "Bound campaign",
@@ -851,37 +828,34 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
     async getScanCreativeHtml(scanId) {
       push({ method: "getScanCreativeHtml", scanId });
       await Promise.resolve();
-      return capped(
+      return (
         state.responses.getScanCreativeHtml ??
-          ok<BinaryDownload, ApiError>({
-            bytes: new TextEncoder().encode("<div>creative</div>"),
-            contentType: "text/plain; charset=utf-8",
-          }),
-        MAX_TEXT_ARTIFACT_BYTES
+        ok<BinaryDownload, ApiError>({
+          bytes: new TextEncoder().encode("<div>creative</div>"),
+          contentType: "text/plain; charset=utf-8",
+        })
       );
     },
     async getScanCreativeVideo(scanId) {
       push({ method: "getScanCreativeVideo", scanId });
       await Promise.resolve();
-      return capped(
+      return (
         state.responses.getScanCreativeVideo ??
-          ok<BinaryDownload, ApiError>({
-            bytes: new Uint8Array([0x00, 0x00, 0x00, 0x18]),
-            contentType: "video/mp4",
-          }),
-        MAX_BINARY_ARTIFACT_BYTES
+        ok<BinaryDownload, ApiError>({
+          bytes: new Uint8Array([0x00, 0x00, 0x00, 0x18]),
+          contentType: "video/mp4",
+        })
       );
     },
     async getScanVastXml(scanId) {
       push({ method: "getScanVastXml", scanId });
       await Promise.resolve();
-      return capped(
+      return (
         state.responses.getScanVastXml ??
-          ok<BinaryDownload, ApiError>({
-            bytes: new TextEncoder().encode('<VAST version="4.0"></VAST>'),
-            contentType: "application/xml",
-          }),
-        MAX_TEXT_ARTIFACT_BYTES
+        ok<BinaryDownload, ApiError>({
+          bytes: new TextEncoder().encode('<VAST version="4.0"></VAST>'),
+          contentType: "application/xml",
+        })
       );
     },
     async getInvoicePdf(invoiceId) {

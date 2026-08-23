@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getScanVastXmlTool } from "../../../../src/application/tools/scans/get-scan-vast-xml.tool.js";
-import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
+import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 const SID = "00000000-0000-0000-0000-000000000555";
@@ -22,15 +22,14 @@ describe("getScanVastXmlTool", () => {
     });
     expect(api.state.calls[0]).toEqual({ method: "getScanVastXml", scanId: SID });
   });
-  it("refuses a document over the size limit", async () => {
+  it("surfaces the gateway's size refusal instead of swallowing it", async () => {
     const api = createFakeApiGateway();
-    api.state.responses.getScanVastXml = ok({
-      bytes: new Uint8Array(256 * 1024 + 1),
-      contentType: "application/xml",
-    });
+    api.state.responses.getScanVastXml = err(
+      makeApiError("upstream", "Artifact is larger than the 256.0 KiB this tool will transfer.")
+    );
     const r = await getScanVastXmlTool.handler({ scan_id: SID }, makeToolContext({ api }));
     expect(r.isErr()).toBe(true);
-    expect(r._unsafeUnwrapErr().kind).toBe("invalid-input");
+    expect(r._unsafeUnwrapErr().kind).toBe("upstream");
   });
   it("maps a not-found from a non-VAST scan", async () => {
     const api = createFakeApiGateway();

@@ -32,28 +32,17 @@ describe("getScanCreativeHtmlTool", () => {
     expect(r._unsafeUnwrap().html).toBe("<p>Скидка 90%</p>");
   });
 
-  // Ad markup is third-party and unbounded, and the API caps nothing.
-  it("refuses markup over the size limit instead of flooding the context", async () => {
+  // The 256 KiB ceiling is enforced in the gateway while reading the
+  // socket (see `http-api-gateway.test.ts`); this asserts the tool
+  // passes that refusal through legibly rather than re-deriving it.
+  it("surfaces the gateway's size refusal instead of swallowing it", async () => {
     const api = createFakeApiGateway();
-    api.state.responses.getScanCreativeHtml = ok({
-      bytes: new Uint8Array(256 * 1024 + 1),
-      contentType: "text/plain",
-    });
+    api.state.responses.getScanCreativeHtml = err(
+      makeApiError("upstream", "Artifact is larger than the 256.0 KiB this tool will transfer.")
+    );
     const r = await getScanCreativeHtmlTool.handler({ scan_id: SID }, makeToolContext({ api }));
     expect(r.isErr()).toBe(true);
-    const error = r._unsafeUnwrapErr();
-    expect(error.kind).toBe("invalid-input");
-    expect(error.message).toContain("256.0 KiB");
-  });
-  it("accepts markup exactly at the limit", async () => {
-    const api = createFakeApiGateway();
-    api.state.responses.getScanCreativeHtml = ok({
-      bytes: new Uint8Array(256 * 1024),
-      contentType: "text/plain",
-    });
-    expect(
-      (await getScanCreativeHtmlTool.handler({ scan_id: SID }, makeToolContext({ api }))).isOk()
-    ).toBe(true);
+    expect(r._unsafeUnwrapErr().message).toContain("256.0 KiB");
   });
   it("maps a not-found from a scan without a creative", async () => {
     const api = createFakeApiGateway();
