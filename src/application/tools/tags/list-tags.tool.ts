@@ -27,7 +27,7 @@ const ListTagsInputShape = {
     .boolean()
     .optional()
     .describe(
-      "Include archived tag definitions, which are excluded by default. Archived tags still appear on the scans that carry them, so pass `true` when resolving a slug seen on an older scan."
+      "Also return the archived tag definitions this organization owns, which are excluded by default. An archived tag is retired: it is no longer assigned to scans and no longer raises alerts, and archived platform (system) tags are never returned at all — so this flag cannot resolve a slug seen on an older scan."
     ),
 } as const;
 type ListTagsInputShape = typeof ListTagsInputShape;
@@ -40,7 +40,7 @@ export interface ListTagsOutput {
 export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
   name: "list_tags",
   description:
-    "List every tag definition the platform knows (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category, and pass `include_archived` to also see retired definitions.",
+    "List every tag definition in service for this organization (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category, and pass `include_archived` to also see the retired definitions this organization owns.",
   annotations: {
     title: "List Tags",
     readOnlyHint: true,
