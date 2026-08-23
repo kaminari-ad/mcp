@@ -1541,13 +1541,16 @@ describe("HttpApiGateway", () => {
           headers: { "content-type": "text/plain", "content-length": "999999999" },
         });
 
-      expect((await buildGateway(agent).getScanCreativeHtml(SID)).isErr()).toBe(true);
+      const result = await buildGateway(agent).getScanCreativeHtml(SID);
+      expect(result.isErr()).toBe(true);
+      // A body this small would have streamed fine, so an error here
+      // can only mean the header fast path ran.
+      if (result.isErr()) {
+        expect(result.error.kind).toBe("upstream");
+        expect(result.error.detail).toContain("256.0 KiB");
+      }
     });
 
-    // A socket drop mid-body rejects inside the stream loop, which is
-    // outside the fetch-level catch. Unhandled, it escapes the Result
-    // contract entirely and the agent sees an opaque SDK failure
-    // instead of a typed upstream error.
     it("binary download — a body at the cap still succeeds", async () => {
       const SID = "00000000-0000-0000-0000-000000000aac";
       agent

@@ -401,7 +401,13 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     // checked out of undici's global pool until GC.
     const declared = Number(response.headers.get("content-length") ?? Number.NaN);
     if (Number.isFinite(declared) && declared > maxBytes) {
-      await body.cancel();
+      // `cancel()` rejects on an already-errored or locked stream, and
+      // this is the branch a genuinely oversized artifact takes — an
+      // unguarded reject here would escape the Result contract on the
+      // most likely refusal of all. The handler is unreachable from
+      // MockAgent, which never errors a stream.
+      /* c8 ignore next */
+      await body.cancel().catch(() => undefined);
       return tooLarge;
     }
 
@@ -414,7 +420,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         if (done) break;
         total += value.byteLength;
         if (total > maxBytes) {
-          await reader.cancel();
+          // Swallow a rejecting cancel so the caller still gets the
+          // size message rather than a generic stream failure.
+          /* c8 ignore next */
+          await reader.cancel().catch(() => undefined);
           return tooLarge;
         }
         chunks.push(value);
@@ -446,10 +455,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
 
   /**
    * Direct binary GET — bypasses openapi-fetch (which always parses
-   * JSON). Used by screenshot / invoice-PDF tools. Same auth, same
+   * JSON). Used by every artifact tool: screenshots, invoice PDF,
+   * creative HTML, VAST XML, creative video. Same auth, same
    * per-request dispatcher, same error mapping. Tools base64-encode
-   * the bytes when building the MCP `image` / `resource` content
-   * block.
+   * or decode the bytes when building their content block.
    *
    * Tenant-isolation header contract (CONTRIBUTING.md §9): JSON calls
    * pin the 5-key allowlist `authorization, content-type, accept,

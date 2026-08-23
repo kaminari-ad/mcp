@@ -1,11 +1,10 @@
 /**
- * Ceilings for scan artifacts, and the helpers that report them.
+ * Ceilings for downloaded artifacts, and the helpers that report them.
  *
- * Lives in `shared/` because both layers need them: the gateway
- * enforces the cap while reading the socket, and the tools quote the
- * numbers to the agent. Artifacts are third-party ad payloads and the
- * API caps none of them, so an uncapped read would let one VAST
- * MediaFile decide how much memory the hosted server uses.
+ * The API caps none of these endpoints, so without a ceiling one VAST
+ * MediaFile decides how much memory the hosted server uses. Lives in
+ * `shared/` so the gateway can enforce the cap while reading the
+ * socket without importing from the application layer.
  */
 
 /**
@@ -15,10 +14,10 @@
 export const MAX_TEXT_ARTIFACT_BYTES = 256 * 1024;
 
 /**
- * Largest binary artifact (MP4) we will base64-encode into a result.
- * Base64 inflates by ~33%, and a truncated video is useless to a
- * model, so this ceiling protects the transport rather than the
- * context window.
+ * Largest binary artifact — screenshots, invoice PDFs, MP4 creatives —
+ * we will base64-encode into a result. Base64 inflates by ~33%, and a
+ * truncated file is useless to a model, so this ceiling protects the
+ * transport rather than the context window.
  */
 export const MAX_BINARY_ARTIFACT_BYTES = 8 * 1024 * 1024;
 

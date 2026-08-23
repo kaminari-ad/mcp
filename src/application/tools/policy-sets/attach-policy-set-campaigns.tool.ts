@@ -1,6 +1,7 @@
 /**
  * Tool: `attach_policy_set_campaigns` — bind campaigns to a policy set
- * without disturbing the existing bindings.
+ * without disturbing this set's other members. A campaign bound to a
+ * DIFFERENT set is reassigned, not rejected.
  */
 
 import { z } from "zod";
@@ -34,7 +35,7 @@ export const attachPolicySetCampaignsTool: Tool<
 > = {
   name: "attach_policy_set_campaigns",
   description:
-    "Bind campaigns to a policy set INCREMENTALLY — this set's other members are left alone, unlike `update_policy_set`, which replaces the whole campaign list and silently drops any binding you omit. IMPORTANT: a campaign can belong to only one policy set, so naming a campaign that is currently on a DIFFERENT set MOVES it here — it stops being evaluated against its old set's rules, and no warning is returned. Check `list_campaigns` (`policy_set_id`) first when the campaign may already be bound elsewhere. Split lists longer than 500 across calls; verify with `list_policy_set_campaigns`.",
+    "Bind campaigns to a policy set. This and `detach_policy_set_campaigns` are the only way to change membership — `update_policy_set` edits the set's name, description and rules, never its campaigns. Membership changes here are incremental: this set's other members are left alone. IMPORTANT: a campaign can belong to only one policy set, so naming a campaign currently on a DIFFERENT set MOVES it here — it stops being evaluated against its old set's rules, and no warning is returned. Check `list_campaigns` (`policy_set_id`) first when the campaign may already be bound elsewhere. Split lists longer than 500 across calls; verify with `list_policy_set_campaigns`.",
   annotations: {
     title: "Attach Policy Set Campaigns",
     readOnlyHint: false,

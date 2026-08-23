@@ -41,8 +41,8 @@ two gates so the next one fails CI instead of reaching a user.
   refused locally, so an agent could not change campaign alert routing
   at all. `mode` now matches the API, `destination_ids` is refused
   locally unless `mode` is `override` (mirroring the API's
-  `notifications.invalid_override_combination`), and both tool
-  descriptions explain that "route everywhere except these" does not
+  `notifications.invalid_override_combination`), and the setter's
+  description explains that "route everywhere except these" does not
   exist — invert the list under `override` instead.
 - **`list_custom_taxonomies` claimed soft-deleted taxonomies were
   listed.** They are excluded unless the new `include_inactive` is
@@ -55,10 +55,11 @@ two gates so the next one fails CI instead of reaching a user.
   Select with `ids` (max 1000) or `all_matching: true` plus `filter_*`
   fields; returns `updated` / `skipped`.
 - **`list_policy_set_campaigns`**, **`attach_policy_set_campaigns`**,
-  **`detach_policy_set_campaigns`** — incremental policy-set
-  membership. Previously the only way to rebind campaigns was
-  `update_policy_set`, which replaces the whole list and silently drops
-  any binding left out of the payload.
+  **`detach_policy_set_campaigns`** — policy-set membership, which was
+  previously not editable through MCP at all: `update_policy_set` sends
+  only name, description and rules. Attach warns that a campaign bound
+  to another set is moved rather than rejected, since a campaign can
+  belong to only one set.
 - **`get_scan_creative_html`**, **`get_scan_vast_xml`** — creative
   markup and the resolved VAST document, returned as text the model
   reads directly. **`get_scan_creative_video`** — the MP4 as a resource

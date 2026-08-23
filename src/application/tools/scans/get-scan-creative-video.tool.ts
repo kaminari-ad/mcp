@@ -24,7 +24,7 @@ export const getScanCreativeVideoTool: Tool<
 > = {
   name: "get_scan_creative_video",
   description:
-    "Fetch the MP4 MediaFile a VAST scan downloaded, as one inline resource block. Only VAST scans have it; others return not-found. Prefer `get_scan_creative_screenshot` for a still frame and `get_scan_vast_xml` for the declared metadata — both are far cheaper. Reach for the video itself only when the moving image is the evidence. Files over 8 MiB are refused rather than inlined — use the still frame for those.",
+    "Fetch the MP4 MediaFile a VAST scan downloaded, as one inline resource block. Only VAST scans have it; others return not-found. Prefer `get_scan_creative_screenshot` for a still frame and `get_scan_vast_xml` for the declared metadata — both are far cheaper. Reach for the video itself only when the moving image is the evidence. Files over 8 MiB are refused rather than inlined; fall back to `get_scan_creative_screenshot` or the report URL from `get_scan` for those.",
   annotations: {
     title: "Get Scan Creative Video",
     readOnlyHint: true,

@@ -41,7 +41,7 @@ export const detachPolicySetCampaignsTool: Tool<
 > = {
   name: "detach_policy_set_campaigns",
   description:
-    "Unbind campaigns from a policy set INCREMENTALLY — the bindings you don't name survive. Pass `campaign_ids` for specific campaigns or `detach_all: true` to clear the whole membership. Use this rather than `update_policy_set`, which replaces the entire campaign list. Detaching leaves the policy set and its rules intact, and alerts already raised under it are kept.",
+    "Unbind campaigns from a policy set INCREMENTALLY — the bindings you don't name survive. Pass `campaign_ids` for specific campaigns or `detach_all: true` to clear the whole membership. This and `attach_policy_set_campaigns` are the only way to change membership; `update_policy_set` edits the set's name, description and rules, never its campaigns. Detaching leaves the policy set and its rules intact, and alerts already raised under it are kept.",
   annotations: {
     title: "Detach Policy Set Campaigns",
     readOnlyHint: false,

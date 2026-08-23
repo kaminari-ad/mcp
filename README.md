@@ -131,7 +131,7 @@ which decides which credential type minted it.
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
 - **Reference data** (2) — `list_geos`, `list_emulators`
 
-Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. All five artifact tools refuse oversized payloads rather than inlining them.
+Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. Every artifact download is size-capped in the gateway — 256 KiB for the text artifacts, 8 MiB for the binary ones — and refused while reading rather than buffered and then rejected.
 
 Not exposed (intentionally): the public marketing forms, which are anonymous intake for kaminari.ad itself rather than an agent capability.
 
