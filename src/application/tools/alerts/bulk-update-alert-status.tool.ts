@@ -13,6 +13,18 @@ import type { ToolError } from "../_shared/tool-result.js";
 
 const MAX_IDS = 1000;
 
+/** Mirrors the API's `_has_filters()`, which rejects these without `all_matching`. */
+const FILTER_FIELDS = [
+  "filter_status",
+  "filter_campaign_id",
+  "filter_policy_set_ids",
+  "filter_tag_slugs",
+  "filter_country_codes",
+  "filter_date_from",
+  "filter_date_to",
+  "filter_timezone",
+] as const;
+
 const BulkUpdateAlertStatusInputShape = {
   status: z
     .enum(["open", "escalated", "resolved", "dismissed"])
@@ -102,6 +114,13 @@ export const bulkUpdateAlertStatusTool: Tool<
         kind: "invalid-input",
         message:
           "Select alerts with either `ids` or `all_matching: true` — not both, and not neither.",
+      });
+    }
+    const suppliedFilters = FILTER_FIELDS.filter((field) => input[field] !== undefined);
+    if (!matchesAll && suppliedFilters.length > 0) {
+      return err({
+        kind: "invalid-input",
+        message: `\`${suppliedFilters.join("`, `")}\` applies only with \`all_matching: true\`. An explicit \`ids\` list is already the selection, so the filters would be ignored.`,
       });
     }
     if (

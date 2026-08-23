@@ -132,6 +132,11 @@ import type { Logger } from "../../domain/ports/logger.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import type { paths } from "../../shared/api/openapi.js";
+import {
+  formatBytes,
+  MAX_BINARY_ARTIFACT_BYTES,
+  MAX_TEXT_ARTIFACT_BYTES,
+} from "../../shared/artifact-limits.js";
 import { err, ok, type Result } from "../../shared/result.js";
 import { toApiError } from "./error-mapping.js";
 import { parseAlertPage } from "./parsers/parse-alert.js";
@@ -363,6 +368,49 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   }
 
   /**
+   * Read an artifact body, refusing to buffer more than `maxBytes`.
+   *
+   * Returns `null` once the cap is passed. The `content-length`
+   * check is the fast path; the streaming count is what actually
+   * protects us, because the header is advisory and absent under
+   * chunked transfer. `arrayBuffer()` would materialise the whole
+   * body first, which on an uncapped artifact endpoint means one
+   * oversized MediaFile decides the server's memory ceiling.
+   */
+  async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array | null> {
+    const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+    if (Number.isFinite(declared) && declared > maxBytes) return null;
+
+    // `response` is the undici body cast to the DOM `Response` shape,
+    // so the stream generics arrive as `any`; pin them here rather
+    // than letting `any` leak into the byte arithmetic below.
+    const body: ReadableStream<Uint8Array> | null = response.body;
+    /* c8 ignore next — undici always exposes a body on a 2xx. */
+    if (body === null) return new Uint8Array(0);
+
+    const reader: ReadableStreamDefaultReader<Uint8Array> = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      out.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return out;
+  }
+
+  /**
    * Direct binary GET — bypasses openapi-fetch (which always parses
    * JSON). Used by screenshot / invoice-PDF tools. Same auth, same
    * per-request dispatcher, same error mapping. Tools base64-encode
@@ -385,6 +433,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    */
   async function binaryGet(
     path: string,
+    maxBytes: number,
     query?: Readonly<Record<string, string | number>>
   ): Promise<Result<BinaryDownload, ApiError>> {
     const startedAtMs = Date.now();
@@ -432,9 +481,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       "api.done"
     );
     if (status >= 200 && status < 300) {
-      const buf = await response.arrayBuffer();
+      const bytes = await readCapped(response, maxBytes);
+      if (bytes === null) {
+        return err({
+          kind: "invalid-input",
+          detail: `Artifact exceeds the ${formatBytes(maxBytes)} limit this tool will transfer.`,
+        });
+      }
       return ok<BinaryDownload, ApiError>({
-        bytes: new Uint8Array(buf),
+        bytes,
         contentType: response.headers.get("content-type") ?? "application/octet-stream",
       });
     }
@@ -508,7 +563,11 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       return call("PUT", "/api/v1/account/labels", { body }, parseArrayOf(parseLabelDefinition));
     },
     async getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/scans/${scanId}/screenshot`, w !== undefined ? { w } : undefined);
+      return binaryGet(
+        `/api/v1/scans/${scanId}/screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
+        w !== undefined ? { w } : undefined
+      );
     },
     async getScanCreativeScreenshot(
       scanId: string,
@@ -516,6 +575,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(
         `/api/v1/scans/${scanId}/creative-screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
         w !== undefined ? { w } : undefined
       );
     },
@@ -526,20 +586,21 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(
         `/api/v1/scans/${scanId}/landings/${String(landingOrd)}/screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
         w !== undefined ? { w } : undefined
       );
     },
     async getScanCreativeHtml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/scans/${scanId}/creative-html`);
+      return binaryGet(`/api/v1/scans/${scanId}/creative-html`, MAX_TEXT_ARTIFACT_BYTES);
     },
     async getScanCreativeVideo(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/scans/${scanId}/creative-video`);
+      return binaryGet(`/api/v1/scans/${scanId}/creative-video`, MAX_BINARY_ARTIFACT_BYTES);
     },
     async getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/scans/${scanId}/vast-xml`);
+      return binaryGet(`/api/v1/scans/${scanId}/vast-xml`, MAX_TEXT_ARTIFACT_BYTES);
     },
     async getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`);
+      return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`, MAX_BINARY_ARTIFACT_BYTES);
     },
     async listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
       return call("GET", "/api/v1/account/api-keys", {}, parseApiKeyList);

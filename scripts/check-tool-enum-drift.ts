@@ -1,12 +1,16 @@
 #!/usr/bin/env tsx
 /**
- * Every `z.enum([...])` literal in a tool's input schema must be a
- * value-subset of some enum in the generated
+ * Every `z.enum([...])` in a tool's input schema must have the SAME
+ * value set as some enum in the generated
  * `src/shared/api/zod-schemas.ts`, or carry a justified exemption.
  *
- * Subset rather than equality: a tool may deliberately offer a
- * narrower choice than the API accepts. What it may not do is invent
- * values the API has never heard of.
+ * Equality, not subset. Subset looked friendlier — a tool may want to
+ * offer a narrower choice — but with 68 distinct values across the
+ * generated enums it accepts almost anything: `z.enum(["open"])` is a
+ * subset of `AlertStatus`, `["all"]` of `TagMatchMode`, `["public"]`
+ * of three different enums. A tool that deliberately narrows can say
+ * so in EXEMPT_VALUE_SETS, which is one line and leaves a reason
+ * behind.
  *
  * What this catches. KAMIAD-158 shipped
  * `mode: z.enum(["inherit", "include", "exclude"])` against a field
@@ -43,13 +47,13 @@ const ZOD_SCHEMAS_FILE = path.join(REPO_ROOT, "src", "shared", "api", "zod-schem
  * once the api side types the field.
  */
 const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
-  // Campaign notification routing. The API validates the three values
-  // in `SetCampaignDestinationOverrides._parse_mode` but the DTO field
-  // is a plain `str`, so no generated enum exists yet. The api MR
-  // `fix/type-override-mode-and-unlist-forms` introduces
-  // `CampaignOverrideMode`; drop this entry and switch the tool to
-  // `schemas.CampaignOverrideMode` on the first regen after it ships.
-  "inherit|override|silence": "API validates in the use case, DTO field is still a plain str",
+  // Campaign notification routing. API `main` already types this as
+  // `CampaignOverrideMode`, but the committed spec is generated from
+  // deployed prod, which still emits a bare `string` — so there is no
+  // generated enum to match yet. Delete this entry and switch the tool
+  // to `schemas.CampaignOverrideMode` on the first regen after the api
+  // change is live.
+  "inherit|override|silence": "typed on api main; prod OpenAPI still emits string",
   // Campaign shape fields validated by Pydantic field validators
   // rather than typed enums, so the OpenAPI document describes each as
   // a bare string. Typing them on the api side would let this gate
@@ -67,6 +71,7 @@ const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
 interface Violation {
   readonly file: string;
   readonly values: readonly string[];
+  readonly opaque: boolean;
 }
 
 /** Value sets of every `z.enum([...])` in the generated schemas. */
@@ -75,46 +80,38 @@ function generatedEnumValueSets(project: Project): ReadonlySet<string> {
   const sets = new Set<string>();
   for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
     const values = enumValuesOf(call);
-    if (values !== undefined) sets.add(key(values));
+    if (values !== undefined && values !== "opaque") sets.add(key(values));
   }
   return sets;
 }
 
 /**
- * String literals of a `z.enum([...])` call, or undefined.
+ * String literals of a `z.enum([...])` call.
+ *
+ * `"opaque"` means "a z.enum this walk cannot read" — an extracted
+ * `const`, a computed array, a non-literal element. Those are
+ * reported rather than skipped: an unreadable enum is exactly how a
+ * wrong value set would slip past unnoticed.
  *
  * The callee text is whitespace-stripped because Prettier wraps a long
  * chain as `z\n  .enum([...])`; matching the raw text saw only the two
  * single-line cases and turned this gate into a near no-op.
  */
-function enumValuesOf(call: Node): readonly string[] | undefined {
+function enumValuesOf(call: Node): readonly string[] | "opaque" | undefined {
   if (!Node.isCallExpression(call)) return undefined;
   if (call.getExpression().getText().replace(/\s+/g, "") !== "z.enum") return undefined;
   const [arg] = call.getArguments();
-  if (arg === undefined || !Node.isArrayLiteralExpression(arg)) return undefined;
+  if (arg === undefined || !Node.isArrayLiteralExpression(arg)) return "opaque";
   const values: string[] = [];
   for (const element of arg.getElements()) {
-    if (!Node.isStringLiteral(element)) return undefined;
+    if (!Node.isStringLiteral(element)) return "opaque";
     values.push(element.getLiteralText());
   }
-  return values.length === 0 ? undefined : values;
+  return values.length === 0 ? "opaque" : values;
 }
 
 function key(values: readonly string[]): string {
   return [...values].sort().join("|");
-}
-
-/** True when `values` is a subset of any generated enum's values. */
-function isSubsetOfAnyGenerated(
-  values: readonly string[],
-  generated: ReadonlySet<string>
-): boolean {
-  const wanted = new Set(values);
-  for (const generatedKey of generated) {
-    const candidate = new Set(generatedKey.split("|"));
-    if ([...wanted].every((v) => candidate.has(v))) return true;
-  }
-  return false;
 }
 
 async function main(): Promise<number> {
@@ -140,9 +137,13 @@ async function main(): Promise<number> {
       const values = enumValuesOf(call);
       if (values === undefined) continue;
       checked += 1;
+      if (values === "opaque") {
+        violations.push({ file: rel, values: [], opaque: true });
+        continue;
+      }
       if (key(values) in EXEMPT_VALUE_SETS) continue;
-      if (isSubsetOfAnyGenerated(values, generated)) continue;
-      violations.push({ file: rel, values });
+      if (generated.has(key(values))) continue;
+      violations.push({ file: rel, values, opaque: false });
     }
   }
 
@@ -154,15 +155,20 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  console.error(`\nTool enums with no generated counterpart (${String(violations.length)}):\n`);
+  console.error(`\nTool enums that do not match a generated one (${String(violations.length)}):\n`);
   for (const v of violations) {
-    console.error(`  ${v.file}\n    [${v.values.map((s) => `"${s}"`).join(", ")}]`);
+    console.error(
+      v.opaque
+        ? `  ${v.file}\n    z.enum(...) with a non-literal argument — this walk cannot read it`
+        : `  ${v.file}\n    [${v.values.map((s) => `"${s}"`).join(", ")}]`
+    );
   }
   console.error(
     "\nEither the values are wrong (the bug this gate exists for — check the API),\n" +
       "or the API does not type the field. If it does type it, use\n" +
       "`schemas.<EnumName>` instead of restating the values. If it does not,\n" +
-      "add the sorted value set to EXEMPT_VALUE_SETS with the reason.\n"
+      "add the sorted value set to EXEMPT_VALUE_SETS with the reason. Inline the\n" +
+      "array literal — an extracted const is unreadable to this gate.\n"
   );
   return 1;
 }

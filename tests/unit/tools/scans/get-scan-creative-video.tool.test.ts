@@ -29,8 +29,10 @@ describe("getScanCreativeVideoTool", () => {
     expect(api.state.calls[0]).toEqual({ method: "getScanCreativeVideo", scanId: SID });
   });
 
-  // base64 inflates by a third and the API caps nothing, so a long
-  // creative would otherwise blow up the tool result.
+  // The API caps nothing and base64 inflates by a third, so the
+  // gateway refuses while reading the socket rather than buffering a
+  // 200 MiB MediaFile into the hosted process. The fake mirrors that
+  // ceiling so this stays a real test.
   it("refuses a video over the 8 MiB limit", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanCreativeVideo = ok({
@@ -42,7 +44,9 @@ describe("getScanCreativeVideoTool", () => {
     const error = r._unsafeUnwrapErr();
     expect(error.kind).toBe("invalid-input");
     expect(error.message).toContain("8.0 MiB");
-    expect(error.message).toContain("get_scan_creative_screenshot");
+  });
+  it("points at the cheaper alternatives so the agent can recover", () => {
+    expect(getScanCreativeVideoTool.description).toContain("get_scan_creative_screenshot");
   });
   it("accepts a video exactly at the limit", async () => {
     const api = createFakeApiGateway();

@@ -182,8 +182,24 @@ describe("listScansTool", () => {
     expect(call.filters.parent_scan_id).toBe(parent);
   });
 
-  it("documents rechecking as a filterable status", () => {
-    const status = listScansTool.inputSchema.shape.status.description ?? "";
-    expect(status).toContain("rechecking");
+  // `status` is a free-form CSV string on the API, so the describe
+  // text is the only place an agent learns the lifecycle values. It
+  // must list every one the API can return.
+  it("documents every scan status the API can return", () => {
+    const described = listScansTool.inputSchema.shape.status.description ?? "";
+    for (const status of [
+      "pending",
+      "running",
+      "crawled",
+      "checking",
+      "checking_async",
+      "rechecking",
+      "completed",
+      "partial",
+      "failed",
+      "cancelled",
+    ]) {
+      expect(described).toContain(status);
+    }
   });
 });

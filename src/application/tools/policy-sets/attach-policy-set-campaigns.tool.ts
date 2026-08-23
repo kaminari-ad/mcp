@@ -19,7 +19,7 @@ const AttachPolicySetCampaignsInputShape = {
     .min(1)
     .max(MAX_CAMPAIGNS)
     .describe(
-      `Campaign UUIDs to bind, at most ${String(MAX_CAMPAIGNS)} per call. Already-bound campaigns are accepted and left as they are.`
+      `Campaign UUIDs to bind, at most ${String(MAX_CAMPAIGNS)} per call. A campaign already on THIS set is a no-op; a campaign on a DIFFERENT set is moved to this one.`
     ),
 } as const;
 type AttachPolicySetCampaignsInputShape = typeof AttachPolicySetCampaignsInputShape;
@@ -34,11 +34,13 @@ export const attachPolicySetCampaignsTool: Tool<
 > = {
   name: "attach_policy_set_campaigns",
   description:
-    "Bind campaigns to a policy set INCREMENTALLY — existing bindings survive. This is the tool to use for 'also apply this policy set to campaign X'. Do NOT reach for `update_policy_set` to change membership: it replaces the whole campaign list, so any binding you omit is silently dropped. Split lists longer than 500 across calls. Verify with `list_policy_set_campaigns`.",
+    "Bind campaigns to a policy set INCREMENTALLY — this set's other members are left alone, unlike `update_policy_set`, which replaces the whole campaign list and silently drops any binding you omit. IMPORTANT: a campaign can belong to only one policy set, so naming a campaign that is currently on a DIFFERENT set MOVES it here — it stops being evaluated against its old set's rules, and no warning is returned. Check `list_campaigns` (`policy_set_id`) first when the campaign may already be bound elsewhere. Split lists longer than 500 across calls; verify with `list_policy_set_campaigns`.",
   annotations: {
     title: "Attach Policy Set Campaigns",
     readOnlyHint: false,
-    destructiveHint: false,
+    // Reassigns a campaign away from whatever set it was on, and the
+    // previous binding is not recoverable from this tool's output.
+    destructiveHint: true,
     idempotentHint: true,
     openWorldHint: false,
   },

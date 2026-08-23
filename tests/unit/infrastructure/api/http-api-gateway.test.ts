@@ -1511,6 +1511,49 @@ describe("HttpApiGateway", () => {
       if (r.isErr()) expect(r.error.kind).toBe("not-found");
     });
 
+    // The API caps no artifact, so without this the hosted server's
+    // memory ceiling is whatever the largest MediaFile happens to be.
+    it("binary download — refuses a body over the cap instead of buffering it", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aaa";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-video`, method: "GET" })
+        .reply(200, Buffer.alloc(8 * 1024 * 1024 + 1), {
+          headers: { "content-type": "video/mp4" },
+        });
+
+      const result = await buildGateway(agent).getScanCreativeVideo(SID);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.kind).toBe("invalid-input");
+        expect(result.error.detail).toContain("8.0 MiB");
+      }
+    });
+
+    it("binary download — refuses on an oversized content-length alone", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aab";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/creative-html`, method: "GET" })
+        .reply(200, "<div>small body, lying header</div>", {
+          headers: { "content-type": "text/plain", "content-length": "999999999" },
+        });
+
+      expect((await buildGateway(agent).getScanCreativeHtml(SID)).isErr()).toBe(true);
+    });
+
+    it("binary download — a body at the cap still succeeds", async () => {
+      const SID = "00000000-0000-0000-0000-000000000aac";
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/scans/${SID}/vast-xml`, method: "GET" })
+        .reply(200, Buffer.alloc(256 * 1024), { headers: { "content-type": "application/xml" } });
+
+      const result = await buildGateway(agent).getScanVastXml(SID);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) expect(result.value.bytes.byteLength).toBe(256 * 1024);
+    });
+
     it("binary download — 500 on creative-screenshot is mapped to upstream", async () => {
       const SID = "00000000-0000-0000-0000-000000000aaa";
       agent

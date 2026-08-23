@@ -11,17 +11,18 @@ describe("getAlertStatsTool", () => {
     expect(getAlertStatsTool.name).toBe("get_alert_stats");
     expect(getAlertStatsTool.annotations.readOnlyHint).toBe(true);
   });
-  it("tells the model how the counts relate to the list total", () => {
-    // The endpoint used to default to the last 30 days while the list
-    // spanned all time, so a model comparing the two saw them disagree.
-    // They agree now only when both get the same filters.
-    expect(getAlertStatsTool.description).toContain("all time");
-    expect(getAlertStatsTool.description).toContain(
-      "the same filters to both makes the four counts sum to the `total`"
+  // Counts only reconcile with `list_alerts` when both take the same
+  // filters, so the two schemas must stay in step. Comparing the key
+  // sets catches a filter added to one and not the other, which the
+  // previous assertions on description prose did not.
+  it("accepts exactly the list filters, minus status and paging", async () => {
+    const { listAlertsTool } = await import(
+      "../../../../src/application/tools/alerts/list-alerts.tool.js"
     );
-  });
-  it("scopes the counts to the caller's organization", () => {
-    expect(getAlertStatsTool.description).toContain("the whole organization");
+    const listKeys = Object.keys(listAlertsTool.inputSchema.shape).filter(
+      (k) => !["status", "page", "limit"].includes(k)
+    );
+    expect(Object.keys(getAlertStatsTool.inputSchema.shape).sort()).toEqual(listKeys.sort());
   });
   it("returns stats", async () => {
     const api = createFakeApiGateway();

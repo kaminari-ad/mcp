@@ -55,8 +55,7 @@ const EXEMPT_OPERATIONS: Readonly<Record<string, string>> = {
 /**
  * Query parameters an operation declares but the gateway deliberately
  * does not forward, keyed `METHOD path#param` — e.g.
- * `"GET /api/v1/scans#some_param": "reason"`. Empty today: every v1
- * query parameter is reachable.
+ * `"GET /api/v1/scans#some_param": "reason"`.
  */
 const EXEMPT_QUERY_PARAMS: Readonly<Record<string, string>> = {
   // `InvoiceFilters` is shared with the admin listing, which is where
@@ -89,7 +88,14 @@ function collectOperations(project: Project): readonly Operation[] {
     const apiPath = unquote(member.getName());
     if (!apiPath.startsWith(V1_PREFIX)) continue;
     const literal = member.getTypeNodeOrThrow();
-    if (!Node.isTypeLiteral(literal)) continue;
+    if (!Node.isTypeLiteral(literal)) {
+      // Skipping here would be a silent pass for a real endpoint, which
+      // is the failure mode this gate exists to prevent. Fail instead.
+      throw new Error(
+        `${apiPath} is not an inline type literal — the generator's shape changed and ` +
+          `this walk can no longer see its operations. Fix the walk before trusting the gate.`
+      );
+    }
 
     for (const methodProp of literal.getProperties()) {
       const method = methodProp.getName();

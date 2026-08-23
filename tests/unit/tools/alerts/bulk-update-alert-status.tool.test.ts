@@ -93,6 +93,31 @@ describe("bulkUpdateAlertStatusTool", () => {
     expect(r.isErr()).toBe(true);
     expect(api.state.calls).toHaveLength(0);
   });
+  // The API rejects `filter_*` without `all_matching` (`_has_filters`),
+  // and an explicit id list is already the selection, so a filter next
+  // to it can only mean the caller misunderstood the shape.
+  it("rejects filters alongside an explicit id list", async () => {
+    const api = createFakeApiGateway();
+    const r = await bulkUpdateAlertStatusTool.handler(
+      { status: "resolved", ids: [A1], filter_status: "open" },
+      makeToolContext({ api })
+    );
+    expect(r.isErr()).toBe(true);
+    const error = r._unsafeUnwrapErr();
+    expect(error.kind).toBe("invalid-input");
+    expect(error.message).toContain("filter_status");
+    expect(api.state.calls).toHaveLength(0);
+  });
+  it("names every offending filter, not just the first", async () => {
+    const api = createFakeApiGateway();
+    const r = await bulkUpdateAlertStatusTool.handler(
+      { status: "resolved", ids: [A1], filter_tag_slugs: ["malware"], filter_timezone: "UTC" },
+      makeToolContext({ api })
+    );
+    const message = r._unsafeUnwrapErr().message;
+    expect(message).toContain("filter_tag_slugs");
+    expect(message).toContain("filter_timezone");
+  });
   it("requires a timezone alongside a filter date", async () => {
     const api = createFakeApiGateway();
     const r = await bulkUpdateAlertStatusTool.handler(

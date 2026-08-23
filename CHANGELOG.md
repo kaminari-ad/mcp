@@ -16,6 +16,24 @@ two gates so the next one fails CI instead of reaching a user.
 
 ### Fixed
 
+- **Artifact downloads were unbounded.** `binaryGet` called
+  `arrayBuffer()` with no ceiling, so one oversized MediaFile decided
+  how much memory the hosted server used — the API caps none of these
+  endpoints. It now refuses on an oversized `content-length` and
+  counts bytes while reading the stream, cancelling past the limit
+  (256 KiB text, 8 MiB binary). The cap covers the screenshot and
+  invoice-PDF tools too, which had the same exposure.
+- **`attach_policy_set_campaigns` described a side effect it does not
+  have.** A campaign belongs to exactly one policy set, so attaching
+  one that is bound elsewhere MOVES it; the tool said existing
+  bindings survive. Now flagged `destructiveHint: true` and the
+  description says so.
+- **`bulk_update_alert_status` forwarded `filter_*` alongside `ids`**,
+  which the API rejects. Refused locally with the offending field
+  names.
+- **`list_campaign_groups` advertised `last_run_at`** while the
+  response projection stripped it, so the new last-run filters could
+  not be interpreted. Projected now.
 - **`set_campaign_alert_overrides` accepted values the API rejects.**
   `mode` was `inherit | include | exclude`; the API has only ever
   accepted `inherit | override | silence`. Every value the schema
@@ -60,9 +78,14 @@ two gates so the next one fails CI instead of reaching a user.
   each of their query parameters is representable by the gateway
   method. The parameter half is the point: a path-only gate would have
   passed on the state this release fixes.
-- **`check:tool-enum-drift`** — every `z.enum` in a tool must be a
-  value-subset of a generated enum or carry a justified exemption.
-  Reintroducing the `mode` bug now fails CI.
+- **`check:tool-enum-drift`** — every `z.enum` in a tool must have the
+  same value set as a generated enum, or carry a justified exemption.
+  Reintroducing the `mode` bug now fails CI. Equality rather than
+  subset: with 68 values across the generated enums, "subset of any"
+  accepted almost anything (`z.enum(["open"])` passed as a subset of
+  `AlertStatus`). A `z.enum` whose argument is not an inline array of
+  literals is reported rather than skipped, since an unreadable enum
+  is how a wrong value set would slip past.
 
 ### Changed
 

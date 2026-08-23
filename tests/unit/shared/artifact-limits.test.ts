@@ -5,7 +5,7 @@ import {
   formatBytes,
   MAX_BINARY_ARTIFACT_BYTES,
   MAX_TEXT_ARTIFACT_BYTES,
-} from "../../../../src/application/tools/_shared/text-artifact.js";
+} from "../../../src/shared/artifact-limits.js";
 
 describe("formatBytes", () => {
   // The size shows up in the message an agent reads when an artifact is
@@ -35,9 +35,12 @@ describe("decodeUtf8", () => {
 });
 
 describe("artifact ceilings", () => {
-  it("keeps text well inside a context window and binary inside the transport", () => {
-    expect(MAX_TEXT_ARTIFACT_BYTES).toBe(256 * 1024);
-    expect(MAX_BINARY_ARTIFACT_BYTES).toBe(8 * 1024 * 1024);
+  it("renders in the units the refusal message uses", () => {
+    // The gateway quotes these back to the agent when it refuses a
+    // download, so a ceiling that formats as "262144 B" would be a
+    // regression in the message even though the number is right.
+    expect(formatBytes(MAX_TEXT_ARTIFACT_BYTES)).toBe("256.0 KiB");
+    expect(formatBytes(MAX_BINARY_ARTIFACT_BYTES)).toBe("8.0 MiB");
     expect(MAX_BINARY_ARTIFACT_BYTES).toBeGreaterThan(MAX_TEXT_ARTIFACT_BYTES);
   });
 });

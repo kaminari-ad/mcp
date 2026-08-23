@@ -63,7 +63,7 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
 }
 ```
 
-Restart your client. You should see `kaminari-ad` in the MCP servers list with 98 tools exposed.
+Restart your client. You should see `kaminari-ad` in the MCP servers list with 105 tools exposed.
 
 ### 2b. Hosted HTTP transport (no install)
 

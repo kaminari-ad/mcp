@@ -312,7 +312,17 @@ export type CampaignResponse = Pick<
 
 export type CampaignGroupResponse = Pick<
   S["CampaignGroupResponse"],
-  "id" | "name" | "is_default" | "is_archived" | "schedule_paused" | "campaign_count" | "created_at"
+  | "id"
+  | "name"
+  | "is_default"
+  | "is_archived"
+  | "schedule_paused"
+  | "campaign_count"
+  | "created_at"
+  // Newest run across the group's campaigns; `null` when none has run.
+  // Projected so the `last_run_*` filters are interpretable — without
+  // it an agent can narrow by last run but not see the value.
+  | "last_run_at"
 >;
 
 /**

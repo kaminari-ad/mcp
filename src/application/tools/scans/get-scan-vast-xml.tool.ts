@@ -5,9 +5,9 @@
 
 import { z } from "zod";
 
+import { decodeUtf8 } from "../../../shared/artifact-limits.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
-import { decodeUtf8, formatBytes, MAX_TEXT_ARTIFACT_BYTES } from "../_shared/text-artifact.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -26,7 +26,7 @@ export interface GetScanVastXmlOutput {
 export const getScanVastXmlTool: Tool<GetScanVastXmlInputShape, GetScanVastXmlOutput> = {
   name: "get_scan_vast_xml",
   description:
-    "Fetch the VAST document for a VAST scan as text, with wrappers already resolved so the whole chain is visible in one payload. Use it to inspect the tracking pixels, verification vendors, companion ads and click-through targets a video ad declared — the parsed summary on `get_scan` (`video` block) covers duration, media file and ad system, but not the full element tree. Only VAST scans have this artifact; others return not-found.",
+    "Fetch the VAST document for a VAST scan as text, with wrappers already resolved so the whole chain is visible in one payload. Use it to inspect the tracking pixels, verification vendors, companion ads and click-through targets a video ad declared — the parsed summary on `get_scan` (`video` block) covers duration, media file and ad system, but not the full element tree. Only VAST scans have this artifact; others return not-found. Documents over 256 KiB are refused.",
   annotations: {
     title: "Get Scan VAST XML",
     readOnlyHint: true,
@@ -39,12 +39,6 @@ export const getScanVastXmlTool: Tool<GetScanVastXmlInputShape, GetScanVastXmlOu
     const result = await ctx.api.getScanVastXml(input.scan_id);
     if (result.isErr()) return err(mapApiError(result.error));
     const { bytes, contentType } = result.value;
-    if (bytes.byteLength > MAX_TEXT_ARTIFACT_BYTES) {
-      return err({
-        kind: "invalid-input",
-        message: `VAST XML is ${formatBytes(bytes.byteLength)}, over the ${formatBytes(MAX_TEXT_ARTIFACT_BYTES)} tool limit. Open the scan report from \`get_scan\` to inspect it instead.`,
-      });
-    }
     return ok({
       scan_id: input.scan_id,
       content_type: contentType,
