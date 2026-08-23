@@ -20,7 +20,7 @@ const ListScansInputShape = {
     .string()
     .optional()
     .describe(
-      "Comma-separated statuses to filter by. Lifecycle values: pending, running, crawled, checking, checking_async, completed, partial, failed, cancelled."
+      "Comma-separated statuses to filter by. Lifecycle values: pending, running, crawled, checking, checking_async, rechecking, completed, partial, failed, cancelled."
     ),
   country_code: z
     .string()
@@ -47,7 +47,20 @@ const ListScansInputShape = {
   run_id: z.string().uuid().optional().describe("Filter to scans of one run."),
   campaign_id: z.string().uuid().optional().describe("Filter to scans of one campaign."),
   group_id: z.string().uuid().optional().describe("Filter to scans of one campaign group."),
+  parent_scan_id: z
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "Filter to the ad-discovery child scans of one parent scan. Setting this lifts the default 7-day window, so old children stay reachable. `list_scan_children` is the paginated equivalent."
+    ),
   tag: z.string().optional().describe("Comma-separated tag slugs to filter by."),
+  tag_match: z
+    .enum(["any", "all"])
+    .optional()
+    .describe(
+      "How multiple `tag` slugs combine: `any` (default) returns scans carrying at least one, `all` requires every one of them."
+    ),
   ai_category: z
     .string()
     .optional()
@@ -116,7 +129,9 @@ export const listScansTool: Tool<ListScansInputShape, ListScansOutput> = {
       ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
+      ...(input.parent_scan_id !== undefined ? { parent_scan_id: input.parent_scan_id } : {}),
       ...(input.tag !== undefined ? { tag: input.tag } : {}),
+      ...(input.tag_match !== undefined ? { tag_match: input.tag_match } : {}),
       ...(input.ai_category !== undefined ? { ai_category: input.ai_category } : {}),
       ...(input.iab_v3_category !== undefined ? { iab_v3_category: input.iab_v3_category } : {}),
       ...(input.iab_category !== undefined ? { iab_category: input.iab_category } : {}),

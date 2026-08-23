@@ -35,7 +35,18 @@ describe("listCustomTaxonomiesTool", () => {
   it("calls listCustomTaxonomies once with no filters", async () => {
     const api = createFakeApiGateway();
     await listCustomTaxonomiesTool.handler({}, makeToolContext({ api }));
-    expect(api.state.calls).toEqual([{ method: "listCustomTaxonomies" }]);
+    expect(api.state.calls).toEqual([{ method: "listCustomTaxonomies", filters: {} }]);
+  });
+
+  // Inactive taxonomies are excluded by default, so an agent looking
+  // for one to `restore_custom_taxonomy` has to opt in. The tool used
+  // to claim they were always listed.
+  it("forwards include_inactive when requested", async () => {
+    const api = createFakeApiGateway();
+    await listCustomTaxonomiesTool.handler({ include_inactive: true }, makeToolContext({ api }));
+    expect(api.state.calls).toEqual([
+      { method: "listCustomTaxonomies", filters: { include_inactive: true } },
+    ]);
   });
 
   it("maps api error", async () => {

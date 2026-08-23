@@ -16,7 +16,14 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
-const ListCustomTaxonomiesInputShape = {} as const;
+const ListCustomTaxonomiesInputShape = {
+  include_inactive: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include soft-deleted taxonomies, which are excluded by default. Pass `true` to find one to `restore_custom_taxonomy`, or to resolve a taxonomy id seen on an older scan."
+    ),
+} as const;
 type ListCustomTaxonomiesInputShape = typeof ListCustomTaxonomiesInputShape;
 
 export interface ListCustomTaxonomiesOutput {
@@ -29,7 +36,7 @@ export const listCustomTaxonomiesTool: Tool<
 > = {
   name: "list_custom_taxonomies",
   description:
-    "List the calling org's custom classification taxonomies. Returns slim summaries (id, name, slug, version, node_count, is_active). Soft-deleted taxonomies are included with `is_active=false`. Fetch the full tree via `get_custom_taxonomy`.",
+    "List the calling org's custom classification taxonomies. Returns slim summaries (id, name, slug, version, node_count, is_active). Only active taxonomies are listed unless you pass `include_inactive: true`; soft-deleted ones then appear with `is_active=false`. Fetch the full tree via `get_custom_taxonomy`.",
   annotations: {
     title: "List Custom Taxonomies",
     readOnlyHint: true,
@@ -38,8 +45,10 @@ export const listCustomTaxonomiesTool: Tool<
     openWorldHint: false,
   },
   inputSchema: z.object(ListCustomTaxonomiesInputShape),
-  handler: async (_input, ctx): Promise<Result<ListCustomTaxonomiesOutput, ToolError>> => {
-    const result = await ctx.api.listCustomTaxonomies();
+  handler: async (input, ctx): Promise<Result<ListCustomTaxonomiesOutput, ToolError>> => {
+    const result = await ctx.api.listCustomTaxonomies(
+      input.include_inactive !== undefined ? { include_inactive: input.include_inactive } : {}
+    );
     if (result.isErr()) return err(mapApiError(result.error));
     return ok({ items: result.value });
   },

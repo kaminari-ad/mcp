@@ -5,11 +5,21 @@ import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
 describe("listTagsTool", () => {
-  it("name + accepts optional category", () => {
+  it("name + accepts optional category and include_archived", () => {
     expect(listTagsTool.name).toBe("list_tags");
-    expect(Object.keys(listTagsTool.inputSchema.shape)).toEqual(["category"]);
+    expect(Object.keys(listTagsTool.inputSchema.shape)).toEqual(["category", "include_archived"]);
     expect(() => listTagsTool.inputSchema.parse({ category: "security" })).not.toThrow();
     expect(() => listTagsTool.inputSchema.parse({})).not.toThrow();
+  });
+
+  // Archived definitions still appear on the scans that carry them, so
+  // an agent resolving a slug from an old scan needs to opt in.
+  it("forwards include_archived when requested", async () => {
+    const api = createFakeApiGateway();
+    await listTagsTool.handler({ include_archived: true }, makeToolContext({ api }));
+    const call = api.state.calls[0];
+    if (call?.method !== "listTags") throw new Error("wrong");
+    expect(call.filters).toEqual({ include_archived: true });
   });
 
   it("forwards category filter when provided", async () => {

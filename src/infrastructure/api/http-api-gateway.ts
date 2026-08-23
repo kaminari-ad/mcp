@@ -33,17 +33,21 @@ import { type Dispatcher, fetch as undiciFetch } from "undici";
 import type {
   AlertNotificationDestinationResponse,
   AlertResponse,
+  AlertStatsFilters,
   AlertStatsResponse,
   ApiError,
   ApiGateway,
   ApiKeyCreatedResponse,
   ApiKeyResponse,
+  AttachCampaignsRequest,
   BalanceTransactionResponse,
   BillingSummaryResponse,
   BinaryDownload,
   BulkReplayRequest,
   BulkReplayResponse,
   BulkScanRequest,
+  BulkUpdateAlertStatusRequest,
+  BulkUpdateAlertStatusResponse,
   CampaignGroupResponse,
   CampaignOverridesResponse,
   CampaignPickerItem,
@@ -62,6 +66,7 @@ import type {
   CustomTaxonomyListItem,
   CustomTaxonomyResponse,
   DeliveryAttemptResponse,
+  DetachCampaignsRequest,
   EmulatorResponse,
   EventCatalogResponse,
   GeoResponse,
@@ -69,11 +74,15 @@ import type {
   InviteUserRequest,
   InvoiceResponse,
   LabelDefinitionResponse,
+  LinkedCampaignResponse,
   ListAlertsFilters,
   ListBalanceHistoryFilters,
+  ListCampaignGroupsFilters,
   ListCampaignsFilters,
   ListCampaignsPickerFilters,
+  ListCustomTaxonomiesFilters,
   ListInvoicesFilters,
+  ListPolicySetCampaignsFilters,
   ListPolicySetsFilters,
   ListScansFilters,
   ListTagsFilters,
@@ -123,6 +132,11 @@ import type { Logger } from "../../domain/ports/logger.js";
 import type { BearerToken } from "../../domain/value-objects/bearer-token.js";
 import type { RequestId } from "../../domain/value-objects/request-id.js";
 import type { paths } from "../../shared/api/openapi.js";
+import {
+  formatBytes,
+  MAX_BINARY_ARTIFACT_BYTES,
+  MAX_TEXT_ARTIFACT_BYTES,
+} from "../../shared/artifact-limits.js";
 import { err, ok, type Result } from "../../shared/result.js";
 import { toApiError } from "./error-mapping.js";
 import { parseAlertPage } from "./parsers/parse-alert.js";
@@ -148,6 +162,7 @@ import {
   parseArrayOf,
   parseBalanceTx,
   parseBulkReplay,
+  parseBulkUpdateAlertStatus,
   parseCampaignAlertOverrides,
   parseEventCatalog,
   parseGroupAction,
@@ -164,6 +179,7 @@ import {
   parseWebhookDelivery,
 } from "./parsers/parse-generic.js";
 import { parseGeoList } from "./parsers/parse-geo-list.js";
+import { parseLinkedCampaignPage } from "./parsers/parse-linked-campaign-page.js";
 import { parsePolicySet } from "./parsers/parse-policy-set.js";
 import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
 import { parseRun } from "./parsers/parse-run.js";
@@ -352,11 +368,97 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   }
 
   /**
+   * Read an artifact body, refusing to buffer more than `maxBytes`.
+   *
+   * `arrayBuffer()` would materialise the whole body first, which on
+   * an uncapped artifact endpoint means one oversized MediaFile
+   * decides the server's memory ceiling.
+   */
+  async function readCapped(
+    response: Response,
+    maxBytes: number
+  ): Promise<Result<Uint8Array, ApiError>> {
+    const tooLarge = err<Uint8Array, ApiError>({
+      kind: "upstream",
+      detail:
+        `Artifact is larger than the ${formatBytes(maxBytes)} this tool will transfer. ` +
+        `Open the report URL from \`get_scan\` to view it instead.`,
+    });
+
+    // `response` is the undici body cast to the DOM `Response` shape,
+    // so the stream generics arrive as `any`; pin them here rather
+    // than letting `any` leak into the byte arithmetic below.
+    const body: ReadableStream<Uint8Array> | null = response.body;
+    /* c8 ignore next 3 — undici always exposes a body on a 2xx. */
+    if (body === null) {
+      return err({ kind: "upstream", detail: "Artifact response had no body." });
+    }
+
+    // Refusing on the declared size avoids reading the socket at all,
+    // but the header is advisory and absent under chunked transfer,
+    // so the streaming count below is the guarantee. Either way the
+    // body must be cancelled — abandoning it keeps the connection
+    // checked out of undici's global pool until GC.
+    const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      // `cancel()` rejects on an already-errored or locked stream, and
+      // this is the branch a genuinely oversized artifact takes — an
+      // unguarded reject here would escape the Result contract on the
+      // most likely refusal of all. The handler is unreachable from
+      // MockAgent, which never errors a stream.
+      /* c8 ignore next */
+      await body.cancel().catch(() => undefined);
+      return tooLarge;
+    }
+
+    const reader: ReadableStreamDefaultReader<Uint8Array> = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          // Swallow a rejecting cancel so the caller still gets the
+          // size message rather than a generic stream failure.
+          /* c8 ignore next */
+          await reader.cancel().catch(() => undefined);
+          return tooLarge;
+        }
+        chunks.push(value);
+      }
+      /* c8 ignore start — a mid-body socket drop; MockAgent delivers
+         the buffered chunks and closes cleanly instead of rejecting
+         the read, so the harness cannot reach this. Same reason the
+         fetch-level catch above is ignored. */
+    } catch (cause) {
+      // Without this the rejection escapes the Result contract
+      // entirely: it is raised after the fetch-level catch, so the
+      // agent gets an opaque SDK failure rather than a typed error.
+      await reader.cancel().catch(() => undefined);
+      return err({
+        kind: "upstream",
+        detail: cause instanceof Error ? cause.message : "artifact stream failed",
+      });
+    }
+    /* c8 ignore stop */
+
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      out.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return ok(out);
+  }
+
+  /**
    * Direct binary GET — bypasses openapi-fetch (which always parses
-   * JSON). Used by screenshot / invoice-PDF tools. Same auth, same
+   * JSON). Used by every artifact tool: screenshots, invoice PDF,
+   * creative HTML, VAST XML, creative video. Same auth, same
    * per-request dispatcher, same error mapping. Tools base64-encode
-   * the bytes when building the MCP `image` / `resource` content
-   * block.
+   * or decode the bytes when building their content block.
    *
    * Tenant-isolation header contract (CONTRIBUTING.md §9): JSON calls
    * pin the 5-key allowlist `authorization, content-type, accept,
@@ -364,8 +466,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    * two of those:
    *   - **no** `content-type` — there is no request body, so the
    *     header would be a misleading no-op.
-   *   - `accept` widened to `image/*, application/pdf,
-   *     application/octet-stream` — the API returns binary, not JSON.
+   *   - `accept` widened to the artifact media types the API serves
+   *     (images, PDF, MP4, and the `text/plain` creative source +
+   *     VAST XML) — never JSON.
    *
    * The remaining three keys (auth, user-agent, x-request-id) match
    * the JSON path exactly. The Bearer is pulled from the same
@@ -373,6 +476,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    */
   async function binaryGet(
     path: string,
+    maxBytes: number,
     query?: Readonly<Record<string, string | number>>
   ): Promise<Result<BinaryDownload, ApiError>> {
     const startedAtMs = Date.now();
@@ -392,7 +496,8 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         // update + a tenant-isolation review.
         headers: {
           authorization: bearer.toAuthorizationHeader(),
-          accept: "image/*, application/pdf, application/octet-stream",
+          accept:
+            "image/*, application/pdf, video/mp4, text/plain, application/xml, text/xml, application/octet-stream",
           "user-agent": "kaminari-ad-mcp",
           "x-request-id": requestId,
         },
@@ -419,9 +524,10 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       "api.done"
     );
     if (status >= 200 && status < 300) {
-      const buf = await response.arrayBuffer();
+      const read = await readCapped(response, maxBytes);
+      if (read.isErr()) return err(read.error);
       return ok<BinaryDownload, ApiError>({
-        bytes: new Uint8Array(buf),
+        bytes: read.value,
         contentType: response.headers.get("content-type") ?? "application/octet-stream",
       });
     }
@@ -495,7 +601,11 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       return call("PUT", "/api/v1/account/labels", { body }, parseArrayOf(parseLabelDefinition));
     },
     async getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/scans/${scanId}/screenshot`, w !== undefined ? { w } : undefined);
+      return binaryGet(
+        `/api/v1/scans/${scanId}/screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
+        w !== undefined ? { w } : undefined
+      );
     },
     async getScanCreativeScreenshot(
       scanId: string,
@@ -503,6 +613,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(
         `/api/v1/scans/${scanId}/creative-screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
         w !== undefined ? { w } : undefined
       );
     },
@@ -513,11 +624,21 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(
         `/api/v1/scans/${scanId}/landings/${String(landingOrd)}/screenshot`,
+        MAX_BINARY_ARTIFACT_BYTES,
         w !== undefined ? { w } : undefined
       );
     },
+    async getScanCreativeHtml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/creative-html`, MAX_TEXT_ARTIFACT_BYTES);
+    },
+    async getScanCreativeVideo(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/creative-video`, MAX_BINARY_ARTIFACT_BYTES);
+    },
+    async getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
+      return binaryGet(`/api/v1/scans/${scanId}/vast-xml`, MAX_TEXT_ARTIFACT_BYTES);
+    },
     async getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>> {
-      return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`);
+      return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`, MAX_BINARY_ARTIFACT_BYTES);
     },
     async listApiKeys(): Promise<Result<readonly ApiKeyResponse[], ApiError>> {
       return call("GET", "/api/v1/account/api-keys", {}, parseApiKeyList);
@@ -706,9 +827,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Campaign groups ───────────────────────────────────────────
-    async listCampaignGroups(filters?: {
-      readonly archived?: boolean;
-    }): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
+    async listCampaignGroups(
+      filters?: ListCampaignGroupsFilters
+    ): Promise<Result<readonly CampaignGroupResponse[], ApiError>> {
       return call(
         "GET",
         "/api/v1/campaign-groups",
@@ -915,6 +1036,39 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
+    async listPolicySetCampaigns(
+      id: string,
+      filters: ListPolicySetCampaignsFilters
+    ): Promise<Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns",
+        { params: { path: { policy_set_id: id }, query: filters } },
+        parseLinkedCampaignPage
+      );
+    },
+    async attachPolicySetCampaigns(
+      id: string,
+      body: AttachCampaignsRequest
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns/attach",
+        { params: { path: { policy_set_id: id } }, body },
+        parseEmpty
+      );
+    },
+    async detachPolicySetCampaigns(
+      id: string,
+      body: DetachCampaignsRequest
+    ): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/campaigns/detach",
+        { params: { path: { policy_set_id: id } }, body },
+        parseEmpty
+      );
+    },
     async requestPolicySetApproval(id: string): Promise<Result<null, ApiError>> {
       return call(
         "POST",
@@ -925,8 +1079,15 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
 
     // ── Custom taxonomies ─────────────────────────────────────────
-    async listCustomTaxonomies(): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>> {
-      return call("GET", "/api/v1/custom-taxonomies", {}, parseCustomTaxonomyList);
+    async listCustomTaxonomies(
+      filters?: ListCustomTaxonomiesFilters
+    ): Promise<Result<readonly CustomTaxonomyListItem[], ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/custom-taxonomies",
+        { params: { query: filters ?? {} } },
+        parseCustomTaxonomyList
+      );
     },
     async getCustomTaxonomy(id: string): Promise<Result<CustomTaxonomyResponse, ApiError>> {
       return call(
@@ -996,8 +1157,13 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
-    async getAlertStats(): Promise<Result<AlertStatsResponse, ApiError>> {
-      return call("GET", "/api/v1/alerts/stats", {}, parseAlertStats);
+    async bulkUpdateAlertStatus(
+      body: BulkUpdateAlertStatusRequest
+    ): Promise<Result<BulkUpdateAlertStatusResponse, ApiError>> {
+      return call("POST", "/api/v1/alerts/bulk-status", { body }, parseBulkUpdateAlertStatus);
+    },
+    async getAlertStats(filters: AlertStatsFilters): Promise<Result<AlertStatsResponse, ApiError>> {
+      return call("GET", "/api/v1/alerts/stats", { params: { query: filters } }, parseAlertStats);
     },
 
     // ── Webhooks ──────────────────────────────────────────────────

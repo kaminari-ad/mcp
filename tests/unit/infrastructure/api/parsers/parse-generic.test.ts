@@ -24,6 +24,7 @@ import {
   parseArrayOf,
   parseBalanceTx,
   parseBulkReplay,
+  parseBulkUpdateAlertStatus,
   parseCampaignAlertOverrides,
   parseEventCatalog,
   parseGroupAction,
@@ -248,6 +249,21 @@ describe("parseAlertStats", () => {
   });
 });
 
+describe("parseBulkUpdateAlertStatus", () => {
+  it("Ok valid", () => {
+    expect(parseBulkUpdateAlertStatus({ updated: 7, skipped: 2 })._unsafeUnwrap()).toEqual({
+      updated: 7,
+      skipped: 2,
+    });
+  });
+  it("rejects on missing skipped", () => {
+    expect(parseBulkUpdateAlertStatus({ updated: 7 }).isErr()).toBe(true);
+  });
+  it("rejects a non-object body", () => {
+    expect(parseBulkUpdateAlertStatus("nope").isErr()).toBe(true);
+  });
+});
+
 describe("parseUsage", () => {
   const VALID = {
     id: UUID_A,
@@ -435,10 +451,10 @@ describe("parseCampaignAlertOverrides", () => {
     });
     expect(r._unsafeUnwrap().mode).toBe("inherit");
   });
-  it("Ok valid include with destinations", () => {
+  it("Ok valid override with destinations", () => {
     const r = parseCampaignAlertOverrides({
       campaign_id: UUID_A,
-      mode: "include",
+      mode: "override",
       destination_ids: [UUID_B, UUID_C],
     });
     expect(r._unsafeUnwrap().destination_ids).toEqual([UUID_B, UUID_C]);

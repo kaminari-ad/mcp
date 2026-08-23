@@ -21,6 +21,7 @@ const CampaignGroupSchema = schemas.CampaignGroupResponse.pick({
   schedule_paused: true,
   campaign_count: true,
   created_at: true,
+  last_run_at: true,
 }).strip();
 
 export const parseCampaignGroup = (raw: unknown): Result<CampaignGroupResponse, ApiError> =>

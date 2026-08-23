@@ -67,6 +67,8 @@ jobs:
           npm run check:shared-state
           npm run check:tool-naming
           npm run check:no-handwritten-parsers
+          npm run check:api-coverage
+          npm run check:tool-enum-drift
           npm run check:imports
 
       - name: License audit

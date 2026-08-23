@@ -51,6 +51,39 @@ describe("listCampaignsTool", () => {
     expect(call.filters.q).toBe("Holiday");
   });
 
+  // Creation and last-run bounds landed on the endpoint but not here,
+  // so "campaigns that have not run this week" was unanswerable.
+  it("forwards the creation and last-run date bounds", async () => {
+    const api = createFakeApiGateway();
+    await listCampaignsTool.handler(
+      {
+        page: 1,
+        limit: 50,
+        created_from: "2026-08-01",
+        created_to: "2026-08-31",
+        last_run_from: "2026-08-20",
+        last_run_to: "2026-08-22",
+        timezone: "Europe/Berlin",
+      },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listCampaigns") throw new Error("wrong method");
+    expect(call.filters).toEqual({
+      page: 1,
+      limit: 50,
+      created_from: "2026-08-01",
+      created_to: "2026-08-31",
+      last_run_from: "2026-08-20",
+      last_run_to: "2026-08-22",
+      timezone: "Europe/Berlin",
+    });
+  });
+
+  it("rejects a malformed date bound", () => {
+    expect(() => listCampaignsTool.inputSchema.parse({ last_run_to: "2026-8-1" })).toThrow();
+  });
+
   it("maps ApiError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listCampaigns = err(makeApiError("forbidden", "no"));

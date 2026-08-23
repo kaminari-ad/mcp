@@ -9,6 +9,10 @@ import { z } from "zod";
 import type { CampaignResponse, PaginatedResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import {
+  campaignDateFilterFields,
+  toCampaignDateFilterQuery,
+} from "../_shared/campaign-date-filters.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
@@ -26,6 +30,7 @@ const ListCampaignsInputShape = {
     .max(200)
     .optional()
     .describe("Substring search against campaign name (case-insensitive)."),
+  ...campaignDateFilterFields,
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size (1-200)."),
 } as const;
@@ -36,7 +41,7 @@ export type ListCampaignsOutput = PaginatedResponse<CampaignResponse>;
 export const listCampaignsTool: Tool<ListCampaignsInputShape, ListCampaignsOutput> = {
   name: "list_campaigns",
   description:
-    "List campaigns for the caller's organization, optionally filtered by group, archived flag, or name substring. Paginated. Each row carries the same fields as `get_campaign`, including the repeat / retry settings (`repeat_count`, `repeat_mode`, `retry_max_attempts`) — use them to spot the campaigns that multiply their per-run scan count.",
+    "List campaigns for the caller's organization, optionally filtered by group, archived flag, name substring, or creation / last-run date range. Paginated. Each row carries the same fields as `get_campaign`, including the repeat / retry settings (`repeat_count`, `repeat_mode`, `retry_max_attempts`) — use them to spot the campaigns that multiply their per-run scan count.",
   annotations: {
     title: "List Campaigns",
     readOnlyHint: true,
@@ -49,6 +54,7 @@ export const listCampaignsTool: Tool<ListCampaignsInputShape, ListCampaignsOutpu
     const filters = {
       page: input.page,
       limit: input.limit,
+      ...toCampaignDateFilterQuery(input),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.archived !== undefined ? { archived: input.archived } : {}),
       ...(input.q !== undefined ? { q: input.q } : {}),

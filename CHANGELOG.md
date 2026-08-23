@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-23
+
+Resyncs the tool surface with `/api/v1` (KAMIAD-158). The generated
+types were already current; the hand-written gateway and tool schemas
+were not, so this release is mostly about the drift between them — plus
+two gates so the next one fails CI instead of reaching a user.
+
+### Fixed
+
+- **Artifact downloads were unbounded.** `binaryGet` called
+  `arrayBuffer()` with no ceiling, so one oversized MediaFile decided
+  how much memory the hosted server used — the API caps none of these
+  endpoints. It now refuses on an oversized `content-length` and
+  counts bytes while reading the stream, cancelling past the limit
+  (256 KiB text, 8 MiB binary). The cap covers the screenshot and
+  invoice-PDF tools too, which had the same exposure.
+- **`attach_policy_set_campaigns` described a side effect it does not
+  have.** A campaign belongs to exactly one policy set, so attaching
+  one that is bound elsewhere MOVES it; the tool said existing
+  bindings survive. Now flagged `destructiveHint: true` and the
+  description says so.
+- **`bulk_update_alert_status` forwarded `filter_*` alongside `ids`**,
+  which the API rejects. Refused locally with the offending field
+  names.
+- **`list_campaign_groups` advertised `last_run_at`** while the
+  response projection stripped it, so the new last-run filters could
+  not be interpreted. Projected now.
+- **`set_campaign_alert_overrides` accepted values the API rejects.**
+  `mode` was `inherit | include | exclude`; the API has only ever
+  accepted `inherit | override | silence`. Every value the schema
+  allowed was refused upstream and every value the API wanted was
+  refused locally, so an agent could not change campaign alert routing
+  at all. `mode` now matches the API, `destination_ids` is refused
+  locally unless `mode` is `override` (mirroring the API's
+  `notifications.invalid_override_combination`), and the setter's
+  description explains that "route everywhere except these" does not
+  exist — invert the list under `override` instead.
+- **`list_custom_taxonomies` claimed soft-deleted taxonomies were
+  listed.** They are excluded unless the new `include_inactive` is
+  `true`, so an agent looking for one to restore concluded it was gone.
+- `list_scans` now documents `rechecking` as a filterable status.
+
+### Added
+
+- **`bulk_update_alert_status`** — `POST /api/v1/alerts/bulk-status`.
+  Select with `ids` (max 1000) or `all_matching: true` plus `filter_*`
+  fields; returns `updated` / `skipped`.
+- **`list_policy_set_campaigns`**, **`attach_policy_set_campaigns`**,
+  **`detach_policy_set_campaigns`** — policy-set membership, which was
+  previously not editable through MCP at all: `update_policy_set` sends
+  only name, description and rules. Attach warns that a campaign bound
+  to another set is moved rather than rejected, since a campaign can
+  belong to only one set.
+- **`get_scan_creative_html`**, **`get_scan_vast_xml`** — creative
+  markup and the resolved VAST document, returned as text the model
+  reads directly. **`get_scan_creative_video`** — the MP4 as a resource
+  block. All three refuse oversized payloads (256 KiB text, 8 MiB
+  binary) rather than inlining them.
+- Filters the API had grown and the tools never picked up:
+  `list_alerts` and `get_alert_stats` take `policy_set_id`, `tag`,
+  `country_code`, `date_from`, `date_to`, `timezone` (`get_alert_stats`
+  previously took no arguments at all, so its counts could not be
+  reconciled with a filtered list); `list_scans` takes `tag_match` and
+  `parent_scan_id`; `list_campaigns` and `list_campaign_groups` take
+  `created_from`/`created_to`/`last_run_from`/`last_run_to`/`timezone`,
+  and `list_campaign_groups` also takes `q`; `list_tags` takes
+  `include_archived`.
+- **`check:api-coverage`** — asserts every `/api/v1` path + method in
+  the generated `openapi.ts` is reachable from the gateway, and that
+  each of their query parameters is representable by the gateway
+  method. The parameter half is the point: a path-only gate would have
+  passed on the state this release fixes.
+- **`check:tool-enum-drift`** — every `z.enum` in a tool must have the
+  same value set as a generated enum, or carry a justified exemption.
+  Reintroducing the `mode` bug now fails CI. Equality rather than
+  subset: with 68 values across the generated enums, "subset of any"
+  accepted almost anything (`z.enum(["open"])` passed as a subset of
+  `AlertStatus`). A `z.enum` whose argument is not an inline array of
+  literals is reported rather than skipped, since an unreadable enum
+  is how a wrong value set would slip past.
+
+### Changed
+
+- `npm run gen:api-types` formats its output with Prettier. The raw
+  generator emits 4-space TypeScript while `format:check` covers
+  `src/**`, so a no-op regen used to produce a ~17k-line indentation
+  diff and a failing gate.
+- `.prettierignore` no longer lists `src/infrastructure/api/openapi.ts`
+  — the generated files moved to `src/shared/api/` long ago, so the
+  entry was dead and pointed at the wrong policy.
+
 ## [0.13.0] - 2026-08-20
 
 ### Added

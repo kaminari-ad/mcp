@@ -152,4 +152,54 @@ describe("listScansTool", () => {
       expect(Object.keys(call.filters).sort()).toEqual(["limit", "page"]);
     }
   });
+
+  // Without `tag_match` the tool could only ever ask for "any of these
+  // tags", so a request for scans carrying ALL of them was unanswerable.
+  it("forwards tag_match so multiple tags can be ANDed", async () => {
+    const api = createFakeApiGateway();
+    await listScansTool.handler(
+      { page: 1, limit: 50, tag: "malware,redirect", tag_match: "all" },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listScans") throw new Error("wrong");
+    expect(call.filters.tag_match).toBe("all");
+  });
+
+  it("rejects a tag_match outside any|all", () => {
+    expect(() => listScansTool.inputSchema.parse({ tag_match: "either" })).toThrow();
+  });
+
+  it("forwards parent_scan_id for ad-discovery children", async () => {
+    const api = createFakeApiGateway();
+    const parent = "00000000-0000-0000-0000-00000000eeee";
+    await listScansTool.handler(
+      { page: 1, limit: 50, parent_scan_id: parent },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "listScans") throw new Error("wrong");
+    expect(call.filters.parent_scan_id).toBe(parent);
+  });
+
+  // `status` is a free-form CSV string on the API, so the describe
+  // text is the only place an agent learns the lifecycle values. It
+  // must list every one the API can return.
+  it("documents every scan status the API can return", () => {
+    const described = listScansTool.inputSchema.shape.status.description ?? "";
+    for (const status of [
+      "pending",
+      "running",
+      "crawled",
+      "checking",
+      "checking_async",
+      "rechecking",
+      "completed",
+      "partial",
+      "failed",
+      "cancelled",
+    ]) {
+      expect(described).toContain(status);
+    }
+  });
 });
