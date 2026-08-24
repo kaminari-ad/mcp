@@ -272,6 +272,19 @@ export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_val
 
 export type GeoResponse = Pick<S["GeoResponse"], "country_code" | "name" | "region" | "tier">;
 
+export type ProxyTargetingResponse = Pick<
+  S["ProxyTargetingResponse"],
+  "country_code" | "proxy_type" | "regions" | "cities" | "isps" | "refreshed_at" | "ttl_seconds"
+>;
+
+export interface ProxyTargetingQuery {
+  readonly country_code: string;
+  /** Catalogues differ per network, so this is not cosmetic. */
+  readonly proxy_type?: "residential" | "mobile";
+  /** Narrows `cities` to one region. */
+  readonly region?: string;
+}
+
 export type EmulatorResponse = Pick<
   S["EmulatorResponse"],
   "id" | "display_name" | "category" | "browser"
@@ -1239,6 +1252,7 @@ export interface ApiGateway {
   // Geos / emulators
   listGeos(): Promise<Result<readonly GeoResponse[], ApiError>>;
   listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>>;
+  getProxyTargeting(query: ProxyTargetingQuery): Promise<Result<ProxyTargetingResponse, ApiError>>;
 
   // Campaigns
   listCampaigns(

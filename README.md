@@ -63,7 +63,7 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
 }
 ```
 
-Restart your client. You should see `kaminari-ad` in the MCP servers list with 105 tools exposed.
+Restart your client. You should see `kaminari-ad` in the MCP servers list with 106 tools exposed.
 
 ### 2b. Hosted HTTP transport (no install)
 
@@ -113,7 +113,7 @@ which decides which credential type minted it.
 
 ## Tools
 
-105 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
+106 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
 
 - **Account** (14) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `create_custom_role`, `list_account_labels`, `update_account_labels`, `list_api_keys`, `create_api_key`, `revoke_api_key`
 - **Scans** (13) — `list_scans`, `get_scan`, `list_scan_children`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`, `get_scan_creative_html`, `get_scan_creative_video`, `get_scan_vast_xml`
@@ -129,7 +129,7 @@ which decides which credential type minted it.
 - **Billing** (4) — `get_billing_summary`, `list_usage`, `get_usage_summary`, `list_balance_history`
 - **Invoicing** (2) — `list_invoices`, `get_invoice_pdf`
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
-- **Reference data** (2) — `list_geos`, `list_emulators`
+- **Reference data** (3) — `list_geos`, `list_emulators`, `get_proxy_targeting`
 
 Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. Every artifact download is size-capped in the gateway — 256 KiB for the text artifacts, 8 MiB for the binary ones — and refused while reading rather than buffered and then rejected.
 

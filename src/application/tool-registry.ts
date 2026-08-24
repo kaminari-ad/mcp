@@ -86,6 +86,7 @@ import { listPolicySetCampaignsTool } from "./tools/policy-sets/list-policy-set-
 import { listPolicySetsTool } from "./tools/policy-sets/list-policy-sets.tool.js";
 import { requestPolicySetApprovalTool } from "./tools/policy-sets/request-policy-set-approval.tool.js";
 import { updatePolicySetTool } from "./tools/policy-sets/update-policy-set.tool.js";
+import { getProxyTargetingTool } from "./tools/proxy/get-proxy-targeting.tool.js";
 import { cancelRunTool } from "./tools/runs/cancel-run.tool.js";
 import { getRunTool } from "./tools/runs/get-run.tool.js";
 import { listRunScansTool } from "./tools/runs/list-run-scans.tool.js";
@@ -141,6 +142,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(revokeApiKeyTool);
   // reference data
   register(listGeosTool);
+  register(getProxyTargetingTool);
   register(listEmulatorsTool);
   // scans
   register(getScanTool);
