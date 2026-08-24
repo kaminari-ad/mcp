@@ -24,7 +24,7 @@ export interface ListScanTagsOutput {
 export const listScanTagsTool: Tool<ListScanTagsInputShape, ListScanTagsOutput> = {
   name: "list_scan_tags",
   description:
-    "List every tag (system + custom) attached to one scan by the checker pipeline, with display name, category, and severity.",
+    "List every tag (system + custom) attached to one scan by the checker pipeline, with display name, category, and severity. Tags whose definition has since been archived are omitted — the scan can therefore report fewer tags than when it ran.",
   annotations: {
     title: "List Scan Tags",
     readOnlyHint: true,

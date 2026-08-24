@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-24
+
+### Changed
+
+- **Three tag tools described archived tags as still reachable
+  (KAMIAD-120).** The API now retires an archived tag everywhere: it is
+  no longer assigned to scans, no longer raises alerts, and an archived
+  platform tag is gone from the catalogue entirely. `list_tags` told the
+  agent the opposite — to pass `include_archived` "when resolving a slug
+  seen on an older scan", which now returns nothing for exactly those
+  slugs. `get_tag_definition` now documents the 404, and
+  `list_scan_tags` that a scan can report fewer tags than when it ran.
+  Descriptions only; no schema or shape change, so
+  `src/shared/api/{openapi,zod-schemas}.ts` are unaffected — the two
+  stale JSDoc lines about `include_archived` are regenerated from the
+  live spec once the API side is deployed.
+
 ## [0.14.0] - 2026-08-23
 
 Resyncs the tool surface with `/api/v1` (KAMIAD-158). The generated
@@ -1128,7 +1145,9 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/kaminari-ad/mcp/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/kaminari-ad/mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/kaminari-ad/mcp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/kaminari-ad/mcp/compare/v0.10.0...v0.11.0
