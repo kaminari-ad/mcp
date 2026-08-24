@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   response that produced the region, since a region and a city that do
   not belong together leave the provider nothing to route through.
 
+- **The write tools now point at it.** A tool nobody is told about is a
+  tool nobody calls, and an agent starts from `create_scan`, not from the
+  catalogue. The `proxy` fields on `create_scan` / `create_bulk_scans`
+  and the `proxy_*` fields on `create_campaign` / `update_campaign` now
+  name `get_proxy_targeting` and carry the same two warnings. The
+  campaign `proxy_region` description previously said "free-text", which
+  told the agent to invent a value — precisely the behaviour that
+  produces the 422 this release exists to remove.
+
 ### Changed
 
 - **Regenerated `openapi.ts` / `zod-schemas.ts`** against the API
@@ -1181,7 +1190,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/kaminari-ad/mcp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/kaminari-ad/mcp/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/kaminari-ad/mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...v0.13.0

@@ -39,7 +39,7 @@ type GetProxyTargetingInputShape = typeof GetProxyTargetingInputShape;
 export const getProxyTargetingTool: Tool<GetProxyTargetingInputShape, ProxyTargetingResponse> = {
   name: "get_proxy_targeting",
   description:
-    "List the proxy regions, cities, and ISPs accepted for a country when creating a scan. Values are ordered by pool size, largest first — prefer values near the front. Anything listed here is accepted by create_scan; call this before setting a scan's proxy region, city, or ISP rather than guessing.",
+    "List the proxy regions, cities, and ISPs accepted for a country. Call this before setting proxy targeting on create_scan, create_bulk_scans, create_campaign, or update_campaign — the accepted values come from the upstream network provider and cannot be listed in those tools' schemas, so a guess is a 422. Anything listed here is accepted. Values are ordered by pool size, largest first; prefer values near the front. Two traps: residential and mobile are separate pools, so pass the proxy_type the scan will use; and without a region the cities are the whole country's, so if you target a region, call again with that region and take the city from that narrower list — a region and a city that do not belong together are accepted but leave the provider no exit node.",
   annotations: {
     title: "Get Proxy Targeting",
     readOnlyHint: true,

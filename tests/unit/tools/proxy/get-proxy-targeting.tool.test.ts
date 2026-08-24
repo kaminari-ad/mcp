@@ -4,11 +4,14 @@ import { getProxyTargetingTool } from "../../../../src/application/tools/proxy/g
 import { createFakeApiGateway, err, makeApiError, ok } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
 
+// Cities belong to the listed regions on purpose: the tool warns that a
+// region and a city from different regions leave the provider no exit
+// node, so the fixture should not model the mistake.
 const US_RESIDENTIAL = {
   country_code: "US",
   proxy_type: "residential",
   regions: ["florida", "texas"],
-  cities: ["philadelphia"],
+  cities: ["miami", "houston"],
   isps: ["comcast cable", "spectrum"],
   refreshed_at: "2026-08-20T18:00:00Z",
   ttl_seconds: 86400,
