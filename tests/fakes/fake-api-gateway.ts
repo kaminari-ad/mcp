@@ -71,6 +71,8 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
+  ProxyTargetingQuery,
+  ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
@@ -159,6 +161,7 @@ type Call =
   | { readonly method: "listScanTags"; readonly scanId: string }
   | { readonly method: "listGeos" }
   | { readonly method: "listEmulators" }
+  | { readonly method: "getProxyTargeting"; readonly query: ProxyTargetingQuery }
   | { readonly method: "listCampaigns"; readonly filters: ListCampaignsFilters }
   | { readonly method: "getCampaign"; readonly id: string }
   | { readonly method: "createCampaign"; readonly body: CreateCampaignRequest }
@@ -346,6 +349,7 @@ export interface FakeApiGatewayState {
     listScanTags?: Result<readonly ScanTagResponse[], ApiError>;
     listGeos?: Result<readonly GeoResponse[], ApiError>;
     listEmulators?: Result<readonly EmulatorResponse[], ApiError>;
+    getProxyTargeting?: Result<ProxyTargetingResponse, ApiError>;
     listCampaigns?: Result<PaginatedResponse<CampaignResponse>, ApiError>;
     getCampaign?: Result<CampaignResponse, ApiError>;
     createCampaign?: Result<CampaignResponse, ApiError>;
@@ -959,6 +963,22 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "listEmulators" });
       await Promise.resolve();
       return state.responses.listEmulators ?? ok<readonly EmulatorResponse[], ApiError>([]);
+    },
+    async getProxyTargeting(query: ProxyTargetingQuery) {
+      push({ method: "getProxyTargeting", query });
+      await Promise.resolve();
+      return (
+        state.responses.getProxyTargeting ??
+        ok<ProxyTargetingResponse, ApiError>({
+          country_code: query.country_code.toUpperCase(),
+          proxy_type: query.proxy_type ?? "residential",
+          regions: [],
+          cities: [],
+          isps: [],
+          refreshed_at: null,
+          ttl_seconds: 86400,
+        })
+      );
     },
 
     // ── Campaigns ──────────────────────────────────────────────

@@ -535,6 +535,54 @@ describe("HttpApiGateway", () => {
     });
   });
 
+  describe("getProxyTargeting", () => {
+    const BODY = {
+      country_code: "US",
+      proxy_type: "residential",
+      regions: ["florida"],
+      cities: ["miami"],
+      isps: ["comcast cable"],
+      refreshed_at: "2026-08-20T18:00:00Z",
+      ttl_seconds: 86400,
+    };
+
+    it("returns the parsed catalogue on 200", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/proxy/targeting?country_code=US", method: "GET" })
+        .reply(200, BODY);
+      const result = await buildGateway(agent).getProxyTargeting({ country_code: "US" });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap().regions).toEqual(["florida"]);
+    });
+
+    it("sends proxy_type and region as query parameters", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/proxy/targeting?country_code=US&proxy_type=mobile&region=florida",
+          method: "GET",
+        })
+        .reply(200, { ...BODY, proxy_type: "mobile" });
+      const result = await buildGateway(agent).getProxyTargeting({
+        country_code: "US",
+        proxy_type: "mobile",
+        region: "florida",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap().proxy_type).toBe("mobile");
+    });
+
+    it("returns upstream when the body is malformed", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/proxy/targeting?country_code=US", method: "GET" })
+        .reply(200, { regions: "not-an-array" });
+      const result = await buildGateway(agent).getProxyTargeting({ country_code: "US" });
+      expect(result.isErr()).toBe(true);
+    });
+  });
+
   describe("campaigns / runs / groups (smoke)", () => {
     const CAMPAIGN = {
       id: "00000000-0000-0000-0000-000000000ccc",

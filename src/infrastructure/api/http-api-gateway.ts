@@ -95,6 +95,8 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
+  ProxyTargetingQuery,
+  ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
@@ -182,6 +184,7 @@ import { parseGeoList } from "./parsers/parse-geo-list.js";
 import { parseLinkedCampaignPage } from "./parsers/parse-linked-campaign-page.js";
 import { parsePolicySet } from "./parsers/parse-policy-set.js";
 import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
+import { parseProxyTargeting } from "./parsers/parse-proxy-targeting.js";
 import { parseRun } from "./parsers/parse-run.js";
 import { parseRunScanPage } from "./parsers/parse-run-scan-page.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
@@ -718,6 +721,11 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
     async listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
       return call("GET", "/api/v1/emulators", {}, parseEmulatorList);
+    },
+    async getProxyTargeting(
+      query: ProxyTargetingQuery
+    ): Promise<Result<ProxyTargetingResponse, ApiError>> {
+      return call("GET", "/api/v1/proxy/targeting", { params: { query } }, parseProxyTargeting);
     },
 
     // ── Campaigns ─────────────────────────────────────────────────

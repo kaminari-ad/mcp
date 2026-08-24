@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-24
+
+### Added
+
+- **`get_proxy_targeting` — the accepted proxy values, instead of
+  guesswork.** A scan's `proxy` block takes a region, city, and ISP whose
+  valid values come from our upstream network provider's catalogue, so
+  they cannot be an enum in the schema: they differ per country and per
+  connection type. Until now an agent had to guess, and a wrong guess
+  came back as a 422 with a prose message. The new tool wraps
+  `GET /api/v1/proxy/targeting` and returns the accepted regions,
+  cities, and ISPs for a country, ordered by pool size so the agent can
+  prefer values likely to yield an exit node. Anything it lists is
+  accepted by `create_scan`.
+
+  Two things the tool's description makes explicit, because both are
+  easy to get wrong: pass `proxy_type: "mobile"` when the scan is mobile
+  (the two networks are separate pools — in the US that is 1500+ ISPs
+  against roughly a dozen carriers), and take a city from the same
+  response that produced the region, since a region and a city that do
+  not belong together leave the provider nothing to route through.
+
+### Changed
+
+- **Regenerated `openapi.ts` / `zod-schemas.ts`** against the API
+  release that adds `/api/v1/proxy/targeting`.
+
+- **A rejected field value now arrives as a `detail` array.** The API
+  changed 422 responses for values checked against a runtime vocabulary
+  (`proxy.region`, `proxy.city`, `proxy.isp`, `country_code`,
+  `emulator_id`) from a prose string to the `HTTPValidationError`
+  array its OpenAPI schema always declared. No change was needed here —
+  `toApiError` has handled both shapes since the parser-drift work — and
+  the agent-visible message is now `body.proxy.region: Unsupported proxy
+  region …` instead of an undifferentiated sentence.
+
 ## [0.14.1] - 2026-08-24
 
 ### Changed
