@@ -60,13 +60,27 @@ export const campaignConfigFields = {
   proxy_type: z
     .enum(["residential", "mobile"])
     .optional()
-    .describe("Proxy network type. Default: residential."),
+    .describe(
+      "Proxy network type. Default: residential. Residential and mobile are separate pools with separate catalogues, so pass the same value to `get_proxy_targeting` that you send here."
+    ),
   proxy_region: z
     .string()
     .optional()
-    .describe("Proxy region/state targeting (free-text; only honoured for a single country)."),
-  proxy_city: z.string().optional().describe("Proxy city targeting."),
-  proxy_isp: z.string().optional().describe("Proxy ISP targeting."),
+    .describe(
+      "Proxy region/state; use a value from `get_proxy_targeting` for one of this campaign's countries. Only honoured when the campaign targets a single country."
+    ),
+  proxy_city: z
+    .string()
+    .optional()
+    .describe(
+      "Proxy city from `get_proxy_targeting`. If you also set `proxy_region`, take the city from a call made with that same region — a city from a different region passes validation but leaves the provider no exit node."
+    ),
+  proxy_isp: z
+    .string()
+    .optional()
+    .describe(
+      "Proxy ISP, or mobile carrier when `proxy_type` is mobile. Use a value from `get_proxy_targeting`."
+    ),
   ...repeatRetryFields,
   schedule_type: z
     .enum(["weekly", "interval"])

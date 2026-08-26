@@ -95,7 +95,7 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
-  ProxyTargetingFilters,
+  ProxyTargetingQuery,
   ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
@@ -719,18 +719,13 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async listGeos(): Promise<Result<readonly GeoResponse[], ApiError>> {
       return call("GET", "/api/v1/geos", {}, parseGeoList);
     },
-    async getProxyTargeting(
-      filters: ProxyTargetingFilters
-    ): Promise<Result<ProxyTargetingResponse, ApiError>> {
-      return call(
-        "GET",
-        "/api/v1/proxy/targeting",
-        { params: { query: filters } },
-        parseProxyTargeting
-      );
-    },
     async listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
       return call("GET", "/api/v1/emulators", {}, parseEmulatorList);
+    },
+    async getProxyTargeting(
+      query: ProxyTargetingQuery
+    ): Promise<Result<ProxyTargetingResponse, ApiError>> {
+      return call("GET", "/api/v1/proxy/targeting", { params: { query } }, parseProxyTargeting);
     },
 
     // ── Campaigns ─────────────────────────────────────────────────

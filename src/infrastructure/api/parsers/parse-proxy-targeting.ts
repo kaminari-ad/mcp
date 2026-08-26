@@ -1,6 +1,5 @@
 /**
- * Parser for `GET /api/v1/proxy/targeting` — the region / city / ISP
- * catalogue a scan's `proxy` block may draw from.
+ * Parser for `GET /api/v1/proxy/targeting` — accepted proxy targeting values.
  */
 
 import type { ApiError, ProxyTargetingResponse } from "../../../domain/ports/api-gateway.js";

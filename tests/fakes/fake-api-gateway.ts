@@ -71,7 +71,7 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
-  ProxyTargetingFilters,
+  ProxyTargetingQuery,
   ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
@@ -160,8 +160,8 @@ type Call =
   | { readonly method: "cancelScan"; readonly scanId: string }
   | { readonly method: "listScanTags"; readonly scanId: string }
   | { readonly method: "listGeos" }
-  | { readonly method: "getProxyTargeting"; readonly filters: ProxyTargetingFilters }
   | { readonly method: "listEmulators" }
+  | { readonly method: "getProxyTargeting"; readonly query: ProxyTargetingQuery }
   | { readonly method: "listCampaigns"; readonly filters: ListCampaignsFilters }
   | { readonly method: "getCampaign"; readonly id: string }
   | { readonly method: "createCampaign"; readonly body: CreateCampaignRequest }
@@ -349,8 +349,8 @@ export interface FakeApiGatewayState {
     cancelScan?: Result<CancelPendingResponse, ApiError>;
     listScanTags?: Result<readonly ScanTagResponse[], ApiError>;
     listGeos?: Result<readonly GeoResponse[], ApiError>;
-    getProxyTargeting?: Result<ProxyTargetingResponse, ApiError>;
     listEmulators?: Result<readonly EmulatorResponse[], ApiError>;
+    getProxyTargeting?: Result<ProxyTargetingResponse, ApiError>;
     listCampaigns?: Result<PaginatedResponse<CampaignResponse>, ApiError>;
     getCampaign?: Result<CampaignResponse, ApiError>;
     createCampaign?: Result<CampaignResponse, ApiError>;
@@ -961,26 +961,26 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return state.responses.listGeos ?? ok<readonly GeoResponse[], ApiError>([]);
     },
-    async getProxyTargeting(filters) {
-      push({ method: "getProxyTargeting", filters });
+    async listEmulators() {
+      push({ method: "listEmulators" });
+      await Promise.resolve();
+      return state.responses.listEmulators ?? ok<readonly EmulatorResponse[], ApiError>([]);
+    },
+    async getProxyTargeting(query: ProxyTargetingQuery) {
+      push({ method: "getProxyTargeting", query });
       await Promise.resolve();
       return (
         state.responses.getProxyTargeting ??
         ok<ProxyTargetingResponse, ApiError>({
-          country_code: "XX",
+          country_code: "US",
           proxy_type: "residential",
           regions: [],
           cities: [],
           isps: [],
           refreshed_at: null,
-          ttl_seconds: 0,
+          ttl_seconds: 86400,
         })
       );
-    },
-    async listEmulators() {
-      push({ method: "listEmulators" });
-      await Promise.resolve();
-      return state.responses.listEmulators ?? ok<readonly EmulatorResponse[], ApiError>([]);
     },
 
     // ── Campaigns ──────────────────────────────────────────────

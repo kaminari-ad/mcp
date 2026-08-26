@@ -277,9 +277,11 @@ export type ProxyTargetingResponse = Pick<
   "country_code" | "proxy_type" | "regions" | "cities" | "isps" | "refreshed_at" | "ttl_seconds"
 >;
 
-export interface ProxyTargetingFilters {
+export interface ProxyTargetingQuery {
   readonly country_code: string;
+  /** Catalogues differ per network, so this is not cosmetic. */
   readonly proxy_type?: "residential" | "mobile";
+  /** Narrows `cities` to one region. */
   readonly region?: string;
 }
 
@@ -1249,10 +1251,8 @@ export interface ApiGateway {
 
   // Geos / emulators
   listGeos(): Promise<Result<readonly GeoResponse[], ApiError>>;
-  getProxyTargeting(
-    filters: ProxyTargetingFilters
-  ): Promise<Result<ProxyTargetingResponse, ApiError>>;
   listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>>;
+  getProxyTargeting(query: ProxyTargetingQuery): Promise<Result<ProxyTargetingResponse, ApiError>>;
 
   // Campaigns
   listCampaigns(

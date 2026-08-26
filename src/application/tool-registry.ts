@@ -74,7 +74,6 @@ import { parseCustomTaxonomyTextTool } from "./tools/custom-taxonomies/parse-cus
 import { restoreCustomTaxonomyTool } from "./tools/custom-taxonomies/restore-custom-taxonomy.tool.js";
 import { updateCustomTaxonomyTool } from "./tools/custom-taxonomies/update-custom-taxonomy.tool.js";
 import { listEmulatorsTool } from "./tools/emulators/list-emulators.tool.js";
-import { getProxyTargetingTool } from "./tools/geos/get-proxy-targeting.tool.js";
 import { listGeosTool } from "./tools/geos/list-geos.tool.js";
 import { getInvoicePdfTool } from "./tools/invoicing/get-invoice-pdf.tool.js";
 import { listInvoicesTool } from "./tools/invoicing/list-invoices.tool.js";
@@ -88,6 +87,7 @@ import { listPolicySetsTool } from "./tools/policy-sets/list-policy-sets.tool.js
 import { requestPolicySetApprovalTool } from "./tools/policy-sets/request-policy-set-approval.tool.js";
 import { unpublishPolicySetTool } from "./tools/policy-sets/unpublish-policy-set.tool.js";
 import { updatePolicySetTool } from "./tools/policy-sets/update-policy-set.tool.js";
+import { getProxyTargetingTool } from "./tools/proxy/get-proxy-targeting.tool.js";
 import { cancelRunTool } from "./tools/runs/cancel-run.tool.js";
 import { getRunTool } from "./tools/runs/get-run.tool.js";
 import { listRunScansTool } from "./tools/runs/list-run-scans.tool.js";
@@ -143,8 +143,8 @@ export function registerAllTools(register: RegisterTool): void {
   register(revokeApiKeyTool);
   // reference data
   register(listGeosTool);
-  register(listEmulatorsTool);
   register(getProxyTargetingTool);
+  register(listEmulatorsTool);
   // scans
   register(getScanTool);
   register(listScanChildrenTool);

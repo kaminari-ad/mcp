@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2026-08-26
+## [0.16.0] - 2026-08-26
 
 ### Added
 
@@ -21,35 +21,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `destructiveHint: true` because other organizations lose access to a
   set they may be browsing. Campaigns already bound to the set keep
   running against it; going private blocks new attachments instead.
-- **`get_proxy_targeting` — the `proxy` block is no longer guesswork.**
-  Surfaced by the regen below: `GET /api/v1/proxy/targeting` shipped in
-  August with no tool behind it, so an agent filling a scan's
-  `proxy.region` / `city` / `isp` had nothing to read the accepted
-  values from and could only try one and eat a 422. The catalogue comes
-  from our upstream network provider, so it cannot be a fixed enum in
-  the scan schema. Pass `proxy_type` explicitly — residential and mobile
-  are separate pools.
-- Regenerated `src/shared/api/{openapi,zod-schemas}.ts` against the
-  live spec, which had drifted well past the new route. The
-  `/api/forms/*` contact and demo schemas dropped out — those routes
-  are `include_in_schema=False` and were never reachable through a
-  tool, so their two `EXEMPT_OPERATIONS` entries in
-  `check-api-coverage` are now dead and removed.
+
+  Needs the API side deployed first: it wraps
+  `POST /api/v1/policy-sets/{id}/unpublish`, added in `adverif/api!378`.
 
 ### Changed
 
-- **`get_campaign_alert_overrides` now validates `mode` strictly.**
-  The regen narrowed `CampaignOverridesResponse.mode` from a bare
-  `string` to the generated `CampaignOverrideMode` enum
-  (`inherit | override | silence`), and the response parser enforces
-  it — a fourth value from the API would surface as an `upstream`
-  error instead of being passed through. That is the point: the api
-  types the field now, so drift should fail loudly. No field was
-  added, removed or renamed on any tool.
-- `set_campaign_alert_overrides` takes its `mode` input from the same
-  generated enum instead of a hand-written `z.enum` with identical
-  values. Behaviour is unchanged; the enum-drift gate can now catch
-  future value changes on it, so its exemption is gone too.
+- **`get_campaign_alert_overrides` validates `mode` strictly — this
+  actually shipped in 0.15.0, undocumented.** That release's regen
+  narrowed `CampaignOverridesResponse.mode` from a bare `string` to the
+  generated `CampaignOverrideMode` enum (`inherit | override |
+  silence`), and the response parser enforces it, so a fourth value
+  from the API now surfaces as an `upstream` error instead of passing
+  through. That is the intent — the api types the field, so drift
+  should fail loudly — but it is a behaviour change and 0.15.0 recorded
+  only "regenerated openapi.ts / zod-schemas.ts".
+- `set_campaign_alert_overrides` now takes its `mode` input from that
+  same generated enum instead of a hand-written `z.enum` with identical
+  values. Behaviour is unchanged; the point is that `check-tool-enum-drift`
+  can finally catch future value changes on this field, so its
+  exemption is gone.
+
+### Removed
+
+- The two `/api/forms/*` entries in `check-api-coverage`'s
+  `EXEMPT_OPERATIONS`. Those routes are `include_in_schema=False` and
+  dropped out of the spec in the 0.15.0 regen, so the exemptions had
+  become dead config — exactly as their own comment predicted.
+
+## [0.15.0] - 2026-08-24
+
+### Added
+
+- **`get_proxy_targeting` — the accepted proxy values, instead of
+  guesswork.** A scan's `proxy` block takes a region, city, and ISP whose
+  valid values come from our upstream network provider's catalogue, so
+  they cannot be an enum in the schema: they differ per country and per
+  connection type. Until now an agent had to guess, and a wrong guess
+  came back as a 422 with a prose message. The new tool wraps
+  `GET /api/v1/proxy/targeting` and returns the accepted regions,
+  cities, and ISPs for a country, ordered by pool size so the agent can
+  prefer values likely to yield an exit node. Anything it lists is
+  accepted by `create_scan`.
+
+  Two things the tool's description makes explicit, because both are
+  easy to get wrong: pass `proxy_type: "mobile"` when the scan is mobile
+  (the two networks are separate pools — in the US that is 1500+ ISPs
+  against roughly a dozen carriers), and take a city from the same
+  response that produced the region, since a region and a city that do
+  not belong together leave the provider nothing to route through.
+
+- **The write tools now point at it.** A tool nobody is told about is a
+  tool nobody calls, and an agent starts from `create_scan`, not from the
+  catalogue. The `proxy` fields on `create_scan` / `create_bulk_scans`
+  and the `proxy_*` fields on `create_campaign` / `update_campaign` now
+  name `get_proxy_targeting` and carry the same two warnings. The
+  campaign `proxy_region` description previously said "free-text", which
+  told the agent to invent a value — precisely the behaviour that
+  produces the 422 this release exists to remove.
+
+### Changed
+
+- **Regenerated `openapi.ts` / `zod-schemas.ts`** against the API
+  release that adds `/api/v1/proxy/targeting`.
+
+- **A rejected field value now arrives as a `detail` array.** The API
+  changed 422 responses for values checked against a runtime vocabulary
+  (`proxy.region`, `proxy.city`, `proxy.isp`, `country_code`,
+  `emulator_id`) from a prose string to the `HTTPValidationError`
+  array its OpenAPI schema always declared. No change was needed here —
+  `toApiError` has handled both shapes since the parser-drift work — and
+  the agent-visible message is now `body.proxy.region: Unsupported proxy
+  region …` instead of an undifferentiated sentence.
 
 ## [0.14.1] - 2026-08-24
 
@@ -1189,7 +1232,8 @@ Initial public release. The first version that ships to npm under
   need them.
 - Invoice PDF fetcher — same reason.
 
-[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/kaminari-ad/mcp/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/kaminari-ad/mcp/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/kaminari-ad/mcp/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/kaminari-ad/mcp/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/kaminari-ad/mcp/compare/v0.12.0...v0.13.0
