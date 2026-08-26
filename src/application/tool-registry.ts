@@ -85,6 +85,7 @@ import { getPolicySetTool } from "./tools/policy-sets/get-policy-set.tool.js";
 import { listPolicySetCampaignsTool } from "./tools/policy-sets/list-policy-set-campaigns.tool.js";
 import { listPolicySetsTool } from "./tools/policy-sets/list-policy-sets.tool.js";
 import { requestPolicySetApprovalTool } from "./tools/policy-sets/request-policy-set-approval.tool.js";
+import { unpublishPolicySetTool } from "./tools/policy-sets/unpublish-policy-set.tool.js";
 import { updatePolicySetTool } from "./tools/policy-sets/update-policy-set.tool.js";
 import { getProxyTargetingTool } from "./tools/proxy/get-proxy-targeting.tool.js";
 import { cancelRunTool } from "./tools/runs/cancel-run.tool.js";
@@ -212,6 +213,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(updatePolicySetTool);
   register(deletePolicySetTool);
   register(requestPolicySetApprovalTool);
+  register(unpublishPolicySetTool);
   register(listPolicySetCampaignsTool);
   register(attachPolicySetCampaignsTool);
   register(detachPolicySetCampaignsTool);

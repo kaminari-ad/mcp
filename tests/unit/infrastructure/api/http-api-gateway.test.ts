@@ -583,6 +583,28 @@ describe("HttpApiGateway", () => {
     });
   });
 
+  describe("unpublishPolicySet", () => {
+    const PID = "00000000-0000-0000-0000-000000000eee";
+
+    it("returns null on 204", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/unpublish`, method: "POST" })
+        .reply(204, "");
+      const result = await buildGateway(agent).unpublishPolicySet(PID);
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toBeNull();
+    });
+
+    it("maps a 404 to an error", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/unpublish`, method: "POST" })
+        .reply(404, { detail: "not found" });
+      expect((await buildGateway(agent).unpublishPolicySet(PID)).isErr()).toBe(true);
+    });
+  });
+
   describe("campaigns / runs / groups (smoke)", () => {
     const CAMPAIGN = {
       id: "00000000-0000-0000-0000-000000000ccc",

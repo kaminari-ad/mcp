@@ -43,14 +43,7 @@ const V1_PREFIX = "/api/v1";
  * `METHOD path`. Each entry needs a reason — an unexplained entry is
  * indistinguishable from the drift this gate exists to catch.
  */
-const EXEMPT_OPERATIONS: Readonly<Record<string, string>> = {
-  // Anonymous marketing-form intake for our own public site, not a
-  // product API. The api moved them to `/api/forms/*` with
-  // `include_in_schema=False`; these two entries drop out of the spec
-  // (and out of this list) on the next regen after that deploys.
-  "POST /api/v1/contact": "anonymous marketing form, not an agent capability",
-  "POST /api/v1/demo-inquiries": "anonymous marketing form, not an agent capability",
-};
+const EXEMPT_OPERATIONS: Readonly<Record<string, string>> = {};
 
 /**
  * Query parameters an operation declares but the gateway deliberately

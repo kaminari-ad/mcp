@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-26
+
+### Added
+
+- **`unpublish_policy_set` — publication is no longer a one-way door
+  (KAMIAD-167).** `request_policy_set_approval` had no inverse, so an
+  agent could put a set into the shared catalog but never take it out;
+  the only escape was asking a human to reject it, and that worked only
+  while the request was still pending. The new tool returns a set to
+  private from either state — approved or awaiting review — and is
+  idempotent on a set that is already private. It is annotated
+  `destructiveHint: true` because other organizations lose access to a
+  set they may be browsing. Campaigns already bound to the set keep
+  running against it; going private blocks new attachments instead.
+
+  Needs the API side deployed first: it wraps
+  `POST /api/v1/policy-sets/{id}/unpublish`, added in `adverif/api!378`.
+
+### Changed
+
+- **`get_campaign_alert_overrides` validates `mode` strictly — this
+  actually shipped in 0.15.0, undocumented.** That release's regen
+  narrowed `CampaignOverridesResponse.mode` from a bare `string` to the
+  generated `CampaignOverrideMode` enum (`inherit | override |
+  silence`), and the response parser enforces it, so a fourth value
+  from the API now surfaces as an `upstream` error instead of passing
+  through. That is the intent — the api types the field, so drift
+  should fail loudly — but it is a behaviour change and 0.15.0 recorded
+  only "regenerated openapi.ts / zod-schemas.ts".
+- `set_campaign_alert_overrides` now takes its `mode` input from that
+  same generated enum instead of a hand-written `z.enum` with identical
+  values. Behaviour is unchanged; the point is that `check-tool-enum-drift`
+  can finally catch future value changes on this field, so its
+  exemption is gone.
+
+### Removed
+
+- The two `/api/forms/*` entries in `check-api-coverage`'s
+  `EXEMPT_OPERATIONS`. Those routes are `include_in_schema=False` and
+  dropped out of the spec in the 0.15.0 regen, so the exemptions had
+  become dead config — exactly as their own comment predicted.
+
 ## [0.15.0] - 2026-08-24
 
 ### Added

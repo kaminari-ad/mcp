@@ -1085,6 +1085,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
+    async unpublishPolicySet(id: string): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/unpublish",
+        { params: { path: { policy_set_id: id } } },
+        parseEmpty
+      );
+    },
 
     // ── Custom taxonomies ─────────────────────────────────────────
     async listCustomTaxonomies(

@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 
+import { schemas } from "../../../shared/api/zod-schemas.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
@@ -12,16 +13,9 @@ import type { ToolError } from "../_shared/tool-result.js";
 
 const SetCampaignAlertOverridesInputShape = {
   campaign_id: z.string().uuid().describe("Campaign UUID."),
-  // enum-drift: allow — the API validates these three values but types
-  // the field as a plain string, so no generated schema constrains it.
-  // Swap to `schemas.CampaignOverrideMode` after the api enum change
-  // (`fix/type-override-mode-and-unlist-forms`) reaches prod and the
-  // next `make gen-api-types` picks it up.
-  mode: z
-    .enum(["inherit", "override", "silence"])
-    .describe(
-      "Routing mode: `inherit` (fall back to the org-wide destinations), `override` (route ONLY to `destination_ids`), `silence` (send nothing for this campaign)."
-    ),
+  mode: schemas.CampaignOverrideMode.describe(
+    "Routing mode: `inherit` (fall back to the org-wide destinations), `override` (route ONLY to `destination_ids`), `silence` (send nothing for this campaign)."
+  ),
   destination_ids: z
     .array(z.string().uuid())
     .max(50)

@@ -1413,6 +1413,8 @@ export interface ApiGateway {
   ): Promise<Result<ParseTaxonomyTextResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  unpublishPolicySet(id: string): Promise<Result<null, ApiError>>;
 
   // Alerts
   listAlerts(

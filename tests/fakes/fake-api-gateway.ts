@@ -232,6 +232,7 @@ type Call =
     }
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
+  | { readonly method: "unpublishPolicySet"; readonly id: string }
   | {
       readonly method: "listPolicySetCampaigns";
       readonly id: string;
@@ -389,6 +390,7 @@ export interface FakeApiGatewayState {
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
+    unpublishPolicySet?: Result<null, ApiError>;
     listPolicySetCampaigns?: Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>;
     attachPolicySetCampaigns?: Result<null, ApiError>;
     detachPolicySetCampaigns?: Result<null, ApiError>;
@@ -1292,6 +1294,11 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
       return state.responses.requestPolicySetApproval ?? ok<null, ApiError>(null);
+    },
+    async unpublishPolicySet(id) {
+      push({ method: "unpublishPolicySet", id });
+      await Promise.resolve();
+      return state.responses.unpublishPolicySet ?? ok<null, ApiError>(null);
     },
 
     // ── Custom taxonomies ──────────────────────────────────────

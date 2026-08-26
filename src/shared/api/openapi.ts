@@ -1275,6 +1275,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/policy-sets/{policy_set_id}/unpublish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unpublish Policy Set
+     * @description Return a policy set to private.
+     *
+     *     Inverse of ``request-approval``: takes an approved public set out of
+     *     the shared catalog, or withdraws a publication request that is still
+     *     awaiting moderation. Idempotent on an already-private set.
+     */
+    post: operations["unpublish_policy_set_api_v1_policy_sets__policy_set_id__unpublish_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/alerts": {
     parameters: {
       query?: never;
@@ -7497,6 +7521,35 @@ export interface operations {
     };
   };
   request_public_approval_api_v1_policy_sets__policy_set_id__request_approval_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  unpublish_policy_set_api_v1_policy_sets__policy_set_id__unpublish_post: {
     parameters: {
       query?: never;
       header?: never;
