@@ -37,7 +37,7 @@ export type GetProxyTargetingOutput = ProxyTargetingResponse;
 export const getProxyTargetingTool: Tool<GetProxyTargetingInputShape, GetProxyTargetingOutput> = {
   name: "get_proxy_targeting",
   description:
-    "List the proxy regions, cities and ISPs available for a country, ordered by pool size. Anything this returns is accepted in the `proxy` block of create_scan; anything else is rejected with a 422. Call it before scanning with proxy targeting rather than guessing. `refreshed_at` is when we last checked with the network provider and moves on every check, so it is not a change signal on its own.",
+    "List the proxy regions, cities and ISPs available for a country, ordered by pool size. Anything this returns passes validation in the `proxy` block of create_scan; anything else is rejected with a 422. Call it before scanning with proxy targeting rather than guessing. Read `refreshed_at` before trusting empty arrays: `null` means we have not synced this country yet, so the empty lists are not an answer and the call is worth retrying, whereas empty lists WITH a timestamp mean no targeting is available there. Passing validation is not a delivery guarantee — the provider's pool moves, so a narrowly targeted scan can still find no exit node at crawl time.",
   annotations: {
     title: "Get Proxy Targeting",
     readOnlyHint: true,

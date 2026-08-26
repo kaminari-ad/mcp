@@ -967,8 +967,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       return (
         state.responses.getProxyTargeting ??
         ok<ProxyTargetingResponse, ApiError>({
-          country_code: filters.country_code,
-          proxy_type: filters.proxy_type ?? "residential",
+          country_code: "XX",
+          proxy_type: "residential",
           regions: [],
           cities: [],
           isps: [],

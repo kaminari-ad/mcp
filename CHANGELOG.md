@@ -30,13 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the scan schema. Pass `proxy_type` explicitly — residential and mobile
   are separate pools.
 - Regenerated `src/shared/api/{openapi,zod-schemas}.ts` against the
-  live spec. Beyond the new route the types had drifted: the
-  alert-notification override `mode` narrowed from `string` to a
-  `CampaignOverrideMode` enum, and the `/api/forms/*` contact and demo
-  schemas dropped out (those routes are `include_in_schema=False` and
-  were never reachable through a tool — the two matching
-  `EXEMPT_OPERATIONS` entries in `check-api-coverage` are now dead and
-  removed). No existing tool's input or output shape changed.
+  live spec, which had drifted well past the new route. The
+  `/api/forms/*` contact and demo schemas dropped out — those routes
+  are `include_in_schema=False` and were never reachable through a
+  tool, so their two `EXEMPT_OPERATIONS` entries in
+  `check-api-coverage` are now dead and removed.
+
+### Changed
+
+- **`get_campaign_alert_overrides` now validates `mode` strictly.**
+  The regen narrowed `CampaignOverridesResponse.mode` from a bare
+  `string` to the generated `CampaignOverrideMode` enum
+  (`inherit | override | silence`), and the response parser enforces
+  it — a fourth value from the API would surface as an `upstream`
+  error instead of being passed through. That is the point: the api
+  types the field now, so drift should fail loudly. No field was
+  added, removed or renamed on any tool.
+- `set_campaign_alert_overrides` takes its `mode` input from the same
+  generated enum instead of a hand-written `z.enum` with identical
+  values. Behaviour is unchanged; the enum-drift gate can now catch
+  future value changes on it, so its exemption is gone too.
 
 ## [0.14.1] - 2026-08-24
 

@@ -50,6 +50,27 @@ describe("getProxyTargetingTool", () => {
     expect(call.filters).toEqual({ country_code: "DE" });
   });
 
+  it("passes an unsynced country through untouched", async () => {
+    // refreshed_at=null means "not looked yet", which the agent has to
+    // tell apart from empty lists carrying a timestamp. Neither may be
+    // swallowed or defaulted on the way out.
+    const api = createFakeApiGateway();
+    api.state.responses.getProxyTargeting = ok({
+      country_code: "TM",
+      proxy_type: "residential",
+      regions: [],
+      cities: [],
+      isps: [],
+      refreshed_at: null,
+      ttl_seconds: 0,
+    });
+
+    const r = await getProxyTargetingTool.handler({ country_code: "TM" }, makeToolContext({ api }));
+
+    expect(r._unsafeUnwrap().refreshed_at).toBeNull();
+    expect(r._unsafeUnwrap().regions).toEqual([]);
+  });
+
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getProxyTargeting = err(makeApiError("upstream", "x"));
