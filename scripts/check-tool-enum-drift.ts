@@ -47,13 +47,6 @@ const ZOD_SCHEMAS_FILE = path.join(REPO_ROOT, "src", "shared", "api", "zod-schem
  * once the api side types the field.
  */
 const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
-  // Campaign notification routing. API `main` already types this as
-  // `CampaignOverrideMode`, but the committed spec is generated from
-  // deployed prod, which still emits a bare `string` — so there is no
-  // generated enum to match yet. Delete this entry and switch the tool
-  // to `schemas.CampaignOverrideMode` on the first regen after the api
-  // change is live.
-  "inherit|override|silence": "typed on api main; prod OpenAPI still emits string",
   // Campaign shape fields validated by Pydantic field validators
   // rather than typed enums, so the OpenAPI document describes each as
   // a bare string. Typing them on the api side would let this gate
