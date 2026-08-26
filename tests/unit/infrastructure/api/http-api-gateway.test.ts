@@ -535,6 +535,67 @@ describe("HttpApiGateway", () => {
     });
   });
 
+  describe("getProxyTargeting", () => {
+    const CATALOGUE = {
+      country_code: "US",
+      proxy_type: "mobile",
+      regions: ["California"],
+      cities: ["Los Angeles"],
+      isps: ["Verizon"],
+      refreshed_at: "2026-08-26T00:00:00Z",
+      ttl_seconds: 3600,
+    };
+
+    it("forwards every filter as a query param and parses the catalogue", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/proxy/targeting?country_code=US&proxy_type=mobile&region=California",
+          method: "GET",
+        })
+        .reply(200, CATALOGUE);
+      const result = await buildGateway(agent).getProxyTargeting({
+        country_code: "US",
+        proxy_type: "mobile",
+        region: "California",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap().isps).toEqual(["Verizon"]);
+    });
+
+    it("returns upstream when the body is the wrong shape", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/proxy/targeting?country_code=US", method: "GET" })
+        .reply(200, { country_code: "US" });
+      expect((await buildGateway(agent).getProxyTargeting({ country_code: "US" })).isErr()).toBe(
+        true
+      );
+    });
+  });
+
+  describe("unpublishPolicySet", () => {
+    const PID = "00000000-0000-0000-0000-000000000eee";
+
+    it("returns null on 204", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/unpublish`, method: "POST" })
+        .reply(204, "");
+      const result = await buildGateway(agent).unpublishPolicySet(PID);
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toBeNull();
+    });
+
+    it("maps a 404 to an error", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/unpublish`, method: "POST" })
+        .reply(404, { detail: "not found" });
+      expect((await buildGateway(agent).unpublishPolicySet(PID)).isErr()).toBe(true);
+    });
+  });
+
   describe("campaigns / runs / groups (smoke)", () => {
     const CAMPAIGN = {
       id: "00000000-0000-0000-0000-000000000ccc",

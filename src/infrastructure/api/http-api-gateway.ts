@@ -95,6 +95,8 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
+  ProxyTargetingFilters,
+  ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
@@ -182,6 +184,7 @@ import { parseGeoList } from "./parsers/parse-geo-list.js";
 import { parseLinkedCampaignPage } from "./parsers/parse-linked-campaign-page.js";
 import { parsePolicySet } from "./parsers/parse-policy-set.js";
 import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
+import { parseProxyTargeting } from "./parsers/parse-proxy-targeting.js";
 import { parseRun } from "./parsers/parse-run.js";
 import { parseRunScanPage } from "./parsers/parse-run-scan-page.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
@@ -716,6 +719,16 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     async listGeos(): Promise<Result<readonly GeoResponse[], ApiError>> {
       return call("GET", "/api/v1/geos", {}, parseGeoList);
     },
+    async getProxyTargeting(
+      filters: ProxyTargetingFilters
+    ): Promise<Result<ProxyTargetingResponse, ApiError>> {
+      return call(
+        "GET",
+        "/api/v1/proxy/targeting",
+        { params: { query: filters } },
+        parseProxyTargeting
+      );
+    },
     async listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>> {
       return call("GET", "/api/v1/emulators", {}, parseEmulatorList);
     },
@@ -1073,6 +1086,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       return call(
         "POST",
         "/api/v1/policy-sets/{policy_set_id}/request-approval",
+        { params: { path: { policy_set_id: id } } },
+        parseEmpty
+      );
+    },
+    async unpublishPolicySet(id: string): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/unpublish",
         { params: { path: { policy_set_id: id } } },
         parseEmpty
       );

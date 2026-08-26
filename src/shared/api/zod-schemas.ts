@@ -404,6 +404,17 @@ const GeoResponse = z
     tier: z.string(),
   })
   .passthrough();
+const ProxyTargetingResponse = z
+  .object({
+    country_code: z.string(),
+    proxy_type: z.string(),
+    regions: z.array(z.string()),
+    cities: z.array(z.string()),
+    isps: z.array(z.string()),
+    refreshed_at: z.union([z.string(), z.null()]),
+    ttl_seconds: z.number().int(),
+  })
+  .passthrough();
 const EmulatorResponse = z
   .object({
     id: z.string(),
@@ -1169,16 +1180,17 @@ const AlertNotificationDestinationResponse = z
   })
   .passthrough();
 const SetDestinationVersionRequest = z.object({ version: AlertNotificationVersion }).passthrough();
+const CampaignOverrideMode = z.enum(["inherit", "override", "silence"]);
 const CampaignOverridesResponse = z
   .object({
     campaign_id: z.string().uuid(),
-    mode: z.string(),
+    mode: CampaignOverrideMode,
     destination_ids: z.array(z.string().uuid()),
   })
   .passthrough();
 const SetCampaignOverridesRequest = z
   .object({
-    mode: z.string().min(1).max(16),
+    mode: CampaignOverrideMode,
     destination_ids: z.array(z.string().uuid()).optional().default([]),
   })
   .passthrough();
@@ -1217,40 +1229,6 @@ const PaginatedResponse_InvoiceResponse_ = z
     page: z.number().int(),
     limit: z.number().int(),
     pages: z.number().int(),
-  })
-  .passthrough();
-const SubmitContactInquiryRequest = z
-  .object({
-    name: z.string().min(2).max(100),
-    email: z.string().email(),
-    message: z.string().min(10).max(2000),
-    source: z.string().max(512).optional().default(""),
-  })
-  .passthrough();
-const ContactInquiryAcknowledgement = z
-  .object({
-    id: z.string().uuid(),
-    received_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PreferredContactChannel = z.enum(["telegram", "whatsapp", "email"]);
-const SubmitDemoInquiryRequest = z
-  .object({
-    first_name: z.string().min(2).max(60),
-    last_name: z.string().min(2).max(60),
-    company_email: z.string().email(),
-    company_name: z.string().min(2).max(120),
-    preferred_channel: PreferredContactChannel,
-    contact_handle: z.string().max(120).optional().default(""),
-    comment: z.string().max(2000).optional().default(""),
-    privacy_accepted: z.boolean(),
-    source: z.string().max(512).optional().default(""),
-  })
-  .passthrough();
-const DemoInquiryAcknowledgement = z
-  .object({
-    id: z.string().uuid(),
-    received_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
 const CustomTaxonomyListItem = z
@@ -1365,6 +1343,7 @@ export const schemas = {
   CancelPendingResponse,
   w,
   GeoResponse,
+  ProxyTargetingResponse,
   EmulatorResponse,
   CreateCampaignGroupRequest,
   CampaignGroupResponse,
@@ -1450,6 +1429,7 @@ export const schemas = {
   AlertNotificationVersion,
   AlertNotificationDestinationResponse,
   SetDestinationVersionRequest,
+  CampaignOverrideMode,
   CampaignOverridesResponse,
   SetCampaignOverridesRequest,
   InvoiceType,
@@ -1458,11 +1438,6 @@ export const schemas = {
   status__3,
   InvoiceResponse,
   PaginatedResponse_InvoiceResponse_,
-  SubmitContactInquiryRequest,
-  ContactInquiryAcknowledgement,
-  PreferredContactChannel,
-  SubmitDemoInquiryRequest,
-  DemoInquiryAcknowledgement,
   CustomTaxonomyListItem,
   TaxonomyNodeRequest,
   CreateCustomTaxonomyRequest,

@@ -63,7 +63,7 @@ Add to your MCP client config (Cursor: `~/.cursor/mcp.json`; Claude Desktop: `~/
 }
 ```
 
-Restart your client. You should see `kaminari-ad` in the MCP servers list with 105 tools exposed.
+Restart your client. You should see `kaminari-ad` in the MCP servers list with 107 tools exposed.
 
 ### 2b. Hosted HTTP transport (no install)
 
@@ -113,7 +113,7 @@ which decides which credential type minted it.
 
 ## Tools
 
-105 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
+107 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
 
 - **Account** (14) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `create_custom_role`, `list_account_labels`, `update_account_labels`, `list_api_keys`, `create_api_key`, `revoke_api_key`
 - **Scans** (13) — `list_scans`, `get_scan`, `list_scan_children`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`, `get_scan_creative_html`, `get_scan_creative_video`, `get_scan_vast_xml`
@@ -123,13 +123,13 @@ which decides which credential type minted it.
 - **Tags** (5) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`, `list_scan_tags`
 - **Custom rules** (6) — `list_custom_rules`, `get_custom_rule`, `create_custom_rule`, `update_custom_rule`, `delete_custom_rule`, `test_custom_rule`
 - **Custom taxonomies** (7) — `list_custom_taxonomies`, `get_custom_taxonomy`, `create_custom_taxonomy`, `update_custom_taxonomy`, `delete_custom_taxonomy`, `restore_custom_taxonomy`, `parse_custom_taxonomy_text`
-- **Policy sets** (9) — `list_policy_sets`, `get_policy_set`, `create_policy_set`, `update_policy_set`, `delete_policy_set`, `request_policy_set_approval`, `list_policy_set_campaigns`, `attach_policy_set_campaigns`, `detach_policy_set_campaigns`
+- **Policy sets** (10) — `list_policy_sets`, `get_policy_set`, `create_policy_set`, `update_policy_set`, `delete_policy_set`, `request_policy_set_approval`, `unpublish_policy_set`, `list_policy_set_campaigns`, `attach_policy_set_campaigns`, `detach_policy_set_campaigns`
 - **Alerts** (4) — `list_alerts`, `update_alert_status`, `bulk_update_alert_status`, `get_alert_stats`
 - **Webhooks** (11) — `list_webhooks`, `get_webhook`, `create_webhook`, `update_webhook`, `delete_webhook`, `list_webhook_event_types`, `list_webhook_deliveries`, `test_webhook`, `rotate_webhook_secret`, `replay_webhook_delivery`, `bulk_replay_webhook`
 - **Billing** (4) — `get_billing_summary`, `list_usage`, `get_usage_summary`, `list_balance_history`
 - **Invoicing** (2) — `list_invoices`, `get_invoice_pdf`
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
-- **Reference data** (2) — `list_geos`, `list_emulators`
+- **Reference data** (3) — `list_geos`, `list_emulators`, `get_proxy_targeting`
 
 Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. Every artifact download is size-capped in the gateway — 256 KiB for the text artifacts, 8 MiB for the binary ones — and refused while reading rather than buffered and then rejected.
 

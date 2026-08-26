@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-26
+
+### Added
+
+- **`unpublish_policy_set` — publication is no longer a one-way door
+  (KAMIAD-167).** `request_policy_set_approval` had no inverse, so an
+  agent could put a set into the shared catalog but never take it out;
+  the only escape was asking a human to reject it, and that worked only
+  while the request was still pending. The new tool returns a set to
+  private from either state — approved or awaiting review — and is
+  idempotent on a set that is already private. It is annotated
+  `destructiveHint: true` because other organizations lose access to a
+  set they may be browsing. Campaigns already bound to the set keep
+  running against it; going private blocks new attachments instead.
+- **`get_proxy_targeting` — the `proxy` block is no longer guesswork.**
+  Surfaced by the regen below: `GET /api/v1/proxy/targeting` shipped in
+  August with no tool behind it, so an agent filling a scan's
+  `proxy.region` / `city` / `isp` had nothing to read the accepted
+  values from and could only try one and eat a 422. The catalogue comes
+  from our upstream network provider, so it cannot be a fixed enum in
+  the scan schema. Pass `proxy_type` explicitly — residential and mobile
+  are separate pools.
+- Regenerated `src/shared/api/{openapi,zod-schemas}.ts` against the
+  live spec. Beyond the new route the types had drifted: the
+  alert-notification override `mode` narrowed from `string` to a
+  `CampaignOverrideMode` enum, and the `/api/forms/*` contact and demo
+  schemas dropped out (those routes are `include_in_schema=False` and
+  were never reachable through a tool — the two matching
+  `EXEMPT_OPERATIONS` entries in `check-api-coverage` are now dead and
+  removed). No existing tool's input or output shape changed.
+
 ## [0.14.1] - 2026-08-24
 
 ### Changed

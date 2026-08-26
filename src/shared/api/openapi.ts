@@ -511,6 +511,35 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/proxy/targeting": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Proxy Targeting
+     * @description Return the values accepted in a scan's `proxy` block for one country.
+     *
+     *     Every value listed here is accepted by `POST /api/v1/scans`, in any
+     *     case. That guarantee is about validation only: the provider's pool
+     *     moves continuously, so a scan may still fail to find an exit node at
+     *     crawl time.
+     *
+     *     An unsupported or unknown country returns 200 with empty arrays
+     *     rather than 404 — the useful answer to "can I target here" is a list,
+     *     possibly an empty one.
+     */
+    get: operations["get_proxy_targeting_api_v1_proxy_targeting_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/emulators": {
     parameters: {
       query?: never;
@@ -985,8 +1014,9 @@ export interface paths {
      * List Tag Definitions
      * @description List all available tag definitions with usage statistics.
      *
-     *     Archived tags are excluded by default; pass ``include_archived=true``
-     *     to include them.
+     *     Archived tags are excluded by default. ``include_archived=true``
+     *     adds back only the tags your own organization archived; archived
+     *     platform tags are retired and never returned.
      */
     get: operations["list_tag_definitions_api_v1_tag_definitions_get"];
     put?: never;
@@ -1239,6 +1269,30 @@ export interface paths {
      * @description Request public approval for a policy set.
      */
     post: operations["request_public_approval_api_v1_policy_sets__policy_set_id__request_approval_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/policy-sets/{policy_set_id}/unpublish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unpublish Policy Set
+     * @description Return a policy set to private.
+     *
+     *     Inverse of ``request-approval``: takes an approved public set out of
+     *     the shared catalog, or withdraws a publication request that is still
+     *     awaiting moderation. Idempotent on an already-private set.
+     */
+    post: operations["unpublish_policy_set_api_v1_policy_sets__policy_set_id__unpublish_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1688,57 +1742,6 @@ export interface paths {
     get: operations["get_invoice_pdf_api_v1_invoices__invoice_id__pdf_get"];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/contact": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Submit a contact inquiry
-     * @description Accept a contact-form submission from the public marketing site.
-     *
-     *     Returns ``200 OK`` with an opaque inquiry id on success and
-     *     ``429 Too Many Requests`` when the same client IP submits more
-     *     than the configured limit (default 5/hour).
-     */
-    post: operations["submit_contact_api_v1_contact_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/demo-inquiries": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Submit a Request-a-Demo inquiry
-     * @description Accept a Request-a-Demo submission from the public marketing site.
-     *
-     *     Returns ``200 OK`` with an opaque inquiry id on success and
-     *     ``429 Too Many Requests`` with code
-     *     ``marketing.demo_inquiry_rate_limited`` when the same client IP
-     *     submits more than the configured limit (default 5/hour). The UI
-     *     branches on the ``code`` field to show a "wait a few minutes"
-     *     line instead of a generic toast.
-     */
-    post: operations["submit_demo_inquiry_api_v1_demo_inquiries_post"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2396,6 +2399,20 @@ export interface components {
       last_run_at?: string | null;
     };
     /**
+     * CampaignOverrideMode
+     * @description Routing mode a client sends / reads for one campaign.
+     *
+     *     ``INHERIT`` -> fall back to the org-global destinations.
+     *     ``OVERRIDE`` -> route only to the campaign's explicit destination list.
+     *     ``SILENCE`` -> send nothing for this campaign.
+     *
+     *     Distinct from :class:`CampaignSettingsMode`, which is the *persisted*
+     *     enum and has no ``inherit`` member because inherit is the absence of a
+     *     ``campaign_notification_settings`` row.
+     * @enum {string}
+     */
+    CampaignOverrideMode: "inherit" | "override" | "silence";
+    /**
      * CampaignOverridesResponse
      * @description Read projection of a campaign's notification configuration.
      */
@@ -2405,8 +2422,7 @@ export interface components {
        * Format: uuid
        */
       campaign_id: string;
-      /** Mode */
-      mode: string;
+      mode: components["schemas"]["CampaignOverrideMode"];
       /** Destination Ids */
       destination_ids: string[];
     };
@@ -2536,27 +2552,6 @@ export interface components {
     CancelPendingResponse: {
       /** Cancelled Count */
       cancelled_count: number;
-    };
-    /**
-     * ContactInquiryAcknowledgement
-     * @description Returned to the public site after a successful submission.
-     *
-     *     Deliberately minimal: an opaque id (so the public site can show
-     *     a "your reference is ..." line if it wants) and a timestamp.
-     *     Nothing about routing, queuing, or operator response — those are
-     *     internal.
-     */
-    ContactInquiryAcknowledgement: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Received At
-       * Format: date-time
-       */
-      received_at: string;
     };
     /**
      * CreateApiKeyRequest
@@ -2989,26 +2984,6 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
-    };
-    /**
-     * DemoInquiryAcknowledgement
-     * @description Returned to the public site after a successful submission.
-     *
-     *     Mirror of :class:`ContactInquiryAcknowledgement`: an opaque id
-     *     and a timestamp, nothing about internal routing. The public site
-     *     swaps the form for the HubSpot Meeting Scheduler embed on receipt.
-     */
-    DemoInquiryAcknowledgement: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Received At
-       * Format: date-time
-       */
-      received_at: string;
     };
     /**
      * DetachCampaignsRequest
@@ -3847,17 +3822,6 @@ export interface components {
       created_at: string;
     };
     /**
-     * PreferredContactChannel
-     * @description Where the prospect wants the sales team to reach out.
-     *
-     *     Values are the public wire format (the form select submits them
-     *     as-is and they land in the ``demo_inquiries.preferred_channel``
-     *     column). Adding new entries is additive; renames need a migration
-     *     + back-fill because the column stores the string.
-     * @enum {string}
-     */
-    PreferredContactChannel: "telegram" | "whatsapp" | "email";
-    /**
      * ProxyTargetRequest
      * @description Proxy targeting parameters for a scan.
      */
@@ -3905,6 +3869,47 @@ export interface components {
        * @default
        */
       isp: string;
+    };
+    /**
+     * ProxyTargetingResponse
+     * @description Values accepted in a scan's ``proxy`` block for one country.
+     */
+    ProxyTargetingResponse: {
+      /**
+       * Country Code
+       * @description ISO 3166-1 alpha-2 code, upper-case.
+       */
+      country_code: string;
+      /**
+       * Proxy Type
+       * @description Network these values belong to. The catalogues differ substantially between residential and mobile, so a value listed for one is not necessarily accepted for the other.
+       */
+      proxy_type: string;
+      /**
+       * Regions
+       * @description Accepted values for `proxy.region`, ordered by pool size (largest first).
+       */
+      regions: string[];
+      /**
+       * Cities
+       * @description Accepted values for `proxy.city`, ordered by pool size. Narrowed to the `region` query parameter when one is given; otherwise the country-wide list, which is what to pick from when targeting by country alone. Pairing a region with a city from a different region yields no exit node.
+       */
+      cities: string[];
+      /**
+       * Isps
+       * @description Accepted values for `proxy.isp`, ordered by pool size. Mobile carriers when `proxy_type=mobile`.
+       */
+      isps: string[];
+      /**
+       * Refreshed At
+       * @description When these lists were last verified against the upstream provider, or null if we have not synced this country yet. Null means 'not looked yet', which is different from empty lists with a timestamp, which means 'no targeting available here'. This moves on every sync whether or not the contents changed — use the ETag header to detect actual changes.
+       */
+      refreshed_at: string | null;
+      /**
+       * Ttl Seconds
+       * @description How long these lists may be cached before we re-verify them upstream. Send the ETag back as If-None-Match to revalidate cheaply.
+       */
+      ttl_seconds: number;
     };
     /**
      * RecheckRequest
@@ -4598,8 +4603,7 @@ export interface components {
      * @description Persist a campaign's notification mode + override list atomically.
      */
     SetCampaignOverridesRequest: {
-      /** Mode */
-      mode: string;
+      mode: components["schemas"]["CampaignOverrideMode"];
       /**
        * Destination Ids
        * @default []
@@ -4632,87 +4636,6 @@ export interface components {
       timestamp_ms: number;
       /** Children */
       children?: components["schemas"]["SubRequestResponse"][];
-    };
-    /**
-     * SubmitContactInquiryRequest
-     * @description Body of ``POST /api/v1/contact``.
-     *
-     *     Minimum-viable contact form. ``source`` is optional (where the
-     *     visitor was on the public site when they submitted) — useful for
-     *     routing inquiries to the right team. Field length caps protect
-     *     against megabyte-spam payloads; pydantic validates them on
-     *     request parse, so the use case never sees over-long input.
-     */
-    SubmitContactInquiryRequest: {
-      /** Name */
-      name: string;
-      /**
-       * Email
-       * Format: email
-       */
-      email: string;
-      /** Message */
-      message: string;
-      /**
-       * Source
-       * @default
-       */
-      source: string;
-    };
-    /**
-     * SubmitDemoInquiryRequest
-     * @description Body of ``POST /api/v1/demo-inquiries``.
-     *
-     *     Sibling of :class:`SubmitContactInquiryRequest` with the
-     *     sales-qualified field set. Pydantic enforces:
-     *
-     *     * Length caps on every text field (megabyte-spam guard).
-     *     * ``EmailStr`` on ``company_email`` (RFC-5322-ish + DNS-free
-     *       syntactic validation).
-     *     * ``PreferredContactChannel`` membership on ``preferred_channel``
-     *       (invalid value → 422 automatically; no manual coercion needed).
-     *     * ``privacy_accepted=True`` is hard-required by a validator —
-     *       a ``False`` value returns 422 with a clear message.
-     *     * ``contact_handle`` format is channel-aware:
-     *       - ``telegram`` → ``@`` + 5..32 word chars (``@alex_reyes``)
-     *       - ``whatsapp`` → ``+`` + 8..15 digits (``+14155551234``)
-     *       - ``email``   → MUST be empty (visitor's ``company_email``
-     *         is the routing address; a separate handle would be
-     *         misleading)
-     *
-     *     The channel + handle validation lives in a single
-     *     :func:`model_validator` so the rule reads as one block.
-     */
-    SubmitDemoInquiryRequest: {
-      /** First Name */
-      first_name: string;
-      /** Last Name */
-      last_name: string;
-      /**
-       * Company Email
-       * Format: email
-       */
-      company_email: string;
-      /** Company Name */
-      company_name: string;
-      preferred_channel: components["schemas"]["PreferredContactChannel"];
-      /**
-       * Contact Handle
-       * @default
-       */
-      contact_handle: string;
-      /**
-       * Comment
-       * @default
-       */
-      comment: string;
-      /** Privacy Accepted */
-      privacy_accepted: boolean;
-      /**
-       * Source
-       * @default
-       */
-      source: string;
     };
     /**
      * TagDefinitionDetailResponse
@@ -6181,6 +6104,42 @@ export interface operations {
       };
     };
   };
+  get_proxy_targeting_api_v1_proxy_targeting_get: {
+    parameters: {
+      query: {
+        /** @description ISO 3166-1 alpha-2 country code. Case-insensitive. */
+        country_code: string;
+        /** @description Which network to describe. Required in practice: the residential and mobile catalogues differ substantially, so values taken from one may be rejected for the other. */
+        proxy_type?: "residential" | "mobile";
+        /** @description Narrow `cities` to one region. Omit for the country-wide city list. Pass a value from this endpoint's own `regions` array. */
+        region?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProxyTargetingResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_emulators_api_v1_emulators_get: {
     parameters: {
       query?: never;
@@ -7590,6 +7549,35 @@ export interface operations {
       };
     };
   };
+  unpublish_policy_set_api_v1_policy_sets__policy_set_id__unpublish_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_alerts_api_v1_alerts_get: {
     parameters: {
       query?: {
@@ -8385,72 +8373,6 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  submit_contact_api_v1_contact_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SubmitContactInquiryRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ContactInquiryAcknowledgement"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  submit_demo_inquiry_api_v1_demo_inquiries_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SubmitDemoInquiryRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DemoInquiryAcknowledgement"];
-        };
       };
       /** @description Validation Error */
       422: {

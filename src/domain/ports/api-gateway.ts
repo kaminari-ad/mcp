@@ -272,6 +272,17 @@ export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_val
 
 export type GeoResponse = Pick<S["GeoResponse"], "country_code" | "name" | "region" | "tier">;
 
+export type ProxyTargetingResponse = Pick<
+  S["ProxyTargetingResponse"],
+  "country_code" | "proxy_type" | "regions" | "cities" | "isps" | "refreshed_at" | "ttl_seconds"
+>;
+
+export interface ProxyTargetingFilters {
+  readonly country_code: string;
+  readonly proxy_type?: "residential" | "mobile";
+  readonly region?: string;
+}
+
 export type EmulatorResponse = Pick<
   S["EmulatorResponse"],
   "id" | "display_name" | "category" | "browser"
@@ -1238,6 +1249,9 @@ export interface ApiGateway {
 
   // Geos / emulators
   listGeos(): Promise<Result<readonly GeoResponse[], ApiError>>;
+  getProxyTargeting(
+    filters: ProxyTargetingFilters
+  ): Promise<Result<ProxyTargetingResponse, ApiError>>;
   listEmulators(): Promise<Result<readonly EmulatorResponse[], ApiError>>;
 
   // Campaigns
@@ -1399,6 +1413,8 @@ export interface ApiGateway {
   ): Promise<Result<ParseTaxonomyTextResponse, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  unpublishPolicySet(id: string): Promise<Result<null, ApiError>>;
 
   // Alerts
   listAlerts(

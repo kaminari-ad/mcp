@@ -71,6 +71,8 @@ import type {
   ParseTaxonomyTextResponse,
   PolicySetListItemResponse,
   PolicySetResponse,
+  ProxyTargetingFilters,
+  ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
@@ -158,6 +160,7 @@ type Call =
   | { readonly method: "cancelScan"; readonly scanId: string }
   | { readonly method: "listScanTags"; readonly scanId: string }
   | { readonly method: "listGeos" }
+  | { readonly method: "getProxyTargeting"; readonly filters: ProxyTargetingFilters }
   | { readonly method: "listEmulators" }
   | { readonly method: "listCampaigns"; readonly filters: ListCampaignsFilters }
   | { readonly method: "getCampaign"; readonly id: string }
@@ -229,6 +232,7 @@ type Call =
     }
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
+  | { readonly method: "unpublishPolicySet"; readonly id: string }
   | {
       readonly method: "listPolicySetCampaigns";
       readonly id: string;
@@ -345,6 +349,7 @@ export interface FakeApiGatewayState {
     cancelScan?: Result<CancelPendingResponse, ApiError>;
     listScanTags?: Result<readonly ScanTagResponse[], ApiError>;
     listGeos?: Result<readonly GeoResponse[], ApiError>;
+    getProxyTargeting?: Result<ProxyTargetingResponse, ApiError>;
     listEmulators?: Result<readonly EmulatorResponse[], ApiError>;
     listCampaigns?: Result<PaginatedResponse<CampaignResponse>, ApiError>;
     getCampaign?: Result<CampaignResponse, ApiError>;
@@ -385,6 +390,7 @@ export interface FakeApiGatewayState {
     updatePolicySet?: Result<PolicySetResponse, ApiError>;
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
+    unpublishPolicySet?: Result<null, ApiError>;
     listPolicySetCampaigns?: Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>;
     attachPolicySetCampaigns?: Result<null, ApiError>;
     detachPolicySetCampaigns?: Result<null, ApiError>;
@@ -955,6 +961,22 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return state.responses.listGeos ?? ok<readonly GeoResponse[], ApiError>([]);
     },
+    async getProxyTargeting(filters) {
+      push({ method: "getProxyTargeting", filters });
+      await Promise.resolve();
+      return (
+        state.responses.getProxyTargeting ??
+        ok<ProxyTargetingResponse, ApiError>({
+          country_code: filters.country_code,
+          proxy_type: filters.proxy_type ?? "residential",
+          regions: [],
+          cities: [],
+          isps: [],
+          refreshed_at: null,
+          ttl_seconds: 0,
+        })
+      );
+    },
     async listEmulators() {
       push({ method: "listEmulators" });
       await Promise.resolve();
@@ -1272,6 +1294,11 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "requestPolicySetApproval", id });
       await Promise.resolve();
       return state.responses.requestPolicySetApproval ?? ok<null, ApiError>(null);
+    },
+    async unpublishPolicySet(id) {
+      push({ method: "unpublishPolicySet", id });
+      await Promise.resolve();
+      return state.responses.unpublishPolicySet ?? ok<null, ApiError>(null);
     },
 
     // ── Custom taxonomies ──────────────────────────────────────
