@@ -804,8 +804,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       return (
         state.responses.getScanScreenshot ??
         ok<BinaryDownload, ApiError>({
-          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-          contentType: "image/png",
+          bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+          contentType: "image/webp",
         })
       );
     },
@@ -815,8 +815,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       return (
         state.responses.getScanCreativeScreenshot ??
         ok<BinaryDownload, ApiError>({
-          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-          contentType: "image/png",
+          bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+          contentType: "image/webp",
         })
       );
     },
@@ -826,8 +826,8 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       return (
         state.responses.getScanLandingScreenshot ??
         ok<BinaryDownload, ApiError>({
-          bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-          contentType: "image/png",
+          bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+          contentType: "image/webp",
         })
       );
     },

@@ -1377,7 +1377,7 @@ export interface ApiGateway {
   createCustomRole(body: CreateCustomRoleRequest): Promise<Result<RoleResponse, ApiError>>;
 
   // Binary downloads
-  /** Returns raw PNG bytes (and the inferred content-type from the response). */
+  /** Returns raw WebP bytes (and the inferred content-type from the response). */
   getScanScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
   getScanCreativeScreenshot(scanId: string, w?: number): Promise<Result<BinaryDownload, ApiError>>;
   getScanLandingScreenshot(

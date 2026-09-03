@@ -1507,7 +1507,7 @@ describe("HttpApiGateway", () => {
     it("binary downloads — screenshots + invoice PDF (raw bytes path)", async () => {
       const SID = "00000000-0000-0000-0000-000000000aaa";
       const IID = "00000000-0000-0000-0000-000000000fff";
-      const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const WEBP = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00]);
       const PDF = Buffer.from([0x25, 0x50, 0x44, 0x46]);
       agent
         .get(ORIGIN)
@@ -1517,16 +1517,16 @@ describe("HttpApiGateway", () => {
             p === `/api/v1/scans/${SID}/screenshot?w=800`,
           method: "GET",
         })
-        .reply(200, PNG, { headers: { "content-type": "image/png" } })
+        .reply(200, WEBP, { headers: { "content-type": "image/webp" } })
         .times(2);
       agent
         .get(ORIGIN)
         .intercept({ path: `/api/v1/scans/${SID}/creative-screenshot`, method: "GET" })
-        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+        .reply(200, WEBP, { headers: { "content-type": "image/webp" } });
       agent
         .get(ORIGIN)
         .intercept({ path: `/api/v1/scans/${SID}/landings/2/screenshot`, method: "GET" })
-        .reply(200, PNG, { headers: { "content-type": "image/png" } });
+        .reply(200, WEBP, { headers: { "content-type": "image/webp" } });
       agent
         .get(ORIGIN)
         .intercept({ path: `/api/v1/invoices/${IID}/pdf`, method: "GET" })
@@ -1549,7 +1549,7 @@ describe("HttpApiGateway", () => {
       const gw = buildGateway(agent);
       const ss1 = await gw.getScanScreenshot(SID);
       expect(ss1.isOk()).toBe(true);
-      if (ss1.isOk()) expect(ss1.value.contentType).toBe("image/png");
+      if (ss1.isOk()) expect(ss1.value.contentType).toBe("image/webp");
       const ss2 = await gw.getScanScreenshot(SID, 800);
       expect(ss2.isOk()).toBe(true);
       expect((await gw.getScanCreativeScreenshot(SID)).isOk()).toBe(true);

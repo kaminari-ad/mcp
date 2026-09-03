@@ -42,7 +42,7 @@ export const getScanLandingScreenshotTool: Tool<
 > = {
   name: "get_scan_landing_screenshot",
   description:
-    "Fetch the screenshot of one landing tab on an ad-tag scan as an inline image. Use `get_scan` first to discover available `landings[*].ord` values.",
+    "Fetch the screenshot of one landing tab on an ad-tag scan as an inline image (base64-encoded WebP — the API stores and serves every screenshot as WebP, so the client must be able to decode it). Use `get_scan` first to discover available `landings[*].ord` values.",
   annotations: {
     title: "Get Scan Landing Screenshot",
     readOnlyHint: true,

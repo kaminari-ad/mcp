@@ -29,7 +29,7 @@ export type GetScanScreenshotOutput = BinaryContentEnvelope;
 export const getScanScreenshotTool: Tool<GetScanScreenshotInputShape, GetScanScreenshotOutput> = {
   name: "get_scan_screenshot",
   description:
-    "Fetch the primary screenshot for a scan as an inline image (base64-encoded PNG). Pass `width` to request a resized version (50-2000 px). Returns one MCP image content block.",
+    "Fetch the primary screenshot for a scan as an inline image (base64-encoded WebP — the API stores and serves every screenshot as WebP, so the client must be able to decode it). Pass `width` to request a resized version (50-2000 px). Returns one MCP image content block.",
   annotations: {
     title: "Get Scan Screenshot",
     readOnlyHint: true,

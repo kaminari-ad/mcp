@@ -2,7 +2,7 @@
  * Helpers for binary tools (screenshots, invoice PDFs).
  *
  * MCP wraps binary payloads in either:
- *   - ``image`` content blocks (PNG / JPEG screenshots),
+ *   - ``image`` content blocks (WebP screenshots),
  *   - ``resource`` content blocks (PDFs, generic blobs) — the
  *     ``resource.blob`` field carries base64 bytes plus mimeType.
  *
@@ -48,8 +48,11 @@ export interface BinaryContentEnvelope {
 
 /**
  * Convert raw bytes from a binary download into an MCP image block.
- * `mimeType` defaults to ``image/png`` (the API serves PNG); pass an
- * explicit one for JPEG / WebP if the API ever emits those.
+ *
+ * `mimeType` is whatever the API responded with — in practice always
+ * ``image/webp``, which every screenshot route hardcodes. The bytes are
+ * passed through untouched: this server does no image decoding, so a
+ * client that cannot handle WebP has to transcode on its own side.
  */
 export function imageBlock(bytes: Uint8Array, mimeType: string): BinaryContentEnvelope {
   return {
