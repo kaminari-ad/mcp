@@ -10,12 +10,12 @@
  *
  * `match_scope` is checked here because it can occur on the otherwise
  * open config object. Writer schemas additionally advertise the strict
- * request-URL shape; create/test handlers enforce it conditionally.
+ * one-regex shape; create/test handlers enforce it conditionally.
  */
 
 import { z } from "zod";
 
-import { requestUrlRuleConfigSchema } from "./_request-url-rule-input.js";
+import { patternRuleConfigSchema } from "./_pattern-rule-input.js";
 
 /**
  * Agent-facing documentation of the combo-rule `match_scope` key.
@@ -56,8 +56,5 @@ export const ruleConfigField = z.record(z.unknown()).superRefine((config, ctx) =
   }
 });
 
-/** Writer config schema with the strict request-URL shape plus legacy open configs. */
-export const requestUrlAwareRuleConfigField = z.union([
-  requestUrlRuleConfigSchema,
-  ruleConfigField,
-]);
+/** Writer config schema with the strict one-regex shape plus open configs. */
+export const patternAwareRuleConfigField = z.union([patternRuleConfigSchema, ruleConfigField]);

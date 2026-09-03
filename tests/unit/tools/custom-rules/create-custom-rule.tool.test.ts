@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { requestUrlRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_request-url-rule-input.js";
+import { patternRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_pattern-rule-input.js";
 import { createCustomRuleTool } from "../../../../src/application/tools/custom-rules/create-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -32,7 +32,64 @@ describe("createCustomRuleTool", () => {
     expect(config.description).toContain("up to 200 persisted subrequests");
     expect(config.description).toContain("historical matching is best-effort");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
-    expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
+  });
+
+  it("documents regexp_request_body coverage and its retention window", () => {
+    // Both limits look identical to "your pattern does not match" when
+    // they bite, so the agent has to be told about them up front.
+    const { rule_type, config, target } = createCustomRuleTool.inputSchema.shape;
+
+    expect(createCustomRuleTool.description).toContain("`rule_type='regexp_request_body'`");
+    expect(createCustomRuleTool.description).toContain("changing its filename");
+    expect(createCustomRuleTool.description).toContain("kept for one day");
+    expect(rule_type.description).toContain("`regexp_request_body`");
+    expect(config.description).toContain("400 resources, 128 KB each and 8 MB per scan");
+    expect(config.description).toContain("kept for ONE DAY");
+    expect(config.description).toContain("never images, video, fonts or stylesheets");
+    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
+  });
+
+  it("enforces the pattern contract for the body rule type too", async () => {
+    const api = createFakeApiGateway();
+    const badConfig = await createCustomRuleTool.handler(
+      { name: "RX", rule_type: "regexp_request_body", config: {}, target: "page" },
+      makeToolContext({ api })
+    );
+    const badTarget = await createCustomRuleTool.handler(
+      {
+        name: "RX",
+        rule_type: "regexp_request_body",
+        config: { pattern: "stage1_rce" },
+        target: "creative",
+      },
+      makeToolContext({ api })
+    );
+
+    expect(badConfig.isErr()).toBe(true);
+    expect(badTarget.isErr()).toBe(true);
+    if (badTarget.isErr()) {
+      expect(badTarget.error.message).toContain("regexp_request_body requires target='page'");
+    }
+    expect(api.state.calls).toEqual([]);
+  });
+
+  it("forwards a valid body rule to the gateway", async () => {
+    const api = createFakeApiGateway();
+
+    await createCustomRuleTool.handler(
+      {
+        name: "iOS exploit payload",
+        tag_slug: "ios_browser_exploit_attempt",
+        rule_type: "regexp_request_body",
+        config: { pattern: "stage1_rce", flags: "i" },
+        target: "page",
+      },
+      makeToolContext({ api })
+    );
+
+    const call = api.state.calls[0] as { body: { rule_type: string } };
+    expect(call.body.rule_type).toBe("regexp_request_body");
   });
 
   it("rejects malformed request-URL config and target before the gateway call", async () => {
@@ -45,7 +102,7 @@ describe("createCustomRuleTool", () => {
       }).success
     ).toBe(true);
     expect(
-      requestUrlRuleConfigSchema.safeParse({
+      patternRuleConfigSchema.safeParse({
         pattern: ["tracker"],
         flags: "im",
       }).success
