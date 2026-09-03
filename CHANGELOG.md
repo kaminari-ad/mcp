@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-03
+
+### Added
+
+- **`regexp_request_body` — rules can match what a page's sub-resources
+  contain.** The three custom-rule writers (`create_custom_rule`,
+  `update_custom_rule`, `test_custom_rule`) now accept the new rule type
+  and enforce its contract locally: the same `{pattern, flags}` config as
+  `regexp_request_url` and the same fixed `page` target, rejected before
+  the request leaves the process.
+
+  It exists because address-based matching stopped being enough. The
+  malvertising kits rotate every filename on every visit, so a
+  `regexp_request_url` pattern matches the names it was written against
+  and nothing after; the code inside those files changes far more slowly.
+
+  Two limits the tool descriptions now state, because both look like a
+  non-match when they bite: only the scripts, fetch/XHR responses and
+  iframe documents are captured (never images, video, fonts or
+  stylesheets), up to 400 resources, 128 KB each and 8 MB per scan — and
+  the captured contents are kept for **one day**, so
+  `test_custom_rule` against an older scan reports no match with nothing
+  left to read.
+
+  Needs the api and crawler sides deployed first.
+
+### Changed
+
+- The internal request-URL rule guard is now a shared pattern-rule guard
+  covering both types, so their contracts cannot drift apart.
+
 ## [0.16.0] - 2026-08-26
 
 ### Added

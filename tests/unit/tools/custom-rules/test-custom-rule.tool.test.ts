@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { requestUrlRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_request-url-rule-input.js";
+import { patternRuleConfigSchema } from "../../../../src/application/tools/custom-rules/_pattern-rule-input.js";
 import { testCustomRuleTool } from "../../../../src/application/tools/custom-rules/test-custom-rule.tool.js";
 import { createFakeApiGateway, err, makeApiError } from "../../../fakes/fake-api-gateway.js";
 import { makeToolContext } from "../../../fakes/make-tool-context.js";
@@ -26,11 +26,11 @@ describe("testCustomRuleTool", () => {
     expect(config.description).toContain("at most 4,096 characters");
     expect(config.description).toContain("up to 200 persisted subrequests");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
-    expect(target.description).toContain("`regexp_request_url` requires `target='page'`");
+    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
   });
 
   it("rejects malformed request-URL input before the gateway call", async () => {
-    expect(requestUrlRuleConfigSchema.safeParse({ pattern: "tracker", flags: "im" }).success).toBe(
+    expect(patternRuleConfigSchema.safeParse({ pattern: "tracker", flags: "im" }).success).toBe(
       false
     );
 

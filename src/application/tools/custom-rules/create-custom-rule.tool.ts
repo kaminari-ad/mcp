@@ -12,11 +12,8 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-import {
-  REQUEST_URL_RULE_CONFIG_DOC,
-  requestUrlRuleInputError,
-} from "./_request-url-rule-input.js";
-import { COMBO_MATCH_SCOPE_DOC, requestUrlAwareRuleConfigField } from "./_rule-config-input.js";
+import { PATTERN_RULE_CONFIG_DOC, patternRuleInputError } from "./_pattern-rule-input.js";
+import { COMBO_MATCH_SCOPE_DOC, patternAwareRuleConfigField } from "./_rule-config-input.js";
 
 const CreateCustomRuleInputShape = {
   name: z
@@ -37,11 +34,11 @@ const CreateCustomRuleInputShape = {
     .string()
     .max(50)
     .describe(
-      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `blacklist_domain`, `combo`, `llm`. `regexp_url` checks redirect-chain URLs only; `regexp_request_url` checks captured network and subresource URLs. The API validates."
+      "Rule engine. One of: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `regexp_request_body`, `blacklist_domain`, `combo`, `llm`. `regexp_url` checks redirect-chain URLs only; `regexp_request_url` checks captured network and subresource URLs; `regexp_request_body` checks what those sub-resources contained. The API validates."
     ),
-  config: requestUrlAwareRuleConfigField.describe(
+  config: patternAwareRuleConfigField.describe(
     "Rule-type-specific configuration object. Shape depends on `rule_type`. " +
-      REQUEST_URL_RULE_CONFIG_DOC +
+      PATTERN_RULE_CONFIG_DOC +
       " `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
       COMBO_MATCH_SCOPE_DOC
   ),
@@ -50,7 +47,7 @@ const CreateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` requires `target='page'`. Default: page. See API docs for the full set of valid values."
+      "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` and `regexp_request_body` require `target='page'`. Default: page. See API docs for the full set of valid values."
     ),
 } as const;
 type CreateCustomRuleInputShape = typeof CreateCustomRuleInputShape;
@@ -60,7 +57,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs on the fixed `page` target; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
+    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs on the fixed `page` target; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. Use `rule_type='regexp_request_body'` to match the CONTENTS of those sub-resources instead — the right choice when the code you want to catch keeps changing its filename; those contents are kept for one day. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,
@@ -70,7 +67,7 @@ export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustom
   },
   inputSchema: z.object(CreateCustomRuleInputShape),
   handler: async (input, ctx): Promise<Result<CreateCustomRuleOutput, ToolError>> => {
-    const inputError = requestUrlRuleInputError(input);
+    const inputError = patternRuleInputError(input);
     if (inputError) return err(inputError);
     const body: {
       name: string;

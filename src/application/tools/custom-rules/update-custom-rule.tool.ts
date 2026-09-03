@@ -13,8 +13,8 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-import { REQUEST_URL_RULE_CONFIG_DOC } from "./_request-url-rule-input.js";
-import { COMBO_MATCH_SCOPE_DOC, requestUrlAwareRuleConfigField } from "./_rule-config-input.js";
+import { PATTERN_RULE_CONFIG_DOC } from "./_pattern-rule-input.js";
+import { COMBO_MATCH_SCOPE_DOC, patternAwareRuleConfigField } from "./_rule-config-input.js";
 
 const UpdateCustomRuleInputShape = {
   rule_id: z.string().uuid().describe("Rule UUID to update."),
@@ -33,11 +33,11 @@ const UpdateCustomRuleInputShape = {
     .describe(
       "New tag slug to assign on match. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. Leaving a GLOBAL rule on the same slug preserves its admin-managed tag metadata."
     ),
-  config: requestUrlAwareRuleConfigField
+  config: patternAwareRuleConfigField
     .optional()
     .describe(
       "New rule-type-specific config object. Replaces the stored config wholesale — resend every key you want to keep, including a combo rule's `match_scope`. For `rule_type='llm'` the keys of `config.tags` are auto-registered as tag definitions; any key that collides with a system slug returns the same 422 contract. " +
-        REQUEST_URL_RULE_CONFIG_DOC +
+        PATTERN_RULE_CONFIG_DOC +
         " Read the rule first because `rule_type` is immutable and is not repeated in this update input. " +
         COMBO_MATCH_SCOPE_DOC
     ),
@@ -46,7 +46,7 @@ const UpdateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule. `regexp_request_url` is fixed to `page`; do not change it. See API docs for the valid targets of other rule types."
+      "Where to apply the rule. `regexp_request_url` and `regexp_request_body` are fixed to `page`; do not change it. See API docs for the valid targets of other rule types."
     ),
   is_active: z.boolean().optional().describe("Enable/disable the rule."),
 } as const;
@@ -57,7 +57,7 @@ export type UpdateCustomRuleOutput = CustomRuleResponse;
 export const updateCustomRuleTool: Tool<UpdateCustomRuleInputShape, UpdateCustomRuleOutput> = {
   name: "update_custom_rule",
   description:
-    "Update a custom tag-detection rule. Only supplied fields are sent, but `config` replaces the stored object wholesale; read the rule first and resend every required key. `regexp_request_url` needs a non-empty pattern (max 4,096), flags `''`/`'i'`, and the fixed `page` target. Same-slug GLOBAL rule edits preserve separately managed tag metadata; use `update_tag_definition` to change it. Existing scans are not re-evaluated until `recheck_scans`.",
+    "Update a custom tag-detection rule. Only supplied fields are sent, but `config` replaces the stored object wholesale; read the rule first and resend every required key. `regexp_request_url` and `regexp_request_body` need a non-empty pattern (max 4,096), flags `''`/`'i'`, and the fixed `page` target. Same-slug GLOBAL rule edits preserve separately managed tag metadata; use `update_tag_definition` to change it. Existing scans are not re-evaluated until `recheck_scans`.",
   annotations: {
     title: "Update Custom Rule",
     readOnlyHint: false,
