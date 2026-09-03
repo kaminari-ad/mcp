@@ -24,7 +24,7 @@ export const getScanCreativeScreenshotTool: Tool<
 > = {
   name: "get_scan_creative_screenshot",
   description:
-    "Fetch the creative screenshot for an ad-tag scan as an inline image (base64-encoded PNG). Returns 404 if the scan is not an ad-tag scan or has no creative captured yet.",
+    "Fetch the creative screenshot for an ad-tag scan as an inline image (base64-encoded WebP — the API stores and serves every screenshot as WebP, so the client must be able to decode it). Returns 404 if the scan is not an ad-tag scan or has no creative captured yet.",
   annotations: {
     title: "Get Scan Creative Screenshot",
     readOnlyHint: true,

@@ -23,8 +23,8 @@ describe("getScanLandingScreenshotTool", () => {
   it("forwards landing_ord and returns full MCP image envelope (base64 + mimeType)", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanLandingScreenshot = ok({
-      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-      contentType: "image/png",
+      bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+      contentType: "image/webp",
     });
     const r = await getScanLandingScreenshotTool.handler(
       { scan_id: SID, landing_ord: 2, width: 600 },
@@ -35,8 +35,8 @@ describe("getScanLandingScreenshotTool", () => {
     const block = out.content[0];
     expect(block.type).toBe("image");
     if (block.type === "image") {
-      expect(block.mimeType).toBe("image/png");
-      expect(block.data).toBe("iVBORw==");
+      expect(block.mimeType).toBe("image/webp");
+      expect(block.data).toBe("UklGRg==");
     }
     const call = api.state.calls[0];
     if (call?.method !== "getScanLandingScreenshot") throw new Error("wrong");

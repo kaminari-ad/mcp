@@ -12,13 +12,13 @@ import {
 
 describe("imageBlock", () => {
   it("base64-encodes the bytes and sets the mime type", () => {
-    const env = imageBlock(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), "image/png");
+    const env = imageBlock(new Uint8Array([0x52, 0x49, 0x46, 0x46]), "image/webp");
     expect(env.content).toHaveLength(1);
     const block = env.content[0];
     expect(block.type).toBe("image");
     if (block.type === "image") {
-      expect(block.mimeType).toBe("image/png");
-      expect(block.data).toBe("iVBORw==");
+      expect(block.mimeType).toBe("image/webp");
+      expect(block.data).toBe("UklGRg==");
     }
   });
 });

@@ -15,8 +15,8 @@ describe("getScanCreativeScreenshotTool", () => {
   it("returns full MCP image envelope (base64 + mimeType from response)", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanCreativeScreenshot = ok({
-      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-      contentType: "image/png",
+      bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46]),
+      contentType: "image/webp",
     });
     const r = await getScanCreativeScreenshotTool.handler(
       { scan_id: SID, width: 600 },
@@ -27,9 +27,9 @@ describe("getScanCreativeScreenshotTool", () => {
     const block = out.content[0];
     expect(block.type).toBe("image");
     if (block.type === "image") {
-      expect(block.mimeType).toBe("image/png");
-      // base64 of [0x89, 0x50, 0x4e, 0x47] = "iVBORw=="
-      expect(block.data).toBe("iVBORw==");
+      expect(block.mimeType).toBe("image/webp");
+      // base64 of [0x52, 0x49, 0x46, 0x46] ("RIFF") = "UklGRg=="
+      expect(block.data).toBe("UklGRg==");
     }
     const call = api.state.calls[0];
     if (call?.method !== "getScanCreativeScreenshot") throw new Error("wrong");
