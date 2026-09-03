@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-09-03
+
+### Fixed
+
+- **The screenshot tools said PNG; the API has only ever sent WebP.**
+  `get_scan_screenshot`, `get_scan_creative_screenshot` and
+  `get_scan_landing_screenshot` all advertised "base64-encoded PNG",
+  while every screenshot route on the API side hardcodes
+  `image/webp` — the crawler writes WebP and the legacy `.png` keys were
+  backfilled long ago. The descriptions now name WebP and say outright
+  that the client has to be able to decode it.
+
+  No transcoding was added, deliberately: this server does no image
+  processing at all — it base64-encodes the bytes it received and passes
+  the response's own content type through. A client that cannot read
+  WebP has to handle that on its own side, and an error such as
+  `webp codec not registered: registerWebpCodec() must be called by a
+  Node server` comes from the client, not from here and not from the
+  API.
+
 ## [0.17.0] - 2026-09-03
 
 ### Added
