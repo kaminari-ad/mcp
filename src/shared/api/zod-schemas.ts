@@ -847,6 +847,7 @@ const PolicySetResponse = z
     organization_id: z.string().uuid(),
     visibility: z.string(),
     is_approved: z.boolean(),
+    is_default: z.boolean(),
     entries: z.array(PolicyEntryResponse),
     campaigns: z.array(LinkedCampaignResponse).optional(),
     campaigns_total: z.number().int().optional().default(0),
@@ -863,6 +864,7 @@ const PolicySetListItem = z
     organization_id: z.string().uuid(),
     visibility: z.string(),
     is_approved: z.boolean(),
+    is_default: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
@@ -902,6 +904,7 @@ const DetachCampaignsRequest = z
   })
   .partial()
   .passthrough();
+const SetDefaultPolicySetRequest = z.object({ is_default: z.boolean() }).passthrough();
 const AlertStatus = z.enum(["open", "escalated", "resolved", "dismissed"]);
 const status__2 = z.union([AlertStatus, z.null()]).optional();
 const AlertResponse = z
@@ -1395,6 +1398,7 @@ export const schemas = {
   PaginatedResponse_LinkedCampaignResponse_,
   AttachCampaignsRequest,
   DetachCampaignsRequest,
+  SetDefaultPolicySetRequest,
   AlertStatus,
   status__2,
   AlertResponse,

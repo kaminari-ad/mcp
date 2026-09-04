@@ -61,6 +61,24 @@ describe("createCampaignTool", () => {
     );
   });
 
+  it("forwards explicit null policy_set_id so the org default is skipped", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Y",
+        campaign_type: "url",
+        url: "https://y.com",
+        country_codes: ["US"],
+        policy_set_id: null,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.policy_set_id).toBeNull();
+  });
+
   it("forwards emulator + proxy + schedule config", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

@@ -1093,6 +1093,14 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
+    async setDefaultPolicySet(id: string, isDefault: boolean): Promise<Result<null, ApiError>> {
+      return call(
+        "POST",
+        "/api/v1/policy-sets/{policy_set_id}/set-default",
+        { params: { path: { policy_set_id: id } }, body: { is_default: isDefault } },
+        parseEmpty
+      );
+    },
 
     // ── Custom taxonomies ─────────────────────────────────────────
     async listCustomTaxonomies(

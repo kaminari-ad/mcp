@@ -37,7 +37,7 @@ export type ListPolicySetsOutput = PaginatedResponse<PolicySetListItemResponse>;
 export const listPolicySetsTool: Tool<ListPolicySetsInputShape, ListPolicySetsOutput> = {
   name: "list_policy_sets",
   description:
-    "Paginated list of policy sets: named collections of violation rules (tag / IAB V3 / brand / AI category / custom-taxonomy entries) that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them. Use `visibility=public` to discover Kaminari Ad-curated sets.",
+    "Paginated list of policy sets: named collections of violation rules (tag / IAB V3 / brand / AI category / custom-taxonomy entries) that define what counts as a violation. Campaigns bind to one policy set. Returns `{items, total, page, limit}`. List items omit `entries` for payload size — fetch a single set via `get_policy_set` when you need them. `is_default` is true on the owned set that new campaigns bind when `policy_set_id` is omitted. Use `visibility=public` to discover Kaminari Ad-curated sets.",
   annotations: {
     title: "List Policy Sets",
     readOnlyHint: true,

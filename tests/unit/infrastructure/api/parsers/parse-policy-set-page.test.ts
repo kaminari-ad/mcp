@@ -12,6 +12,7 @@ const VALID_ITEM = {
   organization_id: UUID_ORG,
   visibility: "private",
   is_approved: true,
+  is_default: false,
   created_at: "2026-05-01T00:00:00Z",
 };
 

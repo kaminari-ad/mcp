@@ -233,6 +233,7 @@ type Call =
   | { readonly method: "deletePolicySet"; readonly id: string }
   | { readonly method: "requestPolicySetApproval"; readonly id: string }
   | { readonly method: "unpublishPolicySet"; readonly id: string }
+  | { readonly method: "setDefaultPolicySet"; readonly id: string; readonly isDefault: boolean }
   | {
       readonly method: "listPolicySetCampaigns";
       readonly id: string;
@@ -391,6 +392,7 @@ export interface FakeApiGatewayState {
     deletePolicySet?: Result<null, ApiError>;
     requestPolicySetApproval?: Result<null, ApiError>;
     unpublishPolicySet?: Result<null, ApiError>;
+    setDefaultPolicySet?: Result<null, ApiError>;
     listPolicySetCampaigns?: Result<PaginatedResponse<LinkedCampaignResponse>, ApiError>;
     attachPolicySetCampaigns?: Result<null, ApiError>;
     detachPolicySetCampaigns?: Result<null, ApiError>;
@@ -674,6 +676,7 @@ const DEFAULT_POLICY_SET: PolicySetResponse = {
   organization_id: "00000000-0000-0000-0000-000000000010",
   visibility: "private",
   is_approved: true,
+  is_default: false,
   entries: [],
   created_at: "2026-05-16T00:00:00Z",
 };
@@ -687,6 +690,7 @@ const DEFAULT_POLICY_SET_LIST_ITEM: PolicySetListItemResponse = {
   organization_id: "00000000-0000-0000-0000-000000000010",
   visibility: "private",
   is_approved: true,
+  is_default: false,
   created_at: "2026-05-16T00:00:00Z",
 };
 
@@ -1299,6 +1303,11 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "unpublishPolicySet", id });
       await Promise.resolve();
       return state.responses.unpublishPolicySet ?? ok<null, ApiError>(null);
+    },
+    async setDefaultPolicySet(id, isDefault) {
+      push({ method: "setDefaultPolicySet", id, isDefault });
+      await Promise.resolve();
+      return state.responses.setDefaultPolicySet ?? ok<null, ApiError>(null);
     },
 
     // ── Custom taxonomies ──────────────────────────────────────

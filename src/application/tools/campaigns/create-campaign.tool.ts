@@ -60,10 +60,11 @@ const CreateCampaignInputShape = {
     .optional()
     .describe("Arbitrary metadata applied to every queued scan."),
   policy_set_id: z
-    .string()
-    .uuid()
+    .union([z.string().uuid(), z.null()])
     .optional()
-    .describe("Policy set to evaluate every scan against."),
+    .describe(
+      "Policy set to evaluate every scan against. Omit to bind the organization's default (if any). Pass null for no policy set and no policy alerts."
+    ),
   schedule_enabled: z
     .boolean()
     .optional()

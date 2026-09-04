@@ -1255,6 +1255,32 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/policy-sets/{policy_set_id}/set-default": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Set Default Policy Set
+     * @description Mark or clear this set as the organization's default for new campaigns.
+     *
+     *     At most one owned set may be default. ``is_default: true`` replaces any
+     *     previous default; ``false`` leaves the organization without one. A
+     *     missing ``policy_set_id`` on campaign create then uses this set
+     *     (or stays unbound if none is set). Explicit ``null`` on create still
+     *     opts out. Foreign public sets cannot be made default.
+     */
+    post: operations["set_default_policy_set_api_v1_policy_sets__policy_set_id__set_default_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/policy-sets/{policy_set_id}/request-approval": {
     parameters: {
       query?: never;
@@ -2649,7 +2675,10 @@ export interface components {
       labels?: {
         [key: string]: string;
       };
-      /** Policy Set Id */
+      /**
+       * Policy Set Id
+       * @description Policy set to bind. Omit the field to use the organization's default policy set, or leave the campaign unbound if none is set. Send JSON null to create the campaign unbound so it does not generate alerts.
+       */
       policy_set_id?: string | null;
       /** Schedule Type */
       schedule_type?: string | null;
@@ -3772,6 +3801,8 @@ export interface components {
       visibility: string;
       /** Is Approved */
       is_approved: boolean;
+      /** Is Default */
+      is_default: boolean;
       /**
        * Created At
        * Format: date-time
@@ -3806,6 +3837,8 @@ export interface components {
       visibility: string;
       /** Is Approved */
       is_approved: boolean;
+      /** Is Default */
+      is_default: boolean;
       /** Entries */
       entries: components["schemas"]["PolicyEntryResponse"][];
       /** Campaigns */
@@ -4609,6 +4642,17 @@ export interface components {
        * @default []
        */
       destination_ids: string[];
+    };
+    /**
+     * SetDefaultPolicySetRequest
+     * @description Request body for POST /policy-sets/{id}/set-default.
+     */
+    SetDefaultPolicySetRequest: {
+      /**
+       * Is Default
+       * @description True makes this the organization's default for new campaigns (clearing any previous default). False clears the flag on this set and leaves the organization without a default.
+       */
+      is_default: boolean;
     };
     /**
      * SetDestinationVersionRequest
@@ -7499,6 +7543,39 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["DetachCampaignsRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  set_default_policy_set_api_v1_policy_sets__policy_set_id__set_default_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        policy_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetDefaultPolicySetRequest"];
       };
     };
     responses: {

@@ -605,6 +605,28 @@ describe("HttpApiGateway", () => {
     });
   });
 
+  describe("setDefaultPolicySet", () => {
+    const PID = "00000000-0000-0000-0000-000000000eee";
+
+    it("returns null on 204", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/set-default`, method: "POST" })
+        .reply(204, "");
+      const result = await buildGateway(agent).setDefaultPolicySet(PID, true);
+      expect(result.isOk()).toBe(true);
+      expect(result._unsafeUnwrap()).toBeNull();
+    });
+
+    it("maps a 404 to an error", async () => {
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/policy-sets/${PID}/set-default`, method: "POST" })
+        .reply(404, { detail: "not found" });
+      expect((await buildGateway(agent).setDefaultPolicySet(PID, false)).isErr()).toBe(true);
+    });
+  });
+
   describe("campaigns / runs / groups (smoke)", () => {
     const CAMPAIGN = {
       id: "00000000-0000-0000-0000-000000000ccc",
@@ -721,6 +743,7 @@ describe("HttpApiGateway", () => {
         description: "",
         visibility: "private",
         is_approved: true,
+        is_default: false,
         entries: [],
         created_at: "2026-01-01T00:00:00Z",
       };
@@ -1033,6 +1056,7 @@ describe("HttpApiGateway", () => {
           description: "",
           visibility: "private",
           is_approved: false,
+          is_default: false,
           entries: [],
           created_at: "2026-05-17T00:00:00Z",
         });

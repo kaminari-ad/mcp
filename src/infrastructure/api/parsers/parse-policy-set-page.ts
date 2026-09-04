@@ -26,6 +26,7 @@ const PolicySetListItemSchema = schemas.PolicySetListItem.pick({
   organization_id: true,
   visibility: true,
   is_approved: true,
+  is_default: true,
   created_at: true,
 }).strip();
 

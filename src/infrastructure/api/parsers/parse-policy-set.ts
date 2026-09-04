@@ -22,6 +22,7 @@ const PolicySetSchema = schemas.PolicySetResponse.pick({
   organization_id: true,
   visibility: true,
   is_approved: true,
+  is_default: true,
   entries: true,
   created_at: true,
 }).strip();
