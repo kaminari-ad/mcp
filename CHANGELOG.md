@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-13
+
 ### Added
 
 - **`set_default_policy_set`** — mark or clear an owned policy set as
