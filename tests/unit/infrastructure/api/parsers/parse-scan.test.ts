@@ -161,6 +161,23 @@ describe("parseScan", () => {
     expect(scan.retry_attempt).toBe(0);
     expect(scan.retry_max_attempts).toBe(0);
   });
+  it("keeps the ad cap, which the generated schema does not know about yet", () => {
+    // Extended onto the pick rather than picked: `.strip()` would drop it,
+    // and an agent that just created a 25-ad scan would read back a scan
+    // with no cap on it.
+    const scan = parseScan({
+      ...VALID,
+      ad_discovery: true,
+      max_discovered_ads: 25,
+    })._unsafeUnwrap();
+    expect(scan.max_discovered_ads).toBe(25);
+  });
+  it("accepts a null ad cap and an absent one alike", () => {
+    expect(
+      parseScan({ ...VALID, max_discovered_ads: null })._unsafeUnwrap().max_discovered_ads
+    ).toBeNull();
+    expect(parseScan(VALID)._unsafeUnwrap().max_discovered_ads ?? null).toBeNull();
+  });
 });
 
 describe("parseScanArray", () => {

@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
@@ -45,6 +46,7 @@ const CreateCampaignInputShape = {
         "(required if campaign_type=vast)."
     ),
   referrer: campaignReferrerField,
+  max_discovered_ads: maxDiscoveredAdsField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)
@@ -94,6 +96,9 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
+      ...(input.max_discovered_ads !== undefined
+        ? { max_discovered_ads: input.max_discovered_ads }
+        : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),

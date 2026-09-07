@@ -161,6 +161,32 @@ describe("updateCampaignTool", () => {
     }
   });
 
+  it("forwards the ad-discovery page cap", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler({ campaign_id: CID, max_discovered_ads: 20 }, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong method");
+    expect(call.body.max_discovered_ads).toBe(20);
+  });
+
+  it("omits the ad cap when unset so the stored value is left alone", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler({ campaign_id: CID, name: "Renamed" }, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong method");
+    expect(call.body).not.toHaveProperty("max_discovered_ads");
+  });
+
+  it("rejects an ad cap outside the range the crawler can fund", () => {
+    for (const max_discovered_ads of [0, 26, 12.5]) {
+      expect(() =>
+        updateCampaignTool.inputSchema.parse({ campaign_id: CID, max_discovered_ads })
+      ).toThrow();
+    }
+  });
+
   it("maps ApiError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateCampaign = err(makeApiError("not-found", "x"));
