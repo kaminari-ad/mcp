@@ -254,6 +254,11 @@ interface MaxDiscoveredAdsResponse {
   readonly max_discovered_ads?: number | null;
 }
 
+/** Update side: `null` clears the campaign's cap back to the platform default. */
+interface MaxDiscoveredAdsUpdate {
+  readonly max_discovered_ads?: number | null;
+}
+
 /**
  * `ad_discovery` and the repeat / retry trio are required-with-default in
  * the generated type; surfaced as optional so callers omit them and the
@@ -461,7 +466,7 @@ export type UpdateCampaignRequest = Pick<
   | "schedule_enabled"
   | "schedule_timezone"
 > &
-  MaxDiscoveredAdsRequest;
+  MaxDiscoveredAdsUpdate;
 
 export type CreateCampaignGroupRequest = Pick<S["CreateCampaignGroupRequest"], "name">;
 export type UpdateCampaignGroupRequest = Pick<S["UpdateCampaignGroupRequest"], "name">;

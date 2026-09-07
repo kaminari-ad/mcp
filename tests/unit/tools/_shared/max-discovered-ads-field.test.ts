@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { maxDiscoveredAdsField } from "../../../../src/application/tools/_shared/max-discovered-ads-field.js";
+import {
+  maxDiscoveredAdsField,
+  maxDiscoveredAdsUpdateField,
+} from "../../../../src/application/tools/_shared/max-discovered-ads-field.js";
 
 const Schema = z.object({ max_discovered_ads: maxDiscoveredAdsField });
+const UpdateSchema = z.object({ max_discovered_ads: maxDiscoveredAdsUpdateField });
 
 describe("maxDiscoveredAdsField", () => {
   it("accepts the full documented range", () => {
@@ -41,7 +45,36 @@ describe("maxDiscoveredAdsField", () => {
     expect(described).toMatch(/422/);
   });
 
-  it("states the default so the agent can explain the unset behaviour", () => {
-    expect(maxDiscoveredAdsField.description ?? "").toMatch(/Default: 12/);
+  it("names the default without presenting it as fixed", () => {
+    // It is an operator setting (SCANNING__MAX_DISCOVERED_ADS), so an agent
+    // told "the default is 12" full stop would report a stale number after a
+    // retune.
+    const described = maxDiscoveredAdsField.description ?? "";
+    expect(described).toMatch(/12/);
+    expect(described).toMatch(/unless an operator retuned it/);
+  });
+
+  it("rejects null on create, where there is nothing to clear", () => {
+    expect(() => Schema.parse({ max_discovered_ads: null })).toThrow();
+  });
+});
+
+describe("maxDiscoveredAdsUpdateField", () => {
+  it("accepts null so a campaign can drop its own cap", () => {
+    // Without this the field is a one-way door: a saved value would detach the
+    // campaign from the platform default for good.
+    expect(UpdateSchema.parse({ max_discovered_ads: null }).max_discovered_ads).toBeNull();
+  });
+
+  it("keeps the same range as the create field", () => {
+    expect(UpdateSchema.parse({ max_discovered_ads: 25 }).max_discovered_ads).toBe(25);
+    expect(() => UpdateSchema.parse({ max_discovered_ads: 26 })).toThrow();
+    expect(() => UpdateSchema.parse({ max_discovered_ads: 0 })).toThrow();
+  });
+
+  it("tells the agent how to clear it, which is otherwise unguessable", () => {
+    const described = maxDiscoveredAdsUpdateField.description ?? "";
+    expect(described).toMatch(/Pass null/);
+    expect(described).toMatch(/omitting the field leaves it unchanged/);
   });
 });

@@ -25,12 +25,19 @@ const MAX_DISCOVERED_ADS_DESCRIPTION =
   "SEPARATE CHECK, so this multiplies the cost: a page scanned at 25 can cost 26 " +
   "checks — one parent plus its children. Only valid on an ad-discovery target — " +
   '`ad_discovery: true` on a scan, or `campaign_type: "ad_discovery"` on a ' +
-  "campaign — and rejected with 422 anywhere else. Default: 12.";
+  "campaign — and rejected with 422 anywhere else. Omit it to use the platform " +
+  "default, which is 12 unless an operator retuned it.";
 
-export const maxDiscoveredAdsField = z
-  .number()
-  .int()
-  .min(1)
-  .max(25)
+const maxDiscoveredAds = z.number().int().min(1).max(25);
+
+export const maxDiscoveredAdsField = maxDiscoveredAds
   .optional()
   .describe(MAX_DISCOVERED_ADS_DESCRIPTION);
+
+export const maxDiscoveredAdsUpdateField = maxDiscoveredAds
+  .nullable()
+  .optional()
+  .describe(
+    `${MAX_DISCOVERED_ADS_DESCRIPTION} Pass null to drop the campaign's own ` +
+      "number and go back to that default; omitting the field leaves it unchanged."
+  );

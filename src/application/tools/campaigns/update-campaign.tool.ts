@@ -10,7 +10,7 @@ import { z } from "zod";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
-import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
+import { maxDiscoveredAdsUpdateField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
@@ -39,7 +39,7 @@ const UpdateCampaignInputShape = {
         "XML (vast-type campaigns)."
     ),
   referrer: campaignReferrerUpdateField,
-  max_discovered_ads: maxDiscoveredAdsField,
+  max_discovered_ads: maxDiscoveredAdsUpdateField,
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
   group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
   ...campaignConfigFields,
@@ -59,7 +59,7 @@ export type UpdateCampaignOutput = CampaignResponse;
 export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOutput> = {
   name: "update_campaign",
   description:
-    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, and `referrer` accepts null to clear the publisher page scans are checked from.",
+    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, and `max_discovered_ads` accepts null to go back to the platform ad cap.",
   annotations: {
     title: "Update Campaign",
     readOnlyHint: false,

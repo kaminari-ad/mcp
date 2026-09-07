@@ -187,6 +187,16 @@ describe("updateCampaignTool", () => {
     }
   });
 
+  it("forwards an explicit null so the campaign goes back to the platform cap", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler({ campaign_id: CID, max_discovered_ads: null }, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong method");
+    expect("max_discovered_ads" in call.body).toBe(true);
+    expect(call.body.max_discovered_ads).toBeNull();
+  });
+
   it("maps ApiError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.updateCampaign = err(makeApiError("not-found", "x"));
