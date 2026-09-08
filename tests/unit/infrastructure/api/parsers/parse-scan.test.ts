@@ -183,8 +183,10 @@ describe("parseScan", () => {
     expect(scan.network_host).toBe("syndicate.contentsserved.com");
   });
   it("accepts a scan with no ad-server domain at all", () => {
-    // A pop, and every scan created before the split.
-    expect(parseScan(VALID)._unsafeUnwrap().network_host ?? "").toBe("");
+    // A pop, and every scan created before the split. Asserted as absent
+    // rather than empty: `?? ""` would pass even if the key were stripped.
+    const scan = parseScan(VALID)._unsafeUnwrap();
+    expect("network_host" in scan).toBe(false);
   });
   it("accepts a null ad cap and an absent one alike", () => {
     expect(

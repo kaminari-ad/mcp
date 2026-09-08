@@ -20,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   catalog and is **empty when the ad server is not recognised**, while the
   observed domain travels in the new `network_host`.
 
-  Both fields are exposed on `get_scan` and on the scan-list tools. An
+  Both fields are exposed on every tool that returns a scan shape:
+  `get_scan`, `list_scans`, `list_scan_children`, `create_scan` and
+  `create_bulk_scans`. (`list_run_scans` returns the slim run tile, which
+  carries no network fields at all.) An
   agent that identified networks by `network` should read `network_host`
   when `network` is empty; one that treated `network` as a hostname needs
   to stop. Scans created before the upstream release keep a hostname in

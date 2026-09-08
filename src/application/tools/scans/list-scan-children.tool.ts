@@ -4,7 +4,8 @@
  * Wraps `GET /api/v1/scans/{scan_id}/children`. Returns the child scans a
  * publisher ad-discovery scan (`ad_discovery=true`) spawned — one per
  * detected ad block. Each child brief carries `ad_kind` (banner|pop),
- * `network`, and `slot_index`.
+ * `network` (the network's name), `network_host` (its domain), and
+ * `slot_index`.
  */
 
 import { z } from "zod";
@@ -30,7 +31,7 @@ export type ListScanChildrenOutput = PaginatedResponse<ScanBriefResponse>;
 export const listScanChildrenTool: Tool<ListScanChildrenInputShape, ListScanChildrenOutput> = {
   name: "list_scan_children",
   description:
-    "List the discovered-ad child scans of a publisher ad-discovery scan — one per detected ad block on the page. Each child brief carries ad_kind (banner|pop), the attributed ad network, and slot_index. The repeat / retry fields are present but never meaningful here: a child is always its own group of one (`repeat_index` 0, `repeat_total` 1, `repeat_session_id` null) and is never re-crawled, because repeats and retries apply to the publisher scan — repeating an ad-discovery scan gives you several parents, each with its own children. Returns a paginated envelope with screenshot + report deep-links; link users with those, never hand-build URLs.",
+    "List the discovered-ad child scans of a publisher ad-discovery scan — one per detected ad block on the page. Each child brief carries ad_kind (banner|pop), slot_index, and the ad's attribution split in two: network is the ad network's NAME and is empty when the ad server is unrecognised, network_host is the domain observed — so read network first and fall back to network_host. Both are empty when the ad came from infrastructure that is not an ad network (tag manager, analytics) or from the publisher's own creative CDN; a pop carries a network but no host, because pop networks rotate their serving domains. The repeat / retry fields are present but never meaningful here: a child is always its own group of one (`repeat_index` 0, `repeat_total` 1, `repeat_session_id` null) and is never re-crawled, because repeats and retries apply to the publisher scan — repeating an ad-discovery scan gives you several parents, each with its own children. Returns a paginated envelope with screenshot + report deep-links; link users with those, never hand-build URLs.",
   annotations: {
     title: "List Scan Children",
     readOnlyHint: true,
