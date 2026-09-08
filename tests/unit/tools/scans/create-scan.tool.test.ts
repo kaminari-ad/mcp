@@ -115,6 +115,41 @@ describe("createScanTool", () => {
     );
   });
 
+  it("forwards the ad-discovery page cap alongside the flag", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://publisher.example/page",
+        country_code: "US",
+        emulator_id: "default",
+        ad_discovery: true,
+        max_discovered_ads: 25,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect(call.body.max_discovered_ads).toBe(25);
+  });
+
+  it("omits the ad cap when unset so the API default applies", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://publisher.example/page",
+        country_code: "US",
+        emulator_id: "default",
+        ad_discovery: true,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createScan") throw new Error("wrong method");
+    expect("max_discovered_ads" in call.body).toBe(false);
+  });
+
   it("omits the ad_discovery key entirely when the input leaves it unset", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

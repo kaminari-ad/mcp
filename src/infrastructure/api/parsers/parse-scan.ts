@@ -50,6 +50,11 @@ const ScanSchema = schemas.ScanResponse.pick({
   // the generated `banner | video` enum is widened to string per the
   // port's forward-compat policy (see `ScanResponse.creative_kind`).
   .extend({ creative_kind: z.string().default("banner") })
+  // Extended rather than picked because the generated schema is regenerated
+  // off the DEPLOYED openapi.json and this field ships in the same release
+  // (see `MaxDiscoveredAdsResponse` in the port). `.strip()` below would drop
+  // it otherwise. Nullable: every scan created before the field carries null.
+  .extend({ max_discovered_ads: z.number().int().nullable().optional() })
   .strip();
 
 const ScanArraySchema = z.array(ScanSchema);

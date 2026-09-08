@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
@@ -68,6 +69,7 @@ const CreateScanInputShape = {
         "scan per detected ad (banner/pop). Only valid with `url`. Each child is a " +
         "separate billed scan; list them with `list_scan_children`."
     ),
+  max_discovered_ads: maxDiscoveredAdsField,
   ...repeatRetryFields,
 } as const;
 type CreateScanInputShape = typeof CreateScanInputShape;
@@ -99,6 +101,9 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
       ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),
       ...(input.ad_discovery !== undefined ? { ad_discovery: input.ad_discovery } : {}),
+      ...(input.max_discovered_ads !== undefined
+        ? { max_discovered_ads: input.max_discovered_ads }
+        : {}),
       ...pickRepeatRetryBody(input),
     };
     const result = await ctx.api.createScan(body);

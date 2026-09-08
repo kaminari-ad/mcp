@@ -103,6 +103,26 @@ describe("parseCampaign", () => {
   it("rejects an unknown repeat_mode", () => {
     expect(parseCampaign({ ...VALID, repeat_mode: "session" }).isErr()).toBe(true);
   });
+  it("keeps the ad cap, which the generated schema does not know about yet", () => {
+    // Extended onto the pick rather than picked: `.strip()` would drop it,
+    // and the agent would read an ad-discovery campaign whose cap is
+    // invisible right after setting it.
+    const c = parseCampaign({
+      ...VALID,
+      campaign_type: "ad_discovery",
+      max_discovered_ads: 25,
+    })._unsafeUnwrap();
+    expect(c.max_discovered_ads).toBe(25);
+  });
+  it("accepts a null ad cap and an absent one alike", () => {
+    expect(
+      parseCampaign({ ...VALID, max_discovered_ads: null })._unsafeUnwrap().max_discovered_ads
+    ).toBeNull();
+    expect(parseCampaign(VALID)._unsafeUnwrap().max_discovered_ads ?? null).toBeNull();
+  });
+  it("rejects a non-integer ad cap rather than passing it through", () => {
+    expect(parseCampaign({ ...VALID, max_discovered_ads: 12.5 }).isErr()).toBe(true);
+  });
 });
 
 describe("parseCampaignPage", () => {

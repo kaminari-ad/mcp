@@ -287,6 +287,41 @@ describe("createCampaignTool", () => {
     ).toThrow();
   });
 
+  it("forwards the ad-discovery page cap", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Publisher sweep",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["US"],
+        max_discovered_ads: 25,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.max_discovered_ads).toBe(25);
+  });
+
+  it("omits the ad cap when not supplied so the API default applies", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Publisher sweep",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["US"],
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body).not.toHaveProperty("max_discovered_ads");
+  });
+
   it("maps invalid-input error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createCampaign = err(makeApiError("invalid-input", "bad"));

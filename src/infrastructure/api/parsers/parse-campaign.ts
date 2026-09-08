@@ -2,6 +2,8 @@
  * Parsers for `/api/v1/campaigns` — single + paginated page envelope.
  */
 
+import { z } from "zod";
+
 import type {
   ApiError,
   CampaignResponse,
@@ -45,6 +47,12 @@ const CampaignSchema = schemas.CampaignResponse.pick({
   // always sends it. Restore the API's default rather than loosening the
   // port, which would push a phantom `undefined` onto every consumer.
   .extend({ repeat_mode: schemas.RepeatMode.default("isolated") })
+  // Extended rather than picked for the same reason, one release earlier in
+  // the cycle: the generated schema is regenerated off the DEPLOYED
+  // openapi.json and this field ships with this release (see
+  // `MaxDiscoveredAdsResponse` in the port). Nullable: every campaign saved
+  // before the field carries null.
+  .extend({ max_discovered_ads: z.number().int().nullable().optional() })
   .strip();
 
 export const parseCampaign = (raw: unknown): Result<CampaignResponse, ApiError> =>
