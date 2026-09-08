@@ -86,6 +86,7 @@ describe("parseScanPage", () => {
           slot_index: 0,
           ad_kind: "banner",
           network: "ExoClick",
+          network_host: "a.magsrv.com",
         },
       ],
       total: 1,
@@ -96,6 +97,8 @@ describe("parseScanPage", () => {
     expect(item?.parent_scan_id).toBe("00000000-0000-0000-0000-0000000000aa");
     expect(item?.ad_kind).toBe("banner");
     expect(item?.network).toBe("ExoClick");
+    // Extended onto the pick, so `.strip()` must not have dropped it.
+    expect(item?.network_host).toBe("a.magsrv.com");
     expect(item?.slot_index).toBe(0);
   });
   it("keeps the repeat / retry block through the pick whitelist", () => {

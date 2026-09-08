@@ -460,6 +460,7 @@ export const DEFAULT_SCAN: ScanResponse = {
   campaign_name: null,
   ad_discovery: false,
   network: "",
+  network_host: "",
   created_at: "2026-05-16T12:00:00Z",
   completed_at: "2026-05-16T12:00:01Z",
   repeat_index: 0,

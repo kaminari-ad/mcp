@@ -39,6 +39,7 @@ describe("listScanChildrenTool", () => {
       ad_kind: "banner",
       slot_index: 0,
       network: "ExoClick",
+      network_host: "a.magsrv.com",
       repeat_index: 0,
       repeat_total: 1,
       repeat_session_id: null,
@@ -64,6 +65,7 @@ describe("listScanChildrenTool", () => {
     const page = result._unsafeUnwrap();
     expect(page.items[0]?.ad_kind).toBe("banner");
     expect(page.items[0]?.network).toBe("ExoClick");
+    expect(page.items[0]?.network_host).toBe("a.magsrv.com");
   });
 
   it("maps a gateway error to a tool error", async () => {

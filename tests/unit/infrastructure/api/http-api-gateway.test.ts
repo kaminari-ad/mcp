@@ -362,6 +362,43 @@ describe("HttpApiGateway", () => {
       expect(result.isOk()).toBe(true);
     });
 
+    it("keeps network_host through the parser even though the generated schema lacks it", async () => {
+      // Same premise as the max_discovered_ads wire test below: the field is
+      // declared on the port because the generated schemas come from the
+      // DEPLOYED spec. Every other test stops at the fake gateway, which
+      // cannot see the parser's `.strip()` — if the extend is ever dropped,
+      // an agent reading an unrecognised network silently gets nothing.
+      agent
+        .get(ORIGIN)
+        .intercept({
+          path: "/api/v1/scans/00000000-0000-0000-0000-000000000aaa",
+          method: "GET",
+        })
+        .reply(200, {
+          id: "00000000-0000-0000-0000-000000000aaa",
+          url: "",
+          country_code: "US",
+          emulator_id: "default",
+          status: "completed",
+          offer_url: "https://o",
+          screenshot_url: "",
+          page_title: "T",
+          elapsed_ms: 100,
+          error: "",
+          labels: {},
+          campaign_id: null,
+          created_at: "2026-01-01T00:00:00Z",
+          completed_at: null,
+          ad_kind: "banner",
+          network: "",
+          network_host: "syndicate.contentsserved.com",
+        });
+
+      const result = await buildGateway(agent).getScan("00000000-0000-0000-0000-000000000aaa");
+
+      expect(result._unsafeUnwrap().network_host).toBe("syndicate.contentsserved.com");
+    });
+
     it("maps 404 to not-found", async () => {
       agent
         .get(ORIGIN)

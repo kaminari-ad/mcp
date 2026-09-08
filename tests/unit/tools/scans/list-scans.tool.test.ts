@@ -21,6 +21,7 @@ const SCAN_BRIEF = {
   is_vast: false,
   ad_discovery: false,
   network: "",
+  network_host: "",
   created_at: "2026-05-16T10:00:00Z",
   repeat_index: 0,
   repeat_total: 1,
