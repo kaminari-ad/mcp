@@ -126,7 +126,8 @@ export type ScanBriefResponse = Pick<
   | "repeat_session_id"
   | "retry_attempt"
   | "retry_max_attempts"
->;
+> &
+  NetworkHostResponse;
 
 /**
  * `GET /api/v1/runs/{run_id}/scans` returns a deliberately slim
@@ -205,7 +206,8 @@ export type ScanResponse = Pick<
    * `create_scan` / `create_bulk_scans` call.
    */
   readonly creative_kind: string;
-} & MaxDiscoveredAdsResponse;
+} & MaxDiscoveredAdsResponse &
+  NetworkHostResponse;
 
 export type ScanTagResponse = Pick<
   S["ScanTagResponse"],
@@ -257,6 +259,22 @@ interface MaxDiscoveredAdsRequest {
 /** Read side of the above. `null` on anything created before the field. */
 interface MaxDiscoveredAdsResponse {
   readonly max_discovered_ads?: number | null;
+}
+
+/**
+ * `network_host` is absent from the generated types for the same reason
+ * `max_discovered_ads` is (see above): it ships in the same release as the API
+ * that returns it, and the regen reads the DEPLOYED spec. The next regen
+ * absorbs it and both intersections below can go.
+ *
+ * It carries the ad server's DOMAIN, while `network` became the network's
+ * NAME and is empty when the domain is unmapped — so an agent identifying a
+ * network reads `network` first and falls back to `network_host`. Empty on a
+ * pop (its serving domains rotate) and on every scan created before the
+ * split, which instead has a hostname in `network`.
+ */
+interface NetworkHostResponse {
+  readonly network_host?: string;
 }
 
 /** Update side: `null` clears the campaign's cap back to the platform default. */

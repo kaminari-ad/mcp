@@ -172,6 +172,20 @@ describe("parseScan", () => {
     })._unsafeUnwrap();
     expect(scan.max_discovered_ads).toBe(25);
   });
+  it("keeps the ad-server domain, which the generated schema does not know yet", () => {
+    // Same escape hatch as the ad cap: `.strip()` would drop it, and an agent
+    // reading an unrecognised network would be left with two empty fields.
+    const scan = parseScan({
+      ...VALID,
+      network: "",
+      network_host: "syndicate.contentsserved.com",
+    })._unsafeUnwrap();
+    expect(scan.network_host).toBe("syndicate.contentsserved.com");
+  });
+  it("accepts a scan with no ad-server domain at all", () => {
+    // A pop, and every scan created before the split.
+    expect(parseScan(VALID)._unsafeUnwrap().network_host ?? "").toBe("");
+  });
   it("accepts a null ad cap and an absent one alike", () => {
     expect(
       parseScan({ ...VALID, max_discovered_ads: null })._unsafeUnwrap().max_discovered_ads

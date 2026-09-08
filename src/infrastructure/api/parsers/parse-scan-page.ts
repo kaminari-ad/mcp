@@ -2,6 +2,8 @@
  * Parser for `GET /api/v1/scans` — paginated brief-scan envelope.
  */
 
+import { z } from "zod";
+
 import type {
   ApiError,
   PaginatedResponse,
@@ -37,7 +39,12 @@ const ScanBriefSchema = schemas.ScanBriefResponse.pick({
   repeat_session_id: true,
   retry_attempt: true,
   retry_max_attempts: true,
-}).strip();
+})
+  // Extended rather than picked because the generated schema is regenerated
+  // off the DEPLOYED openapi.json and this field ships in the same release
+  // (see `NetworkHostResponse` in the port). `.strip()` would drop it.
+  .extend({ network_host: z.string().optional() })
+  .strip();
 
 export const parseScanPage = (
   raw: unknown

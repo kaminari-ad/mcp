@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-08
+
+### Changed
+
+- **`network` on a discovered ad is now the ad network's NAME, and its
+  domain moved to `network_host`.** The API used to put whichever ad host
+  matched first into `network`, so an agent reading it got
+  `cdn.tsyndicate.com` where a name belongs — and sometimes
+  `www.googletagmanager.com`, which is not an ad network at all. Upstream
+  (KAMIAD-133) `network` became a display name resolved from a domain
+  catalog and is **empty when the ad server is not recognised**, while the
+  observed domain travels in the new `network_host`.
+
+  Both fields are exposed on `get_scan` and on the scan-list tools. An
+  agent that identified networks by `network` should read `network_host`
+  when `network` is empty; one that treated `network` as a hostname needs
+  to stop. Scans created before the upstream release keep a hostname in
+  `network` and have an empty `network_host`, so a network breakdown is
+  only sound over scans created after it.
+
+  Ads served from infrastructure (tag managers, analytics, measurement,
+  DMPs) and from a publisher's own creative CDN are still found, scanned
+  and billed exactly as before — they simply no longer claim a network
+  name.
+
+  `network_host` is declared on the port rather than picked from the
+  generated types, the same escape hatch `max_discovered_ads` uses: the
+  generated files are regenerated off the DEPLOYED spec, and this field
+  ships in the release it describes. The next regen absorbs it.
+
 ## [0.17.1] - 2026-09-03
 
 ### Fixed
