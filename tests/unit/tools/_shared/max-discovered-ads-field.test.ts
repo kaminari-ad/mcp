@@ -74,7 +74,17 @@ describe("maxDiscoveredAdsUpdateField", () => {
 
   it("tells the agent how to clear it, which is otherwise unguessable", () => {
     const described = maxDiscoveredAdsUpdateField.description ?? "";
-    expect(described).toMatch(/Pass null/);
-    expect(described).toMatch(/omitting the field leaves it unchanged/);
+    expect(described).toMatch(/pass null/);
+    expect(described).toMatch(/leaves the campaign's current setting unchanged/);
+  });
+
+  it("does not tell the agent to OMIT the field to reach the default", () => {
+    // That is create-only advice. On an update, omitting is a no-op — an agent
+    // asked to reset a campaign's cap would report success having changed
+    // nothing, the exact misdirection the nullable field exists to remove.
+    expect(maxDiscoveredAdsUpdateField.description ?? "").not.toMatch(
+      /Omit it to use the platform default/
+    );
+    expect(maxDiscoveredAdsField.description ?? "").toMatch(/Omit it to use the platform default/);
   });
 });
