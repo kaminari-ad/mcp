@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-09-09
+
+### Added
+
+- **`invoice_payment_adjustment` is filterable in `list_balance_history`.**
+  Upstream (KAMIAD-104) a finance manager can correct the recorded payment
+  of an already-settled invoice. The ledger is append-only, so the
+  correction is posted as its own signed row of this new kind rather than
+  by editing the original `invoice_settlement`. Unfiltered calls already
+  returned the row — the response parser holds `type` as a plain string —
+  but the `type` filter rejected the value, so an agent could not select
+  or exclude corrections. Summing `amount_micros` still reproduces the
+  balance; a bank top-up now credits the amount that actually arrived
+  (net of VAT) rather than the amount billed.
+
 ## [0.19.0] - 2026-09-08
 
 ### Changed
