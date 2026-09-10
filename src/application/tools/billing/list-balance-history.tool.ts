@@ -29,6 +29,7 @@ const TransactionTypeEnum = z.enum([
   "admin_adjustment",
   "refund",
   "invoice_settlement",
+  "invoice_payment_adjustment",
   "crypto_top_up",
   "card_top_up",
 ]);
@@ -41,7 +42,7 @@ const ListBalanceHistoryInputShape = {
     .max(TransactionTypeEnum.options.length)
     .optional()
     .describe(
-      "Filter by transaction kind. Pass several values to OR them (e.g. ['top_up_manual','crypto_top_up','card_top_up'] for credits-only)."
+      "Filter by transaction kind. Pass several values to OR them (e.g. ['top_up_manual','crypto_top_up','card_top_up','invoice_settlement'] for every way a balance is funded). Note `invoice_payment_adjustment` is signed: a correction to an already-settled invoice can be either a credit or a debit."
     ),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
@@ -54,7 +55,7 @@ export const listBalanceHistoryTool: Tool<ListBalanceHistoryInputShape, ListBala
   {
     name: "list_balance_history",
     description:
-      "List ledger transactions (charges, refunds, top-ups, invoice settlements) on the organization's balance. Each row: type, amount in micros, description, timestamp. Filter by `type` (multi-select) and / or date range.",
+      "List ledger transactions (charges, refunds, top-ups, invoice settlements and their corrections) on the organization's balance. Each row: type, amount in micros, description, timestamp. Filter by `type` (multi-select) and / or date range.",
     annotations: {
       title: "List Balance History",
       readOnlyHint: true,

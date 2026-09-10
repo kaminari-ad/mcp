@@ -2161,6 +2161,7 @@ export interface components {
       | "admin_adjustment"
       | "refund"
       | "invoice_settlement"
+      | "invoice_payment_adjustment"
       | "crypto_top_up"
       | "card_top_up";
     /**

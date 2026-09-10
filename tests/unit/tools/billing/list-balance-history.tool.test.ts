@@ -70,16 +70,21 @@ describe("listBalanceHistoryTool", () => {
     ).toEqual(all);
   });
 
-  it("forwards a card_top_up filter to the API", async () => {
-    const api = createFakeApiGateway();
-    await listBalanceHistoryTool.handler(
-      { type: ["card_top_up"], page: 1, limit: 50 },
-      makeToolContext({ api })
-    );
-    const call = api.state.calls[0];
-    if (call?.method !== "listBalanceHistory") throw new Error("wrong");
-    expect(call.filters.type).toEqual(["card_top_up"]);
-  });
+  it.each([...schemas.BalanceTransactionType.options])(
+    "forwards a %s filter to the API",
+    async (type) => {
+      // Every member, not one sample: a value that parses but is dropped
+      // before the request would otherwise silently return everything.
+      const api = createFakeApiGateway();
+      await listBalanceHistoryTool.handler(
+        { type: [type], page: 1, limit: 50 },
+        makeToolContext({ api })
+      );
+      const call = api.state.calls[0];
+      if (call?.method !== "listBalanceHistory") throw new Error("wrong");
+      expect(call.filters.type).toEqual([type]);
+    }
+  );
   it("maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.listBalanceHistory = err(makeApiError("forbidden", "x"));
