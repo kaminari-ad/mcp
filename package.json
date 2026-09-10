@@ -94,7 +94,7 @@
     "@types/node": "22.10.5",
     "@typescript-eslint/eslint-plugin": "8.65.0",
     "@typescript-eslint/parser": "8.65.0",
-    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/coverage-v8": "4.1.11",
     "@vitest/eslint-plugin": "1.6.24",
     "dependency-cruiser": "16.9.0",
     "eslint": "10.8.0",
@@ -117,7 +117,7 @@
     "tsx": "4.22.0",
     "typescript": "5.7.3",
     "typescript-eslint": "8.65.0",
-    "vitest": "4.1.6"
+    "vitest": "4.1.11"
   },
   "publishConfig": {
     "access": "public",
@@ -125,14 +125,15 @@
     "registry": "https://registry.npmjs.org"
   },
   "overrides": {
-    "esbuild": "0.28.1",
-    "js-yaml": "4.3.1",
     "@redocly/openapi-core": {
       "minimatch": "10.2.6"
     },
+    "esbuild": "0.28.1",
     "glob": {
       "minimatch": "10.2.6"
     },
+    "hono": "4.13.7",
+    "js-yaml": "4.3.2",
     "minimatch": {
       "brace-expansion": "5.0.9"
     }
