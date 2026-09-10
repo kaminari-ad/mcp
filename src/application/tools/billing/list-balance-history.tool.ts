@@ -55,7 +55,7 @@ export const listBalanceHistoryTool: Tool<ListBalanceHistoryInputShape, ListBala
   {
     name: "list_balance_history",
     description:
-      "List ledger transactions (charges, refunds, top-ups, invoice settlements) on the organization's balance. Each row: type, amount in micros, description, timestamp. Filter by `type` (multi-select) and / or date range.",
+      "List ledger transactions (charges, refunds, top-ups, invoice settlements and their corrections) on the organization's balance. Each row: type, amount in micros, description, timestamp. Filter by `type` (multi-select) and / or date range.",
     annotations: {
       title: "List Balance History",
       readOnlyHint: true,
