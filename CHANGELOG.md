@@ -7,18 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.1] - 2026-09-09
+## [0.19.1] - 2026-09-10
 
-### Added
+> Requires the API-side KAMIAD-104 deploy. Until it lands, production
+> rejects `invoice_payment_adjustment` as an unknown query enum (422,
+> surfaced as an `invalid_input` tool error), so do not tag this release
+> ahead of the API.
 
-- **`invoice_payment_adjustment` accepted by the `list_balance_history`
-  `type` filter.** The API gained this `BalanceTransactionType` upstream
-  (KAMIAD-104): correcting an already-settled invoice appends a signed
-  correction row rather than editing the original `invoice_settlement`.
-  Unfiltered calls already returned such rows — the response parser holds
-  `type` as a plain string — but the filter enum rejected the value, so an
-  agent could neither select nor exclude corrections. Generated schemas
-  regenerated for the same member; no tool signature changed.
+### Fixed
+
+- **`list_balance_history` can filter on `invoice_payment_adjustment`.**
+  The API gained this `BalanceTransactionType` upstream (KAMIAD-104):
+  correcting an already-settled invoice appends a signed correction row
+  rather than editing the original `invoice_settlement`. Once the API
+  ships, an unfiltered call will return such rows without a parser change
+  — the response schema holds `type` as a plain string — but the filter
+  enum rejected the value, so an agent could neither select nor exclude
+  corrections. Same class of gap as `card_top_up` in 0.13.0, hence a
+  patch. No tool signature changed.
+
+  The two generated schemas were hand-edited rather than regenerated,
+  because `gen:api-types` defaults to the production spec and would drag
+  in unrelated drift that is not on this branch. Each hunk was verified
+  byte-equivalent to what a regen against the branch spec produces.
+
+### Security
+
+- Cleared the three advisory clusters that `audit:deps` flagged, taking
+  `npm audit` from 9 findings (5 high, 4 moderate) to zero. `vitest` and
+  its `@vitest/*` siblings 4.1.6 → 4.1.11 (GHSA-82fw-gwwq-j7x9) and the
+  `js-yaml` override 4.3.1 → 4.3.2 (GHSA-2883-xcg3-v3hh) are both
+  dev-only. The new `hono` override (`^4.13.7`, three advisories) is
+  **not**: `hono` reaches the runtime tree through
+  `@modelcontextprotocol/sdk`, on the streamable-HTTP transport's request
+  path, so this changes what the HTTP deployment resolves. The published
+  bundle is unaffected — the SDK stays external — and npm `overrides` do
+  not propagate to consumers, so a consumer pinning a vulnerable `hono`
+  needs its own bump.
 
 ## [0.19.0] - 2026-09-08
 
