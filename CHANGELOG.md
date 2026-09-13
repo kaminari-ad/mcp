@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-13
+
+### Added
+
+- **`set_default_policy_set`** — mark or clear an owned policy set as
+  the organization's default for new campaigns (`POST /api/v1/policy-sets/{id}/set-default`).
+  `list_policy_sets` / `get_policy_set` now surface `is_default`. Omit
+  `policy_set_id` on `create_campaign` to bind that default; pass
+  `null` to create an unbound campaign.
+
 ## [0.19.1] - 2026-09-10
 
 > Requires the API-side KAMIAD-104 deploy. Until it lands, production

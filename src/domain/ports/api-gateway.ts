@@ -595,6 +595,7 @@ export type PolicySetResponse = Pick<
   | "organization_id"
   | "visibility"
   | "is_approved"
+  | "is_default"
   | "entries"
   | "created_at"
 >;
@@ -609,7 +610,14 @@ export type PolicySetResponse = Pick<
  */
 export type PolicySetListItemResponse = Pick<
   S["PolicySetListItem"],
-  "id" | "name" | "description" | "organization_id" | "visibility" | "is_approved" | "created_at"
+  | "id"
+  | "name"
+  | "description"
+  | "organization_id"
+  | "visibility"
+  | "is_approved"
+  | "is_default"
+  | "created_at"
 >;
 
 /**
@@ -1465,6 +1473,8 @@ export interface ApiGateway {
   requestPolicySetApproval(id: string): Promise<Result<null, ApiError>>;
   /** API returns 204 No Content; gateway surfaces `null` on success. */
   unpublishPolicySet(id: string): Promise<Result<null, ApiError>>;
+  /** API returns 204 No Content; gateway surfaces `null` on success. */
+  setDefaultPolicySet(id: string, isDefault: boolean): Promise<Result<null, ApiError>>;
 
   // Alerts
   listAlerts(

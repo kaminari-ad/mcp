@@ -16,6 +16,7 @@ const VALID = {
   description: "test",
   visibility: "private",
   is_approved: false,
+  is_default: false,
   entries: [
     {
       id: "00000000-0000-0000-0000-000000000999",
