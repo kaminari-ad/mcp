@@ -161,6 +161,39 @@ describe("updateCampaignTool", () => {
     }
   });
 
+  it("forwards the leading-domain skip and leaves it untouched when unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler({ campaign_id: CID, ignore_first_n_domains: 3 }, ctx);
+    await updateCampaignTool.handler({ campaign_id: CID, name: "new" }, ctx);
+    const [withSkip, withoutSkip] = api.state.calls;
+    if (withSkip?.method !== "updateCampaign") throw new Error("wrong");
+    if (withoutSkip?.method !== "updateCampaign") throw new Error("wrong");
+    expect(withSkip.body.ignore_first_n_domains).toBe(3);
+    expect("ignore_first_n_domains" in withoutSkip.body).toBe(false);
+  });
+
+  it("forwards an explicit 0 rather than dropping it as unspecified", async () => {
+    // 0 is the only way back to skipping nothing, so it must reach the API.
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const input = updateCampaignTool.inputSchema.parse({
+      campaign_id: CID,
+      ignore_first_n_domains: 0,
+    });
+    await updateCampaignTool.handler(input, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong");
+    expect(call.body.ignore_first_n_domains).toBe(0);
+  });
+
+  it("rejects a null leading-domain skip the API would 422", () => {
+    // Unlike referrer and max_discovered_ads, this field has no null form.
+    expect(() =>
+      updateCampaignTool.inputSchema.parse({ campaign_id: CID, ignore_first_n_domains: null })
+    ).toThrow();
+  });
+
   it("forwards the ad-discovery page cap", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

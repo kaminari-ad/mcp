@@ -192,6 +192,23 @@ describe("createBulkScansTool", () => {
     expect(call.body.referrer).toBe("https://publisher.example/watch");
   });
 
+  it("forwards the leading-domain skip to every scan in the batch", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        url: "https://click.tracker.example/go",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        ignore_first_n_domains: 2,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.ignore_first_n_domains).toBe(2);
+  });
+
   it("omits the referrer key entirely when the input leaves it unset", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

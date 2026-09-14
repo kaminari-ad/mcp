@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
@@ -46,6 +47,7 @@ const CreateCampaignInputShape = {
         "(required if campaign_type=vast)."
     ),
   referrer: campaignReferrerField,
+  ignore_first_n_domains: ignoreFirstNDomainsField,
   max_discovered_ads: maxDiscoveredAdsField,
   country_codes: z
     .array(z.string().length(2))
@@ -97,6 +99,9 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
+      ...(input.ignore_first_n_domains !== undefined
+        ? { ignore_first_n_domains: input.ignore_first_n_domains }
+        : {}),
       ...(input.max_discovered_ads !== undefined
         ? { max_discovered_ads: input.max_discovered_ads }
         : {}),

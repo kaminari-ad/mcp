@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
@@ -41,6 +42,7 @@ const CreateScanInputShape = {
         "browser. Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
   referrer: scanReferrerField,
+  ignore_first_n_domains: ignoreFirstNDomainsField,
   country_code: z
     .string()
     .length(2)
@@ -96,6 +98,9 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
+      ...(input.ignore_first_n_domains !== undefined
+        ? { ignore_first_n_domains: input.ignore_first_n_domains }
+        : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),

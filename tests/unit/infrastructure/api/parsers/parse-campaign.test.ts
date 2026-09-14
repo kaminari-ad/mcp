@@ -123,6 +123,20 @@ describe("parseCampaign", () => {
   it("rejects a non-integer ad cap rather than passing it through", () => {
     expect(parseCampaign({ ...VALID, max_discovered_ads: 12.5 }).isErr()).toBe(true);
   });
+  it("keeps the leading-domain skip, which the generated schema does not know yet", () => {
+    // Same reason as the ad cap: `.strip()` would drop it and the agent would
+    // read back a campaign whose skip is invisible right after setting it.
+    const c = parseCampaign({ ...VALID, ignore_first_n_domains: 2 })._unsafeUnwrap();
+    expect(c.ignore_first_n_domains).toBe(2);
+  });
+  it("leaves the skip undefined when the api does not send it", () => {
+    // Not defaulted to 0: an api that predates the field cannot say, and a
+    // fabricated 0 would read as "this campaign skips nothing".
+    expect(parseCampaign(VALID)._unsafeUnwrap().ignore_first_n_domains).toBeUndefined();
+  });
+  it("rejects a non-integer skip rather than passing it through", () => {
+    expect(parseCampaign({ ...VALID, ignore_first_n_domains: 1.5 }).isErr()).toBe(true);
+  });
 });
 
 describe("parseCampaignPage", () => {
