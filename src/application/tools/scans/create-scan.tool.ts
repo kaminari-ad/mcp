@@ -10,7 +10,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
-import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
+import { ignoreFirstNDomainsScanField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
@@ -42,7 +42,7 @@ const CreateScanInputShape = {
         "browser. Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
   referrer: scanReferrerField,
-  ignore_first_n_domains: ignoreFirstNDomainsField,
+  ignore_first_n_domains: ignoreFirstNDomainsScanField,
   country_code: z
     .string()
     .length(2)

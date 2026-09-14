@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
-import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
+import { ignoreFirstNDomainsScanField } from "../_shared/ignore-first-n-domains-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
@@ -39,7 +39,7 @@ const CreateBulkScansInputShape = {
         "Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
   referrer: scanReferrerField,
-  ignore_first_n_domains: ignoreFirstNDomainsField,
+  ignore_first_n_domains: ignoreFirstNDomainsScanField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)

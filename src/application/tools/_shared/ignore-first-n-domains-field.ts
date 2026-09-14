@@ -23,7 +23,7 @@ const IGNORE_FIRST_N_DOMAINS_DESCRIPTION =
   "and raises an alert about the caller's infrastructure rather than about the offer. " +
   "Counting starts at the entry point and follows chain order; domains fold to their " +
   "registrable form, so www.example.com and example.com consume one slot between " +
-  "them, and sub-requests made from a skipped domain are excluded too. A skipped " +
+  "them, and any other request to one of those domains is excluded too. A skipped " +
   "domain is checked by NOTHING, so never set this higher than the number of domains " +
   "the caller actually owns at the head of the chain — ask rather than guess. The " +
   "full redirect chain is still captured and returned either way.";
@@ -33,6 +33,15 @@ const ignoreFirstNDomains = z.number().int().min(0).max(5);
 export const ignoreFirstNDomainsField = ignoreFirstNDomains
   .optional()
   .describe(`${IGNORE_FIRST_N_DOMAINS_DESCRIPTION} Omit it to skip nothing (0).`);
+
+export const ignoreFirstNDomainsScanField = ignoreFirstNDomains
+  .optional()
+  .describe(
+    `${IGNORE_FIRST_N_DOMAINS_DESCRIPTION} Omit it to skip nothing (0). A scan ` +
+      "created directly does NOT inherit this from the campaign named in " +
+      "`campaign_id` — only scans queued by a campaign run do — so send it " +
+      "explicitly on every direct submission that needs it."
+  );
 
 export const ignoreFirstNDomainsUpdateField = ignoreFirstNDomains
   .optional()
