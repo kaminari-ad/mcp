@@ -26,7 +26,7 @@ describe("testCustomRuleTool", () => {
     expect(config.description).toContain("at most 4,096 characters");
     expect(config.description).toContain("up to 200 persisted subrequests");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
-    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
+    expect(target.description).toContain("also accept `'creative'` and `'creative_and_page'`");
   });
 
   it("rejects malformed request-URL input before the gateway call", async () => {

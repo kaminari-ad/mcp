@@ -47,7 +47,7 @@ const CreateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` and `regexp_request_body` require `target='page'`. Default: page. See API docs for the full set of valid values."
+      "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` and `regexp_request_body` also accept `'creative'` (the ad-tag creative's own traffic) and `'creative_and_page'` (both, reported separately). Default: page. See API docs for the full set of valid values."
     ),
 } as const;
 type CreateCustomRuleInputShape = typeof CreateCustomRuleInputShape;
@@ -57,7 +57,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs on the fixed `page` target; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. Use `rule_type='regexp_request_body'` to match the CONTENTS of those sub-resources instead — the right choice when the code you want to catch keeps changing its filename; those contents are kept for one day. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
+    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. Use `rule_type='regexp_request_body'` to match the CONTENTS of those sub-resources instead — the right choice when the code you want to catch keeps changing its filename; those contents are kept for one day. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,
