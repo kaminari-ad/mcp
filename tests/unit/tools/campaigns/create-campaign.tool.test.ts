@@ -340,6 +340,52 @@ describe("createCampaignTool", () => {
     expect(call.body).not.toHaveProperty("max_discovered_ads");
   });
 
+  it("forwards the leading-domain skip", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Direct link sweep",
+        campaign_type: "url",
+        url: "https://click.tracker.example/go",
+        country_codes: ["US"],
+        ignore_first_n_domains: 2,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.ignore_first_n_domains).toBe(2);
+  });
+
+  it("omits the leading-domain skip when not supplied", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Direct link sweep",
+        campaign_type: "url",
+        url: "https://click.tracker.example/go",
+        country_codes: ["US"],
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body).not.toHaveProperty("ignore_first_n_domains");
+  });
+
+  it.each([-1, 6, 1.5])("rejects an out-of-range leading-domain skip: %s", (value) => {
+    const parsed = createCampaignTool.inputSchema.safeParse({
+      name: "Direct link sweep",
+      campaign_type: "url",
+      url: "https://click.tracker.example/go",
+      country_codes: ["US"],
+      ignore_first_n_domains: value,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   it("maps invalid-input error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createCampaign = err(makeApiError("invalid-input", "bad"));

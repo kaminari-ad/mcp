@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { ignoreFirstNDomainsScanField } from "../_shared/ignore-first-n-domains-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
@@ -38,6 +39,7 @@ const CreateBulkScansInputShape = {
         "Provide exactly one of `url`, `ad_tag`, or `vast_tag`."
     ),
   referrer: scanReferrerField,
+  ignore_first_n_domains: ignoreFirstNDomainsScanField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)
@@ -82,6 +84,9 @@ export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScan
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
+      ...(input.ignore_first_n_domains !== undefined
+        ? { ignore_first_n_domains: input.ignore_first_n_domains }
+        : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...pickRepeatRetryBody(input),

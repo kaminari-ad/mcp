@@ -1797,5 +1797,90 @@ describe("HttpApiGateway", () => {
       expect("max_discovered_ads" in sent).toBe(true);
       expect(sent["max_discovered_ads"]).toBeNull();
     });
+
+    it("puts ignore_first_n_domains on the wire even though the generated schema lacks it", async () => {
+      // Same premise as max_discovered_ads above, and the same failure mode: a
+      // silent strip would turn every tool that sends the skip into a no-op
+      // while the tool tests, which stop at the fake gateway, stay green.
+      let body: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/campaigns", method: "POST" })
+        .reply(201, (opts) => {
+          body = JSON.parse(opts.body as string);
+          return { ...CAMPAIGN, ignore_first_n_domains: 2 };
+        });
+
+      const gw = buildGateway(agent);
+      const result = await gw.createCampaign({
+        name: "Direct link sweep",
+        campaign_type: "url",
+        url: "https://click.tracker.example/go",
+        country_codes: ["US"],
+        ignore_first_n_domains: 2,
+      });
+
+      expect((body as Record<string, unknown>)["ignore_first_n_domains"]).toBe(2);
+      // And back again: the response parser must not strip it either.
+      expect(result._unsafeUnwrap().ignore_first_n_domains).toBe(2);
+    });
+
+    it("puts an explicit 0 on the wire so a campaign can stop skipping", async () => {
+      // 0 is the reset for this field, so a falsy-value guard anywhere on the
+      // path would make "turn the skip off" unrepresentable.
+      let body: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "PATCH" })
+        .reply(200, (opts) => {
+          body = JSON.parse(opts.body as string);
+          return { ...CAMPAIGN, ignore_first_n_domains: 0 };
+        });
+
+      const gw = buildGateway(agent);
+      await gw.updateCampaign(CAMPAIGN.id, { ignore_first_n_domains: 0 });
+
+      const sent = body as Record<string, unknown>;
+      expect("ignore_first_n_domains" in sent).toBe(true);
+      expect(sent["ignore_first_n_domains"]).toBe(0);
+    });
+
+    it("puts the skip on the wire for a scan and reads it back", async () => {
+      let body: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/scans", method: "POST" })
+        .reply(201, (opts) => {
+          body = JSON.parse(opts.body as string);
+          return {
+            id: "00000000-0000-0000-0000-000000000aaa",
+            url: "https://click.tracker.example/go",
+            country_code: "US",
+            emulator_id: "default",
+            status: "pending",
+            offer_url: "",
+            screenshot_url: "",
+            page_title: "",
+            elapsed_ms: 0,
+            error: "",
+            labels: {},
+            campaign_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            completed_at: null,
+            ignore_first_n_domains: 1,
+          };
+        });
+
+      const gw = buildGateway(agent);
+      const result = await gw.createScan({
+        url: "https://click.tracker.example/go",
+        country_code: "US",
+        emulator_id: "default",
+        ignore_first_n_domains: 1,
+      });
+
+      expect((body as Record<string, unknown>)["ignore_first_n_domains"]).toBe(1);
+      expect(result._unsafeUnwrap().ignore_first_n_domains).toBe(1);
+    });
   });
 });

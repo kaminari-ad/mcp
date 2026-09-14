@@ -192,6 +192,72 @@ describe("createBulkScansTool", () => {
     expect(call.body.referrer).toBe("https://publisher.example/watch");
   });
 
+  it("forwards the leading-domain skip to every scan in the batch", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        url: "https://click.tracker.example/go",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        ignore_first_n_domains: 2,
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.ignore_first_n_domains).toBe(2);
+  });
+
+  it("omits the leading-domain skip when the input leaves it unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      { url: "https://x.com", country_codes: ["US"], emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect("ignore_first_n_domains" in call.body).toBe(false);
+  });
+
+  it("forwards an explicit 0 rather than dropping it as falsy", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const input = createBulkScansTool.inputSchema.parse({
+      url: "https://x.com",
+      country_codes: ["US"],
+      emulator_id: "default",
+      ignore_first_n_domains: 0,
+    });
+    await createBulkScansTool.handler(input, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.ignore_first_n_domains).toBe(0);
+  });
+
+  it.each([-1, 6, 2.5, null])("rejects a leading-domain skip the API would 422: %s", (value) => {
+    expect(() =>
+      createBulkScansTool.inputSchema.parse({
+        url: "https://x.com",
+        country_codes: ["US"],
+        emulator_id: "default",
+        ignore_first_n_domains: value,
+      })
+    ).toThrow();
+  });
+
+  it("warns the agent that a direct scan does not inherit the campaign's skip", () => {
+    // The trap this text exists for: an agent sets campaign_id, omits the
+    // field, and the caller's own click domains get tagged anyway.
+    const described = (
+      createBulkScansTool.inputSchema.shape.ignore_first_n_domains as {
+        description?: string;
+      }
+    ).description;
+    expect(described).toContain("does NOT inherit");
+  });
+
   it("omits the referrer key entirely when the input leaves it unset", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

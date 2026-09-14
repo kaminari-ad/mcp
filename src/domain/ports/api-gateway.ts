@@ -207,7 +207,8 @@ export type ScanResponse = Pick<
    */
   readonly creative_kind: string;
 } & MaxDiscoveredAdsResponse &
-  NetworkHostResponse;
+  NetworkHostResponse &
+  IgnoreFirstNDomains;
 
 export type ScanTagResponse = Pick<
   S["ScanTagResponse"],
@@ -283,6 +284,20 @@ interface MaxDiscoveredAdsUpdate {
 }
 
 /**
+ * `ignore_first_n_domains` is absent from the generated types for the same
+ * reason `max_discovered_ads` is (see above): the regen reads the DEPLOYED
+ * spec and this field ships in the same release as the tools that send it. The
+ * next regen absorbs it and every intersection below can go.
+ *
+ * One shape covers request, response and update, because the field is NOT
+ * nullable on any of them: `0` is both the default and the reset, so there is
+ * no second spelling of "skip nothing" to model.
+ */
+interface IgnoreFirstNDomains {
+  readonly ignore_first_n_domains?: number;
+}
+
+/**
  * `ad_discovery` and the repeat / retry trio are required-with-default in
  * the generated type; surfaced as optional so callers omit them and the
  * API applies its defaults.
@@ -299,6 +314,7 @@ export type CreateScanRequest = Pick<
   | "campaign_id"
   | "run_id"
 > & { readonly proxy?: ScanProxyTarget } & MaxDiscoveredAdsRequest &
+  IgnoreFirstNDomains &
   Partial<
     Pick<
       S["CreateScanRequest"],
@@ -309,9 +325,8 @@ export type CreateScanRequest = Pick<
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
   "url" | "ad_tag" | "vast_tag" | "referrer" | "country_codes" | "emulator_id" | "labels"
-> & { readonly proxy?: ScanProxyTarget } & Partial<
-    Pick<S["BulkScanRequest"], "repeat_count" | "repeat_mode" | "retry_max_attempts">
-  >;
+> & { readonly proxy?: ScanProxyTarget } & IgnoreFirstNDomains &
+  Partial<Pick<S["BulkScanRequest"], "repeat_count" | "repeat_mode" | "retry_max_attempts">>;
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
 
@@ -369,7 +384,8 @@ export type CampaignResponse = Pick<
   | "created_at"
   | "last_run_at"
 > &
-  MaxDiscoveredAdsResponse;
+  MaxDiscoveredAdsResponse &
+  IgnoreFirstNDomains;
 
 export type CampaignGroupResponse = Pick<
   S["CampaignGroupResponse"],
@@ -439,6 +455,7 @@ export type CreateCampaignRequest = Pick<
   | "schedule_enabled"
 > &
   MaxDiscoveredAdsRequest &
+  IgnoreFirstNDomains &
   // emulator_mode + proxy_* are required-with-default in the generated
   // type; surface them (and the rest of the config block) as optional so
   // callers only send what they want and the API supplies its defaults.
@@ -489,7 +506,8 @@ export type UpdateCampaignRequest = Pick<
   | "schedule_enabled"
   | "schedule_timezone"
 > &
-  MaxDiscoveredAdsUpdate;
+  MaxDiscoveredAdsUpdate &
+  IgnoreFirstNDomains;
 
 export type CreateCampaignGroupRequest = Pick<S["CreateCampaignGroupRequest"], "name">;
 export type UpdateCampaignGroupRequest = Pick<S["UpdateCampaignGroupRequest"], "name">;

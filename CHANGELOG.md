@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-14
+
+> Requires the API-side KAMIAD-177 deploy. Until it lands, production
+> rejects `ignore_first_n_domains` as an unknown body field, so do not tag
+> this release ahead of the API.
+
+### Added
+
+- **`ignore_first_n_domains` on `create_campaign`, `update_campaign`,
+  `create_scan` and `create_bulk_scans`.** A check that enters through the
+  caller's own click or tracking domains used to have those domains rated
+  by every domain checker, so a reputation hit on the caller's own
+  infrastructure tagged the material and raised an alert that said nothing
+  about the offer. The new field (0-5, default 0) drops the first N unique
+  domains of the redirect chain, counted from the entry point, from
+  detection and tagging. Domains fold to their registrable form, so
+  `www.example.com` and `example.com` consume one slot between them, and
+  sub-requests made from a skipped domain are excluded too.
+
+  Deliberately NOT nullable, unlike `referrer` and `max_discovered_ads`
+  next to it: `0` is both the default and the reset, so a nullable variant
+  would only offer an agent a second spelling the API answers with a 422.
+  The shared `.describe()` text warns that a skipped domain is checked by
+  nothing, because the failure mode of guessing high is a hidden finding
+  rather than an error.
+
+  `CampaignResponse` and `ScanResponse` both echo the field, so an agent can
+  read back what a campaign will do and how much of a finished scan's chain
+  was excluded — the latter is the only way to answer that once the campaign
+  behind the scan has been edited. Parsed as optional rather than defaulted
+  to 0: an api that predates the field says nothing, and inventing a 0 would
+  claim the scan skipped nothing when the truth is unknown.
+
+  The generated schemas were left alone: the field is declared through the
+  same port-side intersection `max_discovered_ads` uses, because
+  `gen:api-types` reads the DEPLOYED spec and cannot see an unshipped
+  field. The next regen absorbs it and the intersections can go.
+
 ## [0.20.0] - 2026-09-13
 
 ### Added

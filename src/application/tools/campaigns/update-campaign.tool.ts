@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { ignoreFirstNDomainsUpdateField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsUpdateField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
@@ -39,6 +40,7 @@ const UpdateCampaignInputShape = {
         "XML (vast-type campaigns)."
     ),
   referrer: campaignReferrerUpdateField,
+  ignore_first_n_domains: ignoreFirstNDomainsUpdateField,
   max_discovered_ads: maxDiscoveredAdsUpdateField,
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
   group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
@@ -59,7 +61,7 @@ export type UpdateCampaignOutput = CampaignResponse;
 export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOutput> = {
   name: "update_campaign",
   description:
-    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, and `max_discovered_ads` accepts null to go back to the platform ad cap.",
+    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, and `max_discovered_ads` accepts null to go back to the platform ad cap. `ignore_first_n_domains` is the exception: it is not nullable, so pass 0 to go back to skipping nothing.",
   annotations: {
     title: "Update Campaign",
     readOnlyHint: false,
@@ -75,6 +77,9 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
       ...(input.ad_tag !== undefined ? { ad_tag: input.ad_tag } : {}),
       ...(input.vast_tag !== undefined ? { vast_tag: input.vast_tag } : {}),
       ...(input.referrer !== undefined ? { referrer: input.referrer } : {}),
+      ...(input.ignore_first_n_domains !== undefined
+        ? { ignore_first_n_domains: input.ignore_first_n_domains }
+        : {}),
       ...(input.max_discovered_ads !== undefined
         ? { max_discovered_ads: input.max_discovered_ads }
         : {}),

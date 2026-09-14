@@ -58,6 +58,10 @@ const ScanSchema = schemas.ScanResponse.pick({
   // Same escape hatch, same reason: the ad server's DOMAIN, split out of
   // `network` (now the network's NAME) in the release this ships with.
   .extend({ network_host: z.string().optional() })
+  // Same escape hatch again. Kept on the read side so a scan created with a
+  // skip can be read back: it is the only way to tell how much of a finished
+  // scan's chain was excluded once the campaign behind it has been edited.
+  .extend({ ignore_first_n_domains: z.number().int().optional() })
   .strip();
 
 const ScanArraySchema = z.array(ScanSchema);

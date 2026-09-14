@@ -280,6 +280,40 @@ describe("createScanTool", () => {
     );
   });
 
+  it("forwards the leading-domain skip, and omits it when unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createScanTool.handler(
+      {
+        url: "https://click.tracker.example/go",
+        country_code: "US",
+        emulator_id: "default",
+        ignore_first_n_domains: 1,
+      },
+      ctx
+    );
+    await createScanTool.handler(
+      { url: "https://click.tracker.example/go", country_code: "US", emulator_id: "default" },
+      ctx
+    );
+    const [withSkip, withoutSkip] = api.state.calls;
+    if (withSkip?.method !== "createScan") throw new Error("wrong method");
+    if (withoutSkip?.method !== "createScan") throw new Error("wrong method");
+    expect(withSkip.body.ignore_first_n_domains).toBe(1);
+    expect("ignore_first_n_domains" in withoutSkip.body).toBe(false);
+  });
+
+  it.each([-1, 6, 2.5, null])("rejects a leading-domain skip the API would 422: %s", (value) => {
+    expect(() =>
+      createScanTool.inputSchema.parse({
+        url: "https://click.tracker.example/go",
+        country_code: "US",
+        emulator_id: "default",
+        ignore_first_n_domains: value,
+      })
+    ).toThrow();
+  });
+
   it("omits the referrer key entirely when the input leaves it unset", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
