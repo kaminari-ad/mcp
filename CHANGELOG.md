@@ -33,10 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing, because the failure mode of guessing high is a hidden finding
   rather than an error.
 
-  `CampaignResponse` echoes the field, so an agent can read back what a
-  campaign will do. It is parsed as optional rather than defaulted to 0 —
-  an api that predates the field says nothing, and inventing a 0 would
-  claim the campaign skips nothing when the truth is unknown.
+  `CampaignResponse` and `ScanResponse` both echo the field, so an agent can
+  read back what a campaign will do and how much of a finished scan's chain
+  was excluded — the latter is the only way to answer that once the campaign
+  behind the scan has been edited. Parsed as optional rather than defaulted
+  to 0: an api that predates the field says nothing, and inventing a 0 would
+  claim the scan skipped nothing when the truth is unknown.
 
   The generated schemas were left alone: the field is declared through the
   same port-side intersection `max_discovered_ads` uses, because

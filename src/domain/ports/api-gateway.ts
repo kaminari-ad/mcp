@@ -207,7 +207,8 @@ export type ScanResponse = Pick<
    */
   readonly creative_kind: string;
 } & MaxDiscoveredAdsResponse &
-  NetworkHostResponse;
+  NetworkHostResponse &
+  IgnoreFirstNDomains;
 
 export type ScanTagResponse = Pick<
   S["ScanTagResponse"],

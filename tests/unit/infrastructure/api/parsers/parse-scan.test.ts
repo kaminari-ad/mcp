@@ -188,6 +188,19 @@ describe("parseScan", () => {
     const scan = parseScan(VALID)._unsafeUnwrap();
     expect("network_host" in scan).toBe(false);
   });
+  it("keeps the leading-domain skip, which the generated schema does not know yet", () => {
+    // Same escape hatch as the ad cap. Without it `.strip()` would drop the
+    // value and an agent could set a skip on a scan but never read it back.
+    const scan = parseScan({
+      ...VALID,
+      ignore_first_n_domains: 2,
+    })._unsafeUnwrap();
+    expect(scan.ignore_first_n_domains).toBe(2);
+  });
+  it("accepts a scan from an api that predates the skip", () => {
+    // Asserted as absent rather than 0: `?? 0` would pass even if stripped.
+    expect("ignore_first_n_domains" in parseScan(VALID)._unsafeUnwrap()).toBe(false);
+  });
   it("accepts a null ad cap and an absent one alike", () => {
     expect(
       parseScan({ ...VALID, max_discovered_ads: null })._unsafeUnwrap().max_discovered_ads
