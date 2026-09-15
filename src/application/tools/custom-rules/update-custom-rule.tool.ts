@@ -46,7 +46,7 @@ const UpdateCustomRuleInputShape = {
     .max(30)
     .optional()
     .describe(
-      "Where to apply the rule. `regexp_request_url` and `regexp_request_body` are fixed to `page`; do not change it. See API docs for the valid targets of other rule types."
+      "Where to apply the rule. `regexp_request_url` and `regexp_request_body` accept `'page'`, `'creative'` or `'creative_and_page'`. See API docs for the valid targets of other rule types."
     ),
   is_active: z.boolean().optional().describe("Enable/disable the rule."),
 } as const;
@@ -57,7 +57,7 @@ export type UpdateCustomRuleOutput = CustomRuleResponse;
 export const updateCustomRuleTool: Tool<UpdateCustomRuleInputShape, UpdateCustomRuleOutput> = {
   name: "update_custom_rule",
   description:
-    "Update a custom tag-detection rule. Only supplied fields are sent, but `config` replaces the stored object wholesale; read the rule first and resend every required key. `regexp_request_url` and `regexp_request_body` need a non-empty pattern (max 4,096), flags `''`/`'i'`, and the fixed `page` target. Same-slug GLOBAL rule edits preserve separately managed tag metadata; use `update_tag_definition` to change it. Existing scans are not re-evaluated until `recheck_scans`.",
+    "Update a custom tag-detection rule. Only supplied fields are sent, but `config` replaces the stored object wholesale; read the rule first and resend every required key. `regexp_request_url` and `regexp_request_body` need a non-empty pattern (max 4,096), flags `''`/`'i'`, and a target of `'page'`, `'creative'` or `'creative_and_page'`. Same-slug GLOBAL rule edits preserve separately managed tag metadata; use `update_tag_definition` to change it. Existing scans are not re-evaluated until `recheck_scans`.",
   annotations: {
     title: "Update Custom Rule",
     readOnlyHint: false,

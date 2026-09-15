@@ -108,7 +108,9 @@ describe("updateCustomRuleTool", () => {
     expect(updateCustomRuleTool.description).toContain(
       "`regexp_request_body` need a non-empty pattern"
     );
-    expect(updateCustomRuleTool.description).toContain("fixed `page` target");
+    expect(updateCustomRuleTool.description).toContain(
+      "a target of `'page'`, `'creative'` or `'creative_and_page'`"
+    );
     expect(updateCustomRuleTool.description).toContain(
       "Same-slug GLOBAL rule edits preserve separately managed tag metadata"
     );
@@ -117,7 +119,9 @@ describe("updateCustomRuleTool", () => {
     expect(shape.config.description).toContain("Read the rule first");
     expect(shape.name.description).toContain("use `update_tag_definition`");
     expect(shape.tag_slug.description).toContain("preserves its admin-managed tag metadata");
-    expect(shape.target.description).toContain("`regexp_request_body` are fixed to `page`");
+    expect(shape.target.description).toContain(
+      "`regexp_request_body` accept `'page'`, `'creative'` or `'creative_and_page'`"
+    );
     expect(shape.config.description).toContain("kept for ONE DAY");
   });
 

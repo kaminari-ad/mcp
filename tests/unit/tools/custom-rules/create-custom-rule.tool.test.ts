@@ -32,7 +32,7 @@ describe("createCustomRuleTool", () => {
     expect(config.description).toContain("up to 200 persisted subrequests");
     expect(config.description).toContain("historical matching is best-effort");
     expect(config.description).toContain("`regexp_url` remains redirect-chain-only");
-    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
+    expect(target.description).toContain("also accept `'creative'`");
   });
 
   it("documents regexp_request_body coverage and its retention window", () => {
@@ -47,7 +47,7 @@ describe("createCustomRuleTool", () => {
     expect(config.description).toContain("400 resources, 128 KB each and 8 MB per scan");
     expect(config.description).toContain("kept for ONE DAY");
     expect(config.description).toContain("never images, video, fonts or stylesheets");
-    expect(target.description).toContain("`regexp_request_body` require `target='page'`");
+    expect(target.description).toContain("also accept `'creative'`");
   });
 
   it("enforces the pattern contract for the body rule type too", async () => {
@@ -56,12 +56,14 @@ describe("createCustomRuleTool", () => {
       { name: "RX", rule_type: "regexp_request_body", config: {}, target: "page" },
       makeToolContext({ api })
     );
+    // The creative is a real surface for this type — a script inside a banner's
+    // iframe is on no landing's request list — so only an unknown value is bad.
     const badTarget = await createCustomRuleTool.handler(
       {
         name: "RX",
         rule_type: "regexp_request_body",
         config: { pattern: "stage1_rce" },
-        target: "creative",
+        target: "banner",
       },
       makeToolContext({ api })
     );
@@ -69,7 +71,9 @@ describe("createCustomRuleTool", () => {
     expect(badConfig.isErr()).toBe(true);
     expect(badTarget.isErr()).toBe(true);
     if (badTarget.isErr()) {
-      expect(badTarget.error.message).toContain("regexp_request_body requires target='page'");
+      expect(badTarget.error.message).toContain(
+        "regexp_request_body accepts target: page, creative, creative_and_page"
+      );
     }
     expect(api.state.calls).toEqual([]);
   });
@@ -90,6 +94,26 @@ describe("createCustomRuleTool", () => {
 
     const call = api.state.calls[0] as { body: { rule_type: string } };
     expect(call.body.rule_type).toBe("regexp_request_body");
+  });
+
+  it("forwards a creative-surface rule to the gateway", async () => {
+    // The case the page-only guard used to block outright: an iOS exploit kit
+    // stuffed into a banner is a script inside the creative's own iframe.
+    const api = createFakeApiGateway();
+
+    await createCustomRuleTool.handler(
+      {
+        name: "iOS exploit payload",
+        tag_slug: "ios_browser_exploit_attempt",
+        rule_type: "regexp_request_url",
+        config: { pattern: "\\.icu/cjs/[a-f0-9]{32}\\.js", flags: "i" },
+        target: "creative_and_page",
+      },
+      makeToolContext({ api })
+    );
+
+    const call = api.state.calls[0] as { body: { target: string } };
+    expect(call.body.target).toBe("creative_and_page");
   });
 
   it("rejects malformed request-URL config and target before the gateway call", async () => {

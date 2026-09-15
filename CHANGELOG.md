@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`regexp_request_url` and `regexp_request_body` accept the creative
+  surface.** Both were rejected locally with anything but `target='page'`,
+  which made the rule that catches an exploit kit embedded in a banner
+  unauthorable: that kit is a script inside the creative's own iframe and
+  appears on no landing page's request list. Both now take `'page'`,
+  `'creative'` or `'creative_and_page'` (evaluated on each surface, every
+  match reporting the one it came from), matching what the API validates.
+  Tool descriptions updated with it, since an agent picks the target from
+  them.
+
+  Requires the API-side deploy that widens the same validator. Until it
+  lands, production rejects the two new targets with HTTP 422.
+
 ## [0.21.0] - 2026-09-14
 
 > Requires the API-side KAMIAD-177 deploy. Until it lands, production
