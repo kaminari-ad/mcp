@@ -55,6 +55,8 @@ const ScanSchema = schemas.ScanResponse.pick({
   // (see `MaxDiscoveredAdsResponse` in the port). `.strip()` below would drop
   // it otherwise. Nullable: every scan created before the field carries null.
   .extend({ max_discovered_ads: z.number().int().nullable().optional() })
+  // Same escape hatch; strings, not the enum (see `AdFormat` in the port).
+  .extend({ ad_formats: z.array(z.string()).nullable().optional() })
   // Same escape hatch, same reason: the ad server's DOMAIN, split out of
   // `network` (now the network's NAME) in the release this ships with.
   .extend({ network_host: z.string().optional() })

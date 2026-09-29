@@ -201,6 +201,11 @@ describe("parseScan", () => {
     // Asserted as absent rather than 0: `?? 0` would pass even if stripped.
     expect("ignore_first_n_domains" in parseScan(VALID)._unsafeUnwrap()).toBe(false);
   });
+  it("keeps the ad-format selection, null included", () => {
+    const scan = parseScan({ ...VALID, ad_discovery: true, ad_formats: ["pop"] })._unsafeUnwrap();
+    expect(scan.ad_formats).toEqual(["pop"]);
+    expect(parseScan({ ...VALID, ad_formats: null })._unsafeUnwrap().ad_formats).toBeNull();
+  });
   it("accepts a null ad cap and an absent one alike", () => {
     expect(
       parseScan({ ...VALID, max_discovered_ads: null })._unsafeUnwrap().max_discovered_ads

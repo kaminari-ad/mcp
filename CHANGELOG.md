@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-29
+
+> Requires the API-side ad-format deploy. Until it lands, production
+> silently ignores `ad_formats` as an unknown body field: a `['pop']` request
+> checks and bills every format and reads back without the field. Do not tag
+> this release ahead of the API.
+
+### Added
+
+- **`ad_formats` on `create_scan`, `create_campaign` and `update_campaign`.**
+  An ad-discovery run can now be narrowed to some formats: any of
+  `banner`, `video` and `pop` (pop-unders and tab-unders). A format left out
+  is neither captured nor billed, so `['pop']` checks a publisher's pops
+  without screenshotting or clicking every banner on the page. Omit the
+  field to check every format; on `update_campaign`, pass `null` to go back
+  to every format.
+
+  `ScanResponse` and `CampaignResponse` echo the selection (`null` for
+  every format). The read side is parsed as plain strings rather than the
+  request enum, so a format added on the API side cannot fail a whole
+  `get_scan` / `get_campaign` call. The generated schemas were left alone:
+  the field is declared through the port's escape hatch until the next
+  regen against the deployed API, like `max_discovered_ads` before it.
+
+### Security
+
+- `undici` 8.10.0 → 8.11.2 (GHSA-3wwx-pv8p-q78v, WebSocket
+  permessage-deflate DoS) and transitive `ip-address` 10.4.0 → 10.7.2
+  (link-local and NAT64 classification bypasses), which were failing
+  `audit:deps`.
+
 ## [0.22.0] - 2026-09-15
 
 ### Changed

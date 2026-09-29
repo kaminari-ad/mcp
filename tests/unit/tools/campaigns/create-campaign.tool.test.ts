@@ -323,6 +323,41 @@ describe("createCampaignTool", () => {
     expect(call.body.max_discovered_ads).toBe(25);
   });
 
+  it("forwards the ad-format selection", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Publisher pops",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["US"],
+        ad_formats: ["pop"],
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.ad_formats).toEqual(["pop"]);
+  });
+
+  it("omits the ad-format selection when not supplied so every format is checked", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createCampaignTool.handler(
+      {
+        name: "Publisher sweep",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["US"],
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body).not.toHaveProperty("ad_formats");
+  });
+
   it("omits the ad cap when not supplied so the API default applies", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

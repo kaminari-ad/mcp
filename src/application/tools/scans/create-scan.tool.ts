@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { adFormatsField } from "../_shared/ad-formats-field.js";
 import { ignoreFirstNDomainsScanField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
@@ -68,10 +69,11 @@ const CreateScanInputShape = {
     .optional()
     .describe(
       "Publisher ad discovery: detect ad blocks on the page and spawn one child " +
-        "scan per detected ad (banner/pop). Only valid with `url`. Each child is a " +
+        "scan per detected ad (banner/video/pop). Only valid with `url`. Each child is a " +
         "separate billed scan; list them with `list_scan_children`."
     ),
   max_discovered_ads: maxDiscoveredAdsField,
+  ad_formats: adFormatsField,
   ...repeatRetryFields,
 } as const;
 type CreateScanInputShape = typeof CreateScanInputShape;
@@ -109,6 +111,7 @@ export const createScanTool: Tool<CreateScanInputShape, CreateScanOutput> = {
       ...(input.max_discovered_ads !== undefined
         ? { max_discovered_ads: input.max_discovered_ads }
         : {}),
+      ...(input.ad_formats !== undefined ? { ad_formats: input.ad_formats } : {}),
       ...pickRepeatRetryBody(input),
     };
     const result = await ctx.api.createScan(body);

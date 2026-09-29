@@ -123,6 +123,15 @@ describe("parseCampaign", () => {
   it("rejects a non-integer ad cap rather than passing it through", () => {
     expect(parseCampaign({ ...VALID, max_discovered_ads: 12.5 }).isErr()).toBe(true);
   });
+  it("keeps the ad-format selection, which the generated schema does not know yet", () => {
+    const c = parseCampaign({ ...VALID, ad_formats: ["pop"] })._unsafeUnwrap();
+    expect(c.ad_formats).toEqual(["pop"]);
+    expect(parseCampaign({ ...VALID, ad_formats: null })._unsafeUnwrap().ad_formats).toBeNull();
+  });
+  it("reads a format it does not know rather than failing the whole campaign", () => {
+    const c = parseCampaign({ ...VALID, ad_formats: ["native"] })._unsafeUnwrap();
+    expect(c.ad_formats).toEqual(["native"]);
+  });
   it("keeps the leading-domain skip, which the generated schema does not know yet", () => {
     // Same reason as the ad cap: `.strip()` would drop it and the agent would
     // read back a campaign whose skip is invisible right after setting it.

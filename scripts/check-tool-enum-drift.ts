@@ -59,6 +59,8 @@ const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
   // Regex rule config lives in a free-form `config` dict, so the flags
   // are validated by hand in `rule_config_validation.py`.
   "|i": "regexp flags — validated inside the free-form config dict",
+  // AdKind / DiscoveryAdFormat postdate the deployed spec; use `schemas.*` after the next regen.
+  "banner|pop|video": "ad_formats — AdKind / DiscoveryAdFormat ship with the tool",
 };
 
 interface Violation {

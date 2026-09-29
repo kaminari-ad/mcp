@@ -194,6 +194,29 @@ describe("updateCampaignTool", () => {
     ).toThrow();
   });
 
+  it("forwards the ad-format selection and its null reset", async () => {
+    for (const ad_formats of [["banner", "pop"] as const, null]) {
+      const api = createFakeApiGateway();
+      const ctx = makeToolContext({ api });
+      await updateCampaignTool.handler(
+        { campaign_id: CID, ad_formats: ad_formats && [...ad_formats] },
+        ctx
+      );
+      const call = api.state.calls[0];
+      if (call?.method !== "updateCampaign") throw new Error("wrong method");
+      expect(call.body.ad_formats).toEqual(ad_formats);
+    }
+  });
+
+  it("omits the ad-format selection when unset so the stored one is left alone", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await updateCampaignTool.handler({ campaign_id: CID, name: "Renamed" }, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong method");
+    expect(call.body).not.toHaveProperty("ad_formats");
+  });
+
   it("forwards the ad-discovery page cap", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });
