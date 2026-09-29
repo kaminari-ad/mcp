@@ -207,6 +207,7 @@ export type ScanResponse = Pick<
    */
   readonly creative_kind: string;
 } & MaxDiscoveredAdsResponse &
+  AdFormatsResponse &
   NetworkHostResponse &
   IgnoreFirstNDomains;
 
@@ -284,6 +285,28 @@ interface MaxDiscoveredAdsUpdate {
 }
 
 /**
+ * `ad_formats` is absent from the generated types for the same reason
+ * `max_discovered_ads` is (see above), and the next regen absorbs all three
+ * shapes below. The request side is the closed vocabulary the API validates;
+ * the read side is widened to `string` per the port's forward-compat policy
+ * (see `ScanResponse.creative_kind`). `null` means every format.
+ */
+type AdFormat = "banner" | "video" | "pop";
+
+interface AdFormatsRequest {
+  readonly ad_formats?: readonly AdFormat[];
+}
+
+interface AdFormatsResponse {
+  readonly ad_formats?: readonly string[] | null;
+}
+
+/** Update side: `null` puts the campaign back on every format. */
+interface AdFormatsUpdate {
+  readonly ad_formats?: readonly AdFormat[] | null;
+}
+
+/**
  * `ignore_first_n_domains` is absent from the generated types for the same
  * reason `max_discovered_ads` is (see above): the regen reads the DEPLOYED
  * spec and this field ships in the same release as the tools that send it. The
@@ -314,6 +337,7 @@ export type CreateScanRequest = Pick<
   | "campaign_id"
   | "run_id"
 > & { readonly proxy?: ScanProxyTarget } & MaxDiscoveredAdsRequest &
+  AdFormatsRequest &
   IgnoreFirstNDomains &
   Partial<
     Pick<
@@ -385,6 +409,7 @@ export type CampaignResponse = Pick<
   | "last_run_at"
 > &
   MaxDiscoveredAdsResponse &
+  AdFormatsResponse &
   IgnoreFirstNDomains;
 
 export type CampaignGroupResponse = Pick<
@@ -455,6 +480,7 @@ export type CreateCampaignRequest = Pick<
   | "schedule_enabled"
 > &
   MaxDiscoveredAdsRequest &
+  AdFormatsRequest &
   IgnoreFirstNDomains &
   // emulator_mode + proxy_* are required-with-default in the generated
   // type; surface them (and the rest of the config block) as optional so
@@ -507,6 +533,7 @@ export type UpdateCampaignRequest = Pick<
   | "schedule_timezone"
 > &
   MaxDiscoveredAdsUpdate &
+  AdFormatsUpdate &
   IgnoreFirstNDomains;
 
 export type CreateCampaignGroupRequest = Pick<S["CreateCampaignGroupRequest"], "name">;

@@ -11,6 +11,7 @@ import { z } from "zod";
 import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { adFormatsField } from "../_shared/ad-formats-field.js";
 import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
@@ -49,6 +50,7 @@ const CreateCampaignInputShape = {
   referrer: campaignReferrerField,
   ignore_first_n_domains: ignoreFirstNDomainsField,
   max_discovered_ads: maxDiscoveredAdsField,
+  ad_formats: adFormatsField,
   country_codes: z
     .array(z.string().length(2))
     .min(1)
@@ -105,6 +107,7 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.max_discovered_ads !== undefined
         ? { max_discovered_ads: input.max_discovered_ads }
         : {}),
+      ...(input.ad_formats !== undefined ? { ad_formats: input.ad_formats } : {}),
       ...(input.group_id !== undefined ? { group_id: input.group_id } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),

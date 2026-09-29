@@ -53,6 +53,9 @@ const CampaignSchema = schemas.CampaignResponse.pick({
   // `MaxDiscoveredAdsResponse` in the port). Nullable: every campaign saved
   // before the field carries null.
   .extend({ max_discovered_ads: z.number().int().nullable().optional() })
+  // Same escape hatch (see `AdFormatsResponse` in the port). Strings, not the
+  // enum, so a format added on the API side cannot fail the whole parse.
+  .extend({ ad_formats: z.array(z.string()).nullable().optional() })
   // Extended for the same reason, and optional rather than defaulted to 0: an
   // api that predates the field sends nothing, and inventing a 0 would tell an
   // agent the campaign skips nothing when the truth is that it cannot say.
