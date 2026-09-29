@@ -69,7 +69,7 @@ const CreateScanInputShape = {
     .optional()
     .describe(
       "Publisher ad discovery: detect ad blocks on the page and spawn one child " +
-        "scan per detected ad (banner/pop). Only valid with `url`. Each child is a " +
+        "scan per detected ad (banner/video/pop). Only valid with `url`. Each child is a " +
         "separate billed scan; list them with `list_scan_children`."
     ),
   max_discovered_ads: maxDiscoveredAdsField,

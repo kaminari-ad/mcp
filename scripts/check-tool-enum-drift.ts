@@ -59,10 +59,8 @@ const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
   // Regex rule config lives in a free-form `config` dict, so the flags
   // are validated by hand in `rule_config_validation.py`.
   "|i": "regexp flags — validated inside the free-form config dict",
-  // Typed on the api side (`AdKind`), but the generated schemas are cut from
-  // the DEPLOYED spec, which predates `ad_formats`. Drop this and use
-  // `schemas.AdKind` at the next regen.
-  "banner|pop|video": "ad_formats — AdKind ships in the same release as the tool",
+  // AdKind / DiscoveryAdFormat postdate the deployed spec; use `schemas.*` after the next regen.
+  "banner|pop|video": "ad_formats — AdKind / DiscoveryAdFormat ship with the tool",
 };
 
 interface Violation {

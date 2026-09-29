@@ -15,9 +15,12 @@ describe("adFormatsField", () => {
     expect(Schema.parse({ ad_formats: ["banner", "video", "pop"] }).ad_formats).toHaveLength(3);
   });
 
-  it("rejects an empty list and an unknown format the API would 422", () => {
-    expect(() => Schema.parse({ ad_formats: [] })).toThrow();
-    expect(() => Schema.parse({ ad_formats: ["popunder"] })).toThrow();
+  it("rejects an empty list, an unknown format and a list longer than the vocabulary", () => {
+    for (const schema of [Schema, UpdateSchema]) {
+      expect(() => schema.parse({ ad_formats: [] })).toThrow();
+      expect(() => schema.parse({ ad_formats: ["popunder"] })).toThrow();
+      expect(() => schema.parse({ ad_formats: ["pop", "pop", "pop", "pop"] })).toThrow();
+    }
   });
 
   it("rejects null on create, where it has no meaning", () => {

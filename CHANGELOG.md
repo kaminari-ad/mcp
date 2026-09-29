@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.23.0] - 2026-09-29
 
 > Requires the API-side ad-format deploy. Until it lands, production
-> rejects `ad_formats` as an unknown body field, so do not tag this release
-> ahead of the API.
+> silently ignores `ad_formats` as an unknown body field: a `['pop']` request
+> checks and bills every format and reads back without the field. Do not tag
+> this release ahead of the API.
 
 ### Added
 

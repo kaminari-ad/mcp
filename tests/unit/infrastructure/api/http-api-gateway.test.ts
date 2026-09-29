@@ -1798,6 +1798,48 @@ describe("HttpApiGateway", () => {
       expect(sent["max_discovered_ads"]).toBeNull();
     });
 
+    it("puts ad_formats on the wire both ways even though the generated schema lacks it", async () => {
+      // Same premise as max_discovered_ads; a strip would widen a pops-only campaign to every format.
+      let body: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: "/api/v1/campaigns", method: "POST" })
+        .reply(201, (opts) => {
+          body = JSON.parse(opts.body as string);
+          return { ...CAMPAIGN, campaign_type: "ad_discovery", ad_formats: ["pop"] };
+        });
+
+      const gw = buildGateway(agent);
+      const result = await gw.createCampaign({
+        name: "Publisher pops",
+        campaign_type: "ad_discovery",
+        url: "https://publisher.example/article",
+        country_codes: ["US"],
+        ad_formats: ["pop"],
+      });
+
+      expect((body as Record<string, unknown>)["ad_formats"]).toEqual(["pop"]);
+      expect(result._unsafeUnwrap().ad_formats).toEqual(["pop"]);
+    });
+
+    it("puts an explicit null ad_formats on the wire so a campaign can go back to every format", async () => {
+      let body: unknown;
+      agent
+        .get(ORIGIN)
+        .intercept({ path: `/api/v1/campaigns/${CAMPAIGN.id}`, method: "PATCH" })
+        .reply(200, (opts) => {
+          body = JSON.parse(opts.body as string);
+          return { ...CAMPAIGN, ad_formats: null };
+        });
+
+      const gw = buildGateway(agent);
+      await gw.updateCampaign(CAMPAIGN.id, { ad_formats: null });
+
+      const sent = body as Record<string, unknown>;
+      expect("ad_formats" in sent).toBe(true);
+      expect(sent["ad_formats"]).toBeNull();
+    });
+
     it("puts ignore_first_n_domains on the wire even though the generated schema lacks it", async () => {
       // Same premise as max_discovered_ads above, and the same failure mode: a
       // silent strip would turn every tool that sends the skip into a no-op
