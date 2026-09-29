@@ -30,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the field is declared through the port's escape hatch until the next
   regen against the deployed API, like `max_discovered_ads` before it.
 
+### Security
+
+- `undici` 8.10.0 → 8.11.2 (GHSA-3wwx-pv8p-q78v, WebSocket
+  permessage-deflate DoS) and transitive `ip-address` 10.4.0 → 10.7.2
+  (link-local and NAT64 classification bypasses), which were failing
+  `audit:deps`.
+
 ## [0.22.0] - 2026-09-15
 
 ### Changed
