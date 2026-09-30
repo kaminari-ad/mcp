@@ -717,6 +717,8 @@ const DEFAULT_ALERT_DESTINATION: AlertNotificationDestinationResponse = {
   telegram_chat_type: null,
   email_address: null,
   included_label_keys: [],
+  route_label_key: null,
+  route_label_values: [],
   created_at: "2026-05-16T00:00:00Z",
   updated_at: "2026-05-16T00:00:00Z",
 };
@@ -725,6 +727,7 @@ const DEFAULT_CAMPAIGN_OVERRIDES: CampaignOverridesResponse = {
   campaign_id: "00000000-0000-0000-0000-000000000ccc",
   mode: "inherit",
   destination_ids: [],
+  routing_label_key: null,
 };
 
 const DEFAULT_TEST_WEBHOOK_RESPONSE: TestWebhookResponse = {

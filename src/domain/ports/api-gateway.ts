@@ -478,6 +478,7 @@ export type CreateCampaignRequest = Pick<
   | "labels"
   | "policy_set_id"
   | "schedule_enabled"
+  | "notifications"
 > &
   MaxDiscoveredAdsRequest &
   AdFormatsRequest &
@@ -531,6 +532,7 @@ export type UpdateCampaignRequest = Pick<
   | "schedule_interval_seconds"
   | "schedule_enabled"
   | "schedule_timezone"
+  | "notifications"
 > &
   MaxDiscoveredAdsUpdate &
   AdFormatsUpdate &
@@ -1075,12 +1077,29 @@ export type AlertNotificationDestinationResponse = Pick<
   | "included_label_keys"
   | "created_at"
   | "updated_at"
->;
+> &
+  LabelRouteResponse;
+
+/**
+ * Label-routing fields ship in the same release as the tools that read them,
+ * so they are extended as optional rather than picked: `list_alert_destinations`
+ * and `get_campaign_alert_overrides` must keep parsing responses of an API that
+ * predates them. Same escape hatch as `MaxDiscoveredAdsResponse`.
+ */
+interface LabelRouteResponse {
+  readonly route_label_key?: string | null;
+  readonly route_label_values?: readonly string[];
+}
+
+interface RoutingLabelKeyResponse {
+  readonly routing_label_key?: string | null;
+}
 
 export type CampaignOverridesResponse = Pick<
   S["CampaignOverridesResponse"],
   "campaign_id" | "mode" | "destination_ids"
->;
+> &
+  RoutingLabelKeyResponse;
 
 // ── Webhook test ───────────────────────────────────────────────────
 
@@ -1095,7 +1114,7 @@ export type SetDestinationVersionRequest = Pick<S["SetDestinationVersionRequest"
 
 export type SetCampaignOverridesRequest = Pick<
   S["SetCampaignOverridesRequest"],
-  "mode" | "destination_ids"
+  "mode" | "destination_ids" | "routing_label_key"
 >;
 
 // ── Filters (query params, not body schemas) ──────────────────────

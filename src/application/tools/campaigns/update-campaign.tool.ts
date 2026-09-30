@@ -11,11 +11,13 @@ import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import { adFormatsUpdateField } from "../_shared/ad-formats-field.js";
+import { alertRoutingInputError } from "../_shared/alert-routing-input.js";
 import { ignoreFirstNDomainsUpdateField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsUpdateField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
+import { campaignNotificationsField, notificationsBody } from "./_campaign-notifications-input.js";
 import { campaignReferrerUpdateField } from "./_campaign-referrer-input.js";
 
 const UpdateCampaignInputShape = {
@@ -55,6 +57,7 @@ const UpdateCampaignInputShape = {
     .optional()
     .describe("New policy set UUID; pass null to clear."),
   schedule_enabled: z.boolean().optional().describe("Pause / resume the scheduler."),
+  notifications: campaignNotificationsField,
 } as const;
 type UpdateCampaignInputShape = typeof UpdateCampaignInputShape;
 
@@ -63,7 +66,7 @@ export type UpdateCampaignOutput = CampaignResponse;
 export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOutput> = {
   name: "update_campaign",
   description:
-    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, `max_discovered_ads` accepts null to go back to the platform ad cap, and `ad_formats` accepts null to go back to checking every ad format. `ignore_first_n_domains` is the exception: it is not nullable, so pass 0 to go back to skipping nothing.",
+    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, `max_discovered_ads` accepts null to go back to the platform ad cap, and `ad_formats` accepts null to go back to checking every ad format. `ignore_first_n_domains` is the exception: it is not nullable, so pass 0 to go back to skipping nothing. `notifications` is not merged either: when supplied it replaces the campaign's whole alert routing.",
   annotations: {
     title: "Update Campaign",
     readOnlyHint: false,
@@ -73,6 +76,8 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
   },
   inputSchema: z.object(UpdateCampaignInputShape),
   handler: async (input, ctx): Promise<Result<UpdateCampaignOutput, ToolError>> => {
+    const invalid = input.notifications && alertRoutingInputError(input.notifications);
+    if (invalid) return err(invalid);
     const body = {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.url !== undefined ? { url: input.url } : {}),
@@ -91,6 +96,9 @@ export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOu
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),
       ...(input.schedule_enabled !== undefined ? { schedule_enabled: input.schedule_enabled } : {}),
+      ...(input.notifications !== undefined
+        ? { notifications: notificationsBody(input.notifications) }
+        : {}),
       ...pickCampaignConfigBody(input),
     };
     const result = await ctx.api.updateCampaign(input.campaign_id, body);

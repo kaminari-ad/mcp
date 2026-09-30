@@ -24,7 +24,7 @@ export const getCampaignAlertOverridesTool: Tool<
 > = {
   name: "get_campaign_alert_overrides",
   description:
-    "Get the per-campaign override of which alert destinations receive its alerts. `mode` is one of `inherit` (no override — the campaign follows the org-wide destinations), `override` (alerts go ONLY to the returned `destination_ids`), or `silence` (the campaign sends nothing).",
+    "Get the per-campaign override of which alert destinations receive its alerts. `mode` is one of `inherit` (no override — the campaign follows the org-wide destinations), `override` (alerts go ONLY to the returned `destination_ids`), or `silence` (the campaign sends nothing). `routing_label_key`, when set, adds label routing on top of inherit/override: each scan also reaches the destinations whose label rule on that key matches the scan's value.",
   annotations: {
     title: "Get Campaign Alert Overrides",
     readOnlyHint: true,

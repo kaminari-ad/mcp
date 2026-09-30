@@ -427,11 +427,19 @@ describe("parseAlertDestination", () => {
     telegram_chat_type: null,
     email_address: null,
     included_label_keys: ["env"],
+    route_label_key: "dspName",
+    route_label_values: ["RichAds"],
     created_at: TS,
     updated_at: TS,
   };
   it("Ok valid slack", () => {
     expect(parseAlertDestination(VALID)._unsafeUnwrap().channel).toBe("slack");
+  });
+  it("still parses an API that predates label routing", () => {
+    const { route_label_key: _key, route_label_values: _values, ...legacy } = VALID;
+    const parsed = parseAlertDestination(legacy)._unsafeUnwrap();
+    expect(parsed.route_label_key).toBeUndefined();
+    expect(parsed.route_label_values).toBeUndefined();
   });
   it("rejects on missing required (channel)", () => {
     const { channel: _omit, ...rest } = VALID;
@@ -448,16 +456,27 @@ describe("parseCampaignAlertOverrides", () => {
       campaign_id: UUID_A,
       mode: "inherit",
       destination_ids: [],
+      routing_label_key: "dspName",
     });
     expect(r._unsafeUnwrap().mode).toBe("inherit");
+    expect(r._unsafeUnwrap().routing_label_key).toBe("dspName");
   });
   it("Ok valid override with destinations", () => {
     const r = parseCampaignAlertOverrides({
       campaign_id: UUID_A,
       mode: "override",
       destination_ids: [UUID_B, UUID_C],
+      routing_label_key: null,
     });
     expect(r._unsafeUnwrap().destination_ids).toEqual([UUID_B, UUID_C]);
+  });
+  it("still parses overrides without routing_label_key (older API)", () => {
+    const r = parseCampaignAlertOverrides({
+      campaign_id: UUID_A,
+      mode: "silence",
+      destination_ids: [],
+    });
+    expect(r._unsafeUnwrap().routing_label_key).toBeUndefined();
   });
   it("rejects on missing campaign_id", () => {
     expect(parseCampaignAlertOverrides({ mode: "inherit" }).isErr()).toBe(true);

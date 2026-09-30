@@ -28,6 +28,8 @@ describe("listAlertDestinationsTool", () => {
         telegram_chat_type: null,
         email_address: null,
         included_label_keys: [],
+        route_label_key: "dspName",
+        route_label_values: ["RichAds"],
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-01-01T00:00:00Z",
       },

@@ -22,6 +22,48 @@ describe("createCampaignTool", () => {
     ).toThrow();
   });
 
+  it("forwards the notifications block in the create request", async () => {
+    const api = createFakeApiGateway();
+    const notifications = {
+      mode: "override" as const,
+      destination_ids: ["00000000-0000-0000-0000-000000000999"],
+      routing_label_key: "dspName",
+    };
+    const r = await createCampaignTool.handler(
+      {
+        name: "X",
+        campaign_type: "url",
+        url: "https://x.com",
+        country_codes: ["US"],
+        notifications,
+      },
+      makeToolContext({ api })
+    );
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "createCampaign") throw new Error("wrong");
+    expect(call.body.notifications).toEqual(notifications);
+  });
+
+  it("refuses destination_ids outside override before creating anything", async () => {
+    const api = createFakeApiGateway();
+    const r = await createCampaignTool.handler(
+      {
+        name: "X",
+        campaign_type: "url",
+        url: "https://x.com",
+        country_codes: ["US"],
+        notifications: {
+          mode: "inherit",
+          destination_ids: ["00000000-0000-0000-0000-000000000999"],
+        },
+      },
+      makeToolContext({ api })
+    );
+    expect(r.isErr()).toBe(true);
+    expect(api.state.calls).toHaveLength(0);
+  });
+
   it("forwards full body and returns campaign", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

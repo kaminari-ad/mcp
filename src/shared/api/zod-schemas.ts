@@ -153,6 +153,7 @@ const ProxyTargetRequest = z
   })
   .partial()
   .passthrough();
+const AdKind = z.enum(["banner", "pop", "video"]);
 const RepeatModeType = z.enum(["isolated", "shared"]);
 const CreateScanRequest = z
   .object({
@@ -160,6 +161,7 @@ const CreateScanRequest = z
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
+    ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
     country_code: z.string().min(2).max(2),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -167,6 +169,8 @@ const CreateScanRequest = z
     campaign_id: z.union([z.string(), z.null()]).optional(),
     run_id: z.union([z.string(), z.null()]).optional(),
     ad_discovery: z.boolean().optional().default(false),
+    max_discovered_ads: z.union([z.number(), z.null()]).optional(),
+    ad_formats: z.union([z.array(AdKind), z.null()]).optional(),
     repeat_count: z.number().int().gte(1).optional().default(1),
     repeat_mode: RepeatModeType.optional(),
     retry_max_attempts: z.number().int().gte(0).optional().default(0),
@@ -289,9 +293,12 @@ const ScanResponse = z
     status: ScanStatus,
     parent_scan_id: z.union([z.string(), z.null()]).optional(),
     ad_discovery: z.boolean().optional().default(false),
+    max_discovered_ads: z.union([z.number(), z.null()]).optional(),
+    ad_formats: z.union([z.array(AdKind), z.null()]).optional(),
     slot_index: z.union([z.number(), z.null()]).optional(),
     ad_kind: z.union([z.string(), z.null()]).optional(),
     network: z.string().optional().default(""),
+    network_host: z.string().optional().default(""),
     offer_url: z.string(),
     redirect_chain: z.array(RedirectHopResponse),
     screenshot_url: z.string().optional().default(""),
@@ -300,6 +307,7 @@ const ScanResponse = z
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
+    ignore_first_n_domains: z.number().int().optional().default(0),
     creative_kind: z.enum(["banner", "video"]).optional().default("banner"),
     creative_screenshot_url: z.string().optional().default(""),
     creative_video_url: z.string().optional().default(""),
@@ -307,6 +315,7 @@ const ScanResponse = z
     creative_html_url: z.string().optional().default(""),
     creative_width: z.number().int().optional().default(0),
     creative_height: z.number().int().optional().default(0),
+    creative_redirect_chain: z.array(RedirectHopResponse).optional(),
     video: z.union([VideoMetaResponse, z.null()]).optional(),
     proxy: z.union([ProxyTargetResponse, z.null()]).optional(),
     page_title: z.string(),
@@ -354,6 +363,7 @@ const ScanBriefResponse = z
     slot_index: z.union([z.number(), z.null()]).optional(),
     ad_kind: z.union([z.string(), z.null()]).optional(),
     network: z.string().optional().default(""),
+    network_host: z.string().optional().default(""),
     emulator_display_name: z.string().optional().default(""),
     emulator_category: z.string().optional().default(""),
     repeat_index: z.number().int().optional().default(0),
@@ -378,6 +388,7 @@ const BulkScanRequest = z
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
+    ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
     country_codes: z.array(z.string()).min(1),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
@@ -456,7 +467,15 @@ const GroupActionResponse = z
     failures: z.array(BulkCampaignFailure).optional(),
   })
   .passthrough();
+const DiscoveryAdFormat = z.enum(["banner", "pop", "video"]);
 const RepeatMode = z.enum(["isolated", "shared"]);
+const CampaignNotificationsRequest = z
+  .object({
+    mode: z.enum(["inherit", "override", "silence"]),
+    destination_ids: z.array(z.string().uuid()).optional(),
+    routing_label_key: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
 const CreateCampaignRequest = z
   .object({
     name: z.string().min(1).max(200),
@@ -465,6 +484,9 @@ const CreateCampaignRequest = z
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
+    ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
+    max_discovered_ads: z.union([z.number(), z.null()]).optional(),
+    ad_formats: z.union([z.array(DiscoveryAdFormat), z.null()]).optional(),
     country_codes: z.array(z.string()).min(1),
     group_id: z.union([z.string(), z.null()]).optional(),
     emulator_categories: z.array(z.string()).optional(),
@@ -484,6 +506,7 @@ const CreateCampaignRequest = z
     schedule_interval_seconds: z.union([z.number(), z.null()]).optional(),
     schedule_enabled: z.union([z.boolean(), z.null()]).optional(),
     schedule_timezone: z.union([z.string(), z.null()]).optional(),
+    notifications: z.union([CampaignNotificationsRequest, z.null()]).optional(),
   })
   .passthrough();
 const EmulatorSelectionResponse = z
@@ -502,6 +525,9 @@ const CampaignResponse = z
     ad_tag: z.union([z.string(), z.null()]).optional(),
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
+    ignore_first_n_domains: z.number().int().optional().default(0),
+    max_discovered_ads: z.union([z.number(), z.null()]).optional(),
+    ad_formats: z.union([z.array(DiscoveryAdFormat), z.null()]).optional(),
     country_codes: z.array(z.string()),
     group_id: z.string().uuid(),
     emulator_selection: EmulatorSelectionResponse,
@@ -549,6 +575,9 @@ const UpdateCampaignRequest = z
     ad_tag: z.union([z.string(), z.null()]),
     vast_tag: z.union([z.string(), z.null()]),
     referrer: z.union([z.string(), z.null()]),
+    ignore_first_n_domains: z.number().int().gte(0).lte(5).default(0),
+    max_discovered_ads: z.union([z.number(), z.null()]),
+    ad_formats: z.union([z.array(DiscoveryAdFormat), z.null()]),
     country_codes: z.union([z.array(z.string()), z.null()]),
     group_id: z.union([z.string(), z.null()]),
     emulator_categories: z.union([z.array(z.string()), z.null()]),
@@ -568,6 +597,7 @@ const UpdateCampaignRequest = z
     schedule_interval_seconds: z.union([z.number(), z.null()]),
     schedule_enabled: z.union([z.boolean(), z.null()]),
     schedule_timezone: z.union([z.string(), z.null()]),
+    notifications: z.union([CampaignNotificationsRequest, z.null()]),
   })
   .partial()
   .passthrough();
@@ -1179,6 +1209,8 @@ const AlertNotificationDestinationResponse = z
     email_address: z.union([z.string(), z.null()]),
     included_label_keys: z.array(z.string()),
     included_statuses: z.array(z.string()),
+    route_label_key: z.union([z.string(), z.null()]),
+    route_label_values: z.array(z.string()),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
   })
@@ -1190,12 +1222,14 @@ const CampaignOverridesResponse = z
     campaign_id: z.string().uuid(),
     mode: CampaignOverrideMode,
     destination_ids: z.array(z.string().uuid()),
+    routing_label_key: z.union([z.string(), z.null()]),
   })
   .passthrough();
 const SetCampaignOverridesRequest = z
   .object({
     mode: CampaignOverrideMode,
     destination_ids: z.array(z.string().uuid()).optional().default([]),
+    routing_label_key: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 const InvoiceType = z.enum(["proforma", "final"]);
@@ -1325,6 +1359,7 @@ export const schemas = {
   RoleResponse,
   CreateCustomRoleRequest,
   ProxyTargetRequest,
+  AdKind,
   RepeatModeType,
   CreateScanRequest,
   ScanStatus,
@@ -1354,7 +1389,9 @@ export const schemas = {
   UpdateCampaignGroupRequest,
   BulkCampaignFailure,
   GroupActionResponse,
+  DiscoveryAdFormat,
   RepeatMode,
+  CampaignNotificationsRequest,
   CreateCampaignRequest,
   EmulatorSelectionResponse,
   CampaignResponse,
