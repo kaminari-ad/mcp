@@ -36,9 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- `brace-expansion` 5.0.12 and `fast-uri` 3.1.8 (transitive) for
-  GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p and
-  GHSA-hrr3-gc8f-f4qj.
+- `brace-expansion` 5.0.12, `fast-uri` 3.1.8 and `axios` 1.20.0 (transitive)
+  for GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p,
+  GHSA-hrr3-gc8f-f4qj and the axios 1.19 advisories (GHSA-vh66-26gq-q6x8 et al.).
 
 ## [0.23.0] - 2026-09-29
 

@@ -27,6 +27,8 @@
  * message — never as an `undefined.id` crash.
  */
 
+import { z } from "zod";
+
 import type {
   AlertNotificationDestinationResponse,
   AlertStatsResponse,
@@ -313,28 +315,40 @@ const AlertDestinationSchema = schemas.AlertNotificationDestinationResponse.pick
   telegram_chat_type: true,
   email_address: true,
   included_label_keys: true,
-  route_label_key: true,
-  route_label_values: true,
   created_at: true,
   updated_at: true,
-}).strip();
+})
+  // Extended, not picked: an API that predates label routing omits these
+  // (see `LabelRouteResponse` in the port).
+  .extend({
+    route_label_key: z.string().nullable().optional(),
+    route_label_values: z.array(z.string()).optional(),
+  })
+  .strip();
 
 export const parseAlertDestination = (
   raw: unknown
 ): Result<AlertNotificationDestinationResponse, ApiError> =>
-  parseWithSchema(AlertDestinationSchema, raw, "alert-destination");
+  parseWithSchema(AlertDestinationSchema, raw, "alert-destination") as Result<
+    AlertNotificationDestinationResponse,
+    ApiError
+  >;
 
 const CampaignOverridesSchema = schemas.CampaignOverridesResponse.pick({
   campaign_id: true,
   mode: true,
   destination_ids: true,
-  routing_label_key: true,
-}).strip();
+})
+  .extend({ routing_label_key: z.string().nullable().optional() })
+  .strip();
 
 export const parseCampaignAlertOverrides = (
   raw: unknown
 ): Result<CampaignOverridesResponse, ApiError> =>
-  parseWithSchema(CampaignOverridesSchema, raw, "campaign-overrides");
+  parseWithSchema(CampaignOverridesSchema, raw, "campaign-overrides") as Result<
+    CampaignOverridesResponse,
+    ApiError
+  >;
 
 const BulkReplaySchema = schemas.BulkReplayResponse.pick({
   replayed: true,
