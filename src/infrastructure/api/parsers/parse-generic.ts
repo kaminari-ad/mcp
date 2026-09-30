@@ -313,6 +313,8 @@ const AlertDestinationSchema = schemas.AlertNotificationDestinationResponse.pick
   telegram_chat_type: true,
   email_address: true,
   included_label_keys: true,
+  route_label_key: true,
+  route_label_values: true,
   created_at: true,
   updated_at: true,
 }).strip();
@@ -326,6 +328,7 @@ const CampaignOverridesSchema = schemas.CampaignOverridesResponse.pick({
   campaign_id: true,
   mode: true,
   destination_ids: true,
+  routing_label_key: true,
 }).strip();
 
 export const parseCampaignAlertOverrides = (

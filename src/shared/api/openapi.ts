@@ -1871,6 +1871,17 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     /**
+     * AdKind
+     * @description Closed vocabulary for a discovered ad block.
+     *
+     *     ``banner`` and ``video`` carry a creative (screenshot/HTML) plus an
+     *     optional click-through landing — ``video`` is a VAST creative playing
+     *     in a video element (in-player or outstream); ``pop`` is a behaviour
+     *     (pop-under or tab-under) with a landing but no creative.
+     * @enum {string}
+     */
+    AdKind: "banner" | "pop" | "video";
+    /**
      * AiCategoryRequest
      * @description The freeform AI-category prefix carried by an ``ai_category`` rule.
      *
@@ -1952,6 +1963,10 @@ export interface components {
       included_label_keys: string[];
       /** Included Statuses */
       included_statuses: string[];
+      /** Route Label Key */
+      route_label_key: string | null;
+      /** Route Label Values */
+      route_label_values: string[];
       /**
        * Created At
        * Format: date-time
@@ -2318,6 +2333,12 @@ export interface components {
        * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @description Skips detection and tagging on the first N unique domains of the redirect chain, counted from the entry point. Use it to exclude your own click/tracking domains so they don't trigger tags or alerts. Domains fold to their registrable form, so www.example.com and example.com count as one. Any other request to one of those domains is excluded too, wherever in the page it was made from. Default 0 (nothing skipped). Maximum 5.
+       * @default 0
+       */
+      ignore_first_n_domains: number;
       /** Country Codes */
       country_codes: string[];
       /** Emulator Id */
@@ -2426,6 +2447,28 @@ export interface components {
       last_run_at?: string | null;
     };
     /**
+     * CampaignNotificationsRequest
+     * @description Where alerts of this campaign are sent, saved together with the campaign.
+     */
+    CampaignNotificationsRequest: {
+      /**
+       * Mode
+       * @description inherit: the organization's default destinations. override: only destination_ids. silence: no notifications.
+       * @enum {string}
+       */
+      mode: "inherit" | "override" | "silence";
+      /**
+       * Destination Ids
+       * @description Destinations for mode=override. Must be empty for other modes.
+       */
+      destination_ids?: string[];
+      /**
+       * Routing Label Key
+       * @description Route by this scan label key on top of inherit or override: destinations with a label rule on the key receive only scans whose label value matches. Not allowed with silence.
+       */
+      routing_label_key?: string | null;
+    };
+    /**
      * CampaignOverrideMode
      * @description Routing mode a client sends / reads for one campaign.
      *
@@ -2452,6 +2495,8 @@ export interface components {
       mode: components["schemas"]["CampaignOverrideMode"];
       /** Destination Ids */
       destination_ids: string[];
+      /** Routing Label Key */
+      routing_label_key: string | null;
     };
     /**
      * CampaignPickerItem
@@ -2504,6 +2549,15 @@ export interface components {
       vast_tag?: string | null;
       /** Referrer */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @default 0
+       */
+      ignore_first_n_domains: number;
+      /** Max Discovered Ads */
+      max_discovered_ads?: number | null;
+      /** Ad Formats */
+      ad_formats?: components["schemas"]["DiscoveryAdFormat"][] | null;
       /** Country Codes */
       country_codes: string[];
       /**
@@ -2627,6 +2681,22 @@ export interface components {
        * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @description Skips detection and tagging on the first N unique domains of the redirect chain, counted from the entry point. Use it to exclude your own click/tracking domains so they don't trigger tags or alerts. Domains fold to their registrable form, so www.example.com and example.com count as one. Any other request to one of those domains is excluded too, wherever in the page it was made from. Default 0 (nothing skipped). Maximum 5.
+       * @default 0
+       */
+      ignore_first_n_domains: number;
+      /**
+       * Max Discovered Ads
+       * @description How many ad blocks to look for on each publisher page before stopping. Each detected ad becomes its own scan with its own report, and is billed as a separate check. Only valid when campaign_type is 'ad_discovery'. Omit to use the platform default; on update, send null to go back to it. Maximum 25.
+       */
+      max_discovered_ads?: number | null;
+      /**
+       * Ad Formats
+       * @description Which ad formats each discovery run captures: banner, video and/or pop (pop covers both pop-unders and tab-unders), each at most once. A format left out is neither captured nor billed — e.g. ['pop'] checks the page's pops without screenshotting or clicking its banners; a tab-under the page forces on its own is still reported as a pop. Only valid when campaign_type is 'ad_discovery'. Omit to capture every format; on update, send null to go back to every format.
+       */
+      ad_formats?: components["schemas"]["DiscoveryAdFormat"][] | null;
       /** Country Codes */
       country_codes: string[];
       /** Group Id */
@@ -2693,6 +2763,8 @@ export interface components {
       schedule_enabled?: boolean | null;
       /** Schedule Timezone */
       schedule_timezone?: string | null;
+      /** @description Alert-notification settings for the new campaign. Omit to inherit the organization's default destinations. Requires the alert_notifications.manage permission. */
+      notifications?: components["schemas"]["CampaignNotificationsRequest"] | null;
     };
     /**
      * CreateCustomRoleRequest
@@ -2789,6 +2861,12 @@ export interface components {
        * @description Optional http(s) page URL the check is performed from. With ad_tag or vast_tag it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. With url or ad_discovery it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @description Skips detection and tagging on the first N unique domains of the redirect chain, counted from the entry point. Use it to exclude your own click/tracking domains so they don't trigger tags or alerts. Domains fold to their registrable form, so www.example.com and example.com count as one. Any other request to one of those domains is excluded too, wherever in the page it was made from. Default 0 (nothing skipped). Maximum 5.
+       * @default 0
+       */
+      ignore_first_n_domains: number;
       /** Country Code */
       country_code: string;
       /** Emulator Id */
@@ -2808,6 +2886,16 @@ export interface components {
        * @default false
        */
       ad_discovery: boolean;
+      /**
+       * Max Discovered Ads
+       * @description How many ad blocks to look for on the publisher page before stopping. Each detected ad becomes its own scan with its own report, and is billed as a separate check. Only valid together with ad_discovery. Omit to use the platform default. Maximum 25.
+       */
+      max_discovered_ads?: number | null;
+      /**
+       * Ad Formats
+       * @description Which ad formats the discovery run captures: banner, video and/or pop (pop covers both pop-unders and tab-unders), each at most once. A format left out is neither captured nor billed — e.g. ['pop'] checks the page's pops without screenshotting or clicking its banners; a tab-under the page forces on its own is still reported as a pop. Only valid together with ad_discovery. Omit to capture every format.
+       */
+      ad_formats?: components["schemas"]["AdKind"][] | null;
       /**
        * Repeat Count
        * @description How many times to scan this combination. Each repeat is a full scan with its own report and its own billing.
@@ -3032,6 +3120,15 @@ export interface components {
        */
       detach_all: boolean;
     };
+    /**
+     * DiscoveryAdFormat
+     * @description An ad format a discovery campaign captures.
+     *
+     *     ``banner`` and ``video`` are ad slots on the page; ``pop`` covers both
+     *     pop-unders and tab-unders.
+     * @enum {string}
+     */
+    DiscoveryAdFormat: "banner" | "pop" | "video";
     /**
      * EmulatorResponse
      * @description Single emulator in the catalog.
@@ -4259,6 +4356,11 @@ export interface components {
        */
       network: string;
       /**
+       * Network Host
+       * @default
+       */
+      network_host: string;
+      /**
        * Emulator Display Name
        * @default
        */
@@ -4330,6 +4432,10 @@ export interface components {
        * @default false
        */
       ad_discovery: boolean;
+      /** Max Discovered Ads */
+      max_discovered_ads?: number | null;
+      /** Ad Formats */
+      ad_formats?: components["schemas"]["AdKind"][] | null;
       /** Slot Index */
       slot_index?: number | null;
       /** Ad Kind */
@@ -4339,6 +4445,11 @@ export interface components {
        * @default
        */
       network: string;
+      /**
+       * Network Host
+       * @default
+       */
+      network_host: string;
       /** Offer Url */
       offer_url: string;
       /** Redirect Chain */
@@ -4364,6 +4475,11 @@ export interface components {
       vast_tag?: string | null;
       /** Referrer */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @default 0
+       */
+      ignore_first_n_domains: number;
       /**
        * Creative Kind
        * @default banner
@@ -4400,6 +4516,8 @@ export interface components {
        * @default 0
        */
       creative_height: number;
+      /** Creative Redirect Chain */
+      creative_redirect_chain?: components["schemas"]["RedirectHopResponse"][];
       video?: components["schemas"]["VideoMetaResponse"] | null;
       proxy?: components["schemas"]["ProxyTargetResponse"] | null;
       /** Page Title */
@@ -4643,6 +4761,11 @@ export interface components {
        * @default []
        */
       destination_ids: string[];
+      /**
+       * Routing Label Key
+       * @description Route by this scan label key on top of inherit or override: destinations with a label rule on the key receive only scans whose label value matches. Not allowed with silence.
+       */
+      routing_label_key?: string | null;
     };
     /**
      * SetDefaultPolicySetRequest
@@ -4898,6 +5021,22 @@ export interface components {
        * @description Optional http(s) page URL every scan of this campaign is checked from. For ad_tag and vast campaigns it is the page the tag is embedded in: the browser commits the harness document on this URL without fetching the publisher, so the creative is embedded exactly as it would be on that page. For url and ad_discovery campaigns it is where the visitor came from and travels as the Referer of the page request. Cross-origin subrequests receive the origin only (https://publisher.example/, no path) under Chromium's default strict-origin-when-cross-origin policy — same as on a real publisher. Must be a publicly routable host, carry no credentials, and stay within 2048 characters once normalised.
        */
       referrer?: string | null;
+      /**
+       * Ignore First N Domains
+       * @description Skips detection and tagging on the first N unique domains of the redirect chain, counted from the entry point. Use it to exclude your own click/tracking domains so they don't trigger tags or alerts. Domains fold to their registrable form, so www.example.com and example.com count as one. Any other request to one of those domains is excluded too, wherever in the page it was made from. Default 0 (nothing skipped). Maximum 5. Not nullable: send 0 to go back to skipping nothing.
+       * @default 0
+       */
+      ignore_first_n_domains: number;
+      /**
+       * Max Discovered Ads
+       * @description How many ad blocks to look for on each publisher page before stopping. Each detected ad becomes its own scan with its own report, and is billed as a separate check. Only valid when campaign_type is 'ad_discovery'. Omit to use the platform default; on update, send null to go back to it. Maximum 25.
+       */
+      max_discovered_ads?: number | null;
+      /**
+       * Ad Formats
+       * @description Which ad formats each discovery run captures: banner, video and/or pop (pop covers both pop-unders and tab-unders), each at most once. A format left out is neither captured nor billed — e.g. ['pop'] checks the page's pops without screenshotting or clicking its banners; a tab-under the page forces on its own is still reported as a pop. Only valid when campaign_type is 'ad_discovery'. Omit to capture every format; on update, send null to go back to every format.
+       */
+      ad_formats?: components["schemas"]["DiscoveryAdFormat"][] | null;
       /** Country Codes */
       country_codes?: string[] | null;
       /** Group Id */
@@ -4939,6 +5078,8 @@ export interface components {
       schedule_enabled?: boolean | null;
       /** Schedule Timezone */
       schedule_timezone?: string | null;
+      /** @description Alert-notification settings saved in the same request. Omit (or send null) to leave them unchanged. Requires the alert_notifications.manage permission. */
+      notifications?: components["schemas"]["CampaignNotificationsRequest"] | null;
     };
     /**
      * UpdateCustomRuleRequest

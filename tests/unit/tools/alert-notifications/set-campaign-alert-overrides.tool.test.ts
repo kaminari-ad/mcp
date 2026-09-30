@@ -23,7 +23,32 @@ describe("setCampaignAlertOverridesTool", () => {
     const call = api.state.calls[0];
     if (call?.method !== "setCampaignAlertOverrides") throw new Error("wrong");
     expect(call.campaignId).toBe(CID);
-    expect(call.body).toEqual({ mode: "override", destination_ids: [DID] });
+    expect(call.body).toEqual({
+      mode: "override",
+      destination_ids: [DID],
+      routing_label_key: null,
+    });
+  });
+  it("forwards a routing label key on top of inherit", async () => {
+    const api = createFakeApiGateway();
+    const r = await setCampaignAlertOverridesTool.handler(
+      { campaign_id: CID, mode: "inherit", destination_ids: [], routing_label_key: "dspName" },
+      makeToolContext({ api })
+    );
+    expect(r.isOk()).toBe(true);
+    const call = api.state.calls[0];
+    if (call?.method !== "setCampaignAlertOverrides") throw new Error("wrong");
+    expect(call.body.routing_label_key).toBe("dspName");
+  });
+  it("refuses a routing label key with silence before calling the API", async () => {
+    const api = createFakeApiGateway();
+    const r = await setCampaignAlertOverridesTool.handler(
+      { campaign_id: CID, mode: "silence", destination_ids: [], routing_label_key: "dspName" },
+      makeToolContext({ api })
+    );
+    expect(r.isErr()).toBe(true);
+    expect(r._unsafeUnwrapErr().kind).toBe("invalid-input");
+    expect(api.state.calls).toHaveLength(0);
   });
   it("inherit mode forwards empty destination_ids", async () => {
     const api = createFakeApiGateway();

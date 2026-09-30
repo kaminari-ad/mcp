@@ -25,7 +25,7 @@ export const listAlertDestinationsTool: Tool<
 > = {
   name: "list_alert_destinations",
   description:
-    "List configured alert-notification destinations (channels): Slack workspaces, Telegram chats, email lists, generic webhooks. Each entry has id, kind, display name, version, and creation timestamp.",
+    "List configured alert-notification destinations (channels): Slack workspaces, Telegram chats, email lists, generic webhooks. Each entry has id, kind, display name, version, creation timestamp and, when set, its label routing rule (`route_label_key` + `route_label_values`) used by campaigns that route by that label key.",
   annotations: {
     title: "List Alert Destinations",
     readOnlyHint: true,

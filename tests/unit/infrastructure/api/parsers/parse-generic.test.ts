@@ -427,6 +427,8 @@ describe("parseAlertDestination", () => {
     telegram_chat_type: null,
     email_address: null,
     included_label_keys: ["env"],
+    route_label_key: "dspName",
+    route_label_values: ["RichAds"],
     created_at: TS,
     updated_at: TS,
   };
@@ -448,14 +450,17 @@ describe("parseCampaignAlertOverrides", () => {
       campaign_id: UUID_A,
       mode: "inherit",
       destination_ids: [],
+      routing_label_key: "dspName",
     });
     expect(r._unsafeUnwrap().mode).toBe("inherit");
+    expect(r._unsafeUnwrap().routing_label_key).toBe("dspName");
   });
   it("Ok valid override with destinations", () => {
     const r = parseCampaignAlertOverrides({
       campaign_id: UUID_A,
       mode: "override",
       destination_ids: [UUID_B, UUID_C],
+      routing_label_key: null,
     });
     expect(r._unsafeUnwrap().destination_ids).toEqual([UUID_B, UUID_C]);
   });

@@ -1347,7 +1347,12 @@ describe("HttpApiGateway", () => {
           path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
           method: "GET",
         })
-        .reply(200, { campaign_id: CID, mode: "inherit", destination_ids: [] });
+        .reply(200, {
+          campaign_id: CID,
+          mode: "inherit",
+          destination_ids: [],
+          routing_label_key: null,
+        });
       a.get(ORIGIN)
         .intercept({
           path: `/api/v1/alert-notifications/campaigns/${CID}/overrides`,
@@ -1431,6 +1436,7 @@ describe("HttpApiGateway", () => {
           await gw.setCampaignAlertOverrides(CID, {
             mode: "inherit",
             destination_ids: [],
+            routing_label_key: null,
           })
         ).isOk()
       ).toBe(true);

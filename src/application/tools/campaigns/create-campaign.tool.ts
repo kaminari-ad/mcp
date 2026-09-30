@@ -12,11 +12,13 @@ import type { CampaignResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import { adFormatsField } from "../_shared/ad-formats-field.js";
+import { alertRoutingInputError } from "../_shared/alert-routing-input.js";
 import { ignoreFirstNDomainsField } from "../_shared/ignore-first-n-domains-field.js";
 import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 import { campaignConfigFields, pickCampaignConfigBody } from "./_campaign-config-fields.js";
+import { campaignNotificationsField, notificationsBody } from "./_campaign-notifications-input.js";
 import { campaignReferrerField } from "./_campaign-referrer-input.js";
 
 const CreateCampaignInputShape = {
@@ -75,6 +77,7 @@ const CreateCampaignInputShape = {
     .boolean()
     .optional()
     .describe("If true, the scheduler runs immediately. Default: false (manual run)."),
+  notifications: campaignNotificationsField,
 } as const;
 type CreateCampaignInputShape = typeof CreateCampaignInputShape;
 
@@ -93,6 +96,8 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
   },
   inputSchema: z.object(CreateCampaignInputShape),
   handler: async (input, ctx): Promise<Result<CreateCampaignOutput, ToolError>> => {
+    const invalid = input.notifications && alertRoutingInputError(input.notifications);
+    if (invalid) return err(invalid);
     const body = {
       name: input.name,
       campaign_type: input.campaign_type,
@@ -112,6 +117,9 @@ export const createCampaignTool: Tool<CreateCampaignInputShape, CreateCampaignOu
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
       ...(input.policy_set_id !== undefined ? { policy_set_id: input.policy_set_id } : {}),
       ...(input.schedule_enabled !== undefined ? { schedule_enabled: input.schedule_enabled } : {}),
+      ...(input.notifications !== undefined
+        ? { notifications: notificationsBody(input.notifications) }
+        : {}),
       ...pickCampaignConfigBody(input),
     };
     const result = await ctx.api.createCampaign(body);

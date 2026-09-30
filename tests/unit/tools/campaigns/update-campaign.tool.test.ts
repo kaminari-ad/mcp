@@ -25,6 +25,34 @@ describe("updateCampaignTool", () => {
     expect(Object.keys(call.body).sort()).toEqual(["name", "schedule_enabled"]);
   });
 
+  it("forwards the notifications block with the campaign fields", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    const notifications = {
+      mode: "inherit" as const,
+      destination_ids: [],
+      routing_label_key: "dspName",
+    };
+    await updateCampaignTool.handler({ campaign_id: CID, name: "new", notifications }, ctx);
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong");
+    expect(call.body.notifications).toEqual(notifications);
+  });
+
+  it("refuses an invalid notifications block before calling the API", async () => {
+    const api = createFakeApiGateway();
+    const r = await updateCampaignTool.handler(
+      {
+        campaign_id: CID,
+        notifications: { mode: "silence", destination_ids: [], routing_label_key: "dspName" },
+      },
+      makeToolContext({ api })
+    );
+    expect(r.isErr()).toBe(true);
+    expect(r._unsafeUnwrapErr().kind).toBe("invalid-input");
+    expect(api.state.calls).toHaveLength(0);
+  });
+
   it("forwards null policy_set_id to clear", async () => {
     const api = createFakeApiGateway();
     const ctx = makeToolContext({ api });

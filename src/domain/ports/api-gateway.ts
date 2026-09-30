@@ -478,6 +478,7 @@ export type CreateCampaignRequest = Pick<
   | "labels"
   | "policy_set_id"
   | "schedule_enabled"
+  | "notifications"
 > &
   MaxDiscoveredAdsRequest &
   AdFormatsRequest &
@@ -531,6 +532,7 @@ export type UpdateCampaignRequest = Pick<
   | "schedule_interval_seconds"
   | "schedule_enabled"
   | "schedule_timezone"
+  | "notifications"
 > &
   MaxDiscoveredAdsUpdate &
   AdFormatsUpdate &
@@ -1073,13 +1075,15 @@ export type AlertNotificationDestinationResponse = Pick<
   | "telegram_chat_type"
   | "email_address"
   | "included_label_keys"
+  | "route_label_key"
+  | "route_label_values"
   | "created_at"
   | "updated_at"
 >;
 
 export type CampaignOverridesResponse = Pick<
   S["CampaignOverridesResponse"],
-  "campaign_id" | "mode" | "destination_ids"
+  "campaign_id" | "mode" | "destination_ids" | "routing_label_key"
 >;
 
 // ── Webhook test ───────────────────────────────────────────────────
@@ -1095,7 +1099,7 @@ export type SetDestinationVersionRequest = Pick<S["SetDestinationVersionRequest"
 
 export type SetCampaignOverridesRequest = Pick<
   S["SetCampaignOverridesRequest"],
-  "mode" | "destination_ids"
+  "mode" | "destination_ids" | "routing_label_key"
 >;
 
 // ── Filters (query params, not body schemas) ──────────────────────

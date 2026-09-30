@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-30
+
+> Requires the API release with campaign `notifications` and label routing.
+> Until it lands, production ignores the new body fields and omits the new
+> response fields. Do not tag this release ahead of the API.
+
+### Added
+
+- **`notifications` on `create_campaign` and `update_campaign`.** A campaign's
+  alert routing (`mode`, `destination_ids`, `routing_label_key`) is saved in
+  the same request as the campaign. The API validates the block before it
+  writes anything, so an invalid block leaves the campaign untouched. Omit it
+  to keep the current routing (update) or inherit the org defaults (create).
+- **Label routing.** `set_campaign_alert_overrides` accepts
+  `routing_label_key` on top of `inherit` / `override`: each scan also reaches
+  the destinations whose label rule matches its value for that key (one DSP's
+  chat in a shared campaign). `get_campaign_alert_overrides` returns the key,
+  and `list_alert_destinations` returns each destination's rule as
+  `route_label_key` + `route_label_values`. The mode / destination / key
+  combination rules are checked locally before the call.
+
+### Changed
+
+- Regenerated `openapi.ts` / `zod-schemas.ts` from the current API, which also
+  picks up response fields added since the last regen (`ad_formats`,
+  `network_host`, `creative_redirect_chain`).
+
+### Security
+
+- `brace-expansion` 5.0.12 and `fast-uri` 3.1.8 (transitive) for
+  GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p and
+  GHSA-hrr3-gc8f-f4qj.
+
 ## [0.23.0] - 2026-09-29
 
 > Requires the API-side ad-format deploy. Until it lands, production
