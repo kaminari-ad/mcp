@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regenerated `openapi.ts` / `zod-schemas.ts` from the current API, which also
   picks up response fields added since the last regen (`ad_formats`,
   `network_host`, `creative_redirect_chain`).
+- `set_campaign_alert_overrides` now replaces the label routing along with the
+  mode: a call without `routing_label_key` clears a key set earlier. Read
+  `get_campaign_alert_overrides` first to keep it.
 
 ### Security
 

@@ -27,5 +27,5 @@ export function notificationsBody(
 export const campaignNotificationsField = notificationsBlock
   .optional()
   .describe(
-    "Alert routing saved together with the campaign: `mode`, `destination_ids`, `routing_label_key` — same meaning as in `set_campaign_alert_overrides`. Omit to keep the current routing (update) or inherit the org defaults (create). Needs the alert_notifications.manage permission; the whole request is rejected before anything is written if the block is invalid."
+    "Alert routing saved together with the campaign: `mode`, `destination_ids`, `routing_label_key` — same meaning as in `set_campaign_alert_overrides`. The block REPLACES the whole routing: an omitted `destination_ids` means none and an omitted `routing_label_key` clears it. Omit the block to keep the current routing (update) or inherit the org defaults (create). Needs the alert_notifications.manage permission; the whole request is rejected before anything is written if the block is invalid."
   );

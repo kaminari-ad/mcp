@@ -66,7 +66,7 @@ export type UpdateCampaignOutput = CampaignResponse;
 export const updateCampaignTool: Tool<UpdateCampaignInputShape, UpdateCampaignOutput> = {
   name: "update_campaign",
   description:
-    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, `max_discovered_ads` accepts null to go back to the platform ad cap, and `ad_formats` accepts null to go back to checking every ad format. `ignore_first_n_domains` is the exception: it is not nullable, so pass 0 to go back to skipping nothing.",
+    "Update one or more fields of a campaign. Fields not supplied are left unchanged. `policy_set_id` accepts null to clear the binding, `referrer` accepts null to clear the publisher page scans are checked from, `max_discovered_ads` accepts null to go back to the platform ad cap, and `ad_formats` accepts null to go back to checking every ad format. `ignore_first_n_domains` is the exception: it is not nullable, so pass 0 to go back to skipping nothing. `notifications` is not merged either: when supplied it replaces the campaign's whole alert routing.",
   annotations: {
     title: "Update Campaign",
     readOnlyHint: false,

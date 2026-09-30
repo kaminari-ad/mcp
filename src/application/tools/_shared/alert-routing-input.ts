@@ -31,7 +31,7 @@ export const alertRoutingFields = {
     .nullable()
     .optional()
     .describe(
-      "Scan label key to route by on top of `inherit` or `override` (e.g. `dspName`): each scan also goes to the destinations whose label rule matches the scan's value for this key, as shown by `route_label_key` / `route_label_values` in `list_alert_destinations`. Omit or pass null for no label routing. Not allowed with `silence`."
+      "Scan label key to route by on top of `inherit` or `override` (e.g. `dspName`): each scan also goes to the destinations whose label rule matches the scan's value for this key, as shown by `route_label_key` / `route_label_values` in `list_alert_destinations`. Omit or pass null for no label routing — the routing is replaced as a whole, so omitting it clears a key already set (read `get_campaign_alert_overrides` first to keep it). Not allowed with `silence`."
     ),
 } as const;
 

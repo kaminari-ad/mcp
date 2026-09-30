@@ -39,6 +39,22 @@ describe("updateCampaignTool", () => {
     expect(call.body.notifications).toEqual(notifications);
   });
 
+  it("sends an override block without destination_ids as an empty list", async () => {
+    const api = createFakeApiGateway();
+    const input = updateCampaignTool.inputSchema.parse({
+      campaign_id: CID,
+      notifications: { mode: "override" },
+    });
+    await updateCampaignTool.handler(input, makeToolContext({ api }));
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCampaign") throw new Error("wrong");
+    expect(call.body.notifications).toEqual({
+      mode: "override",
+      destination_ids: [],
+      routing_label_key: null,
+    });
+  });
+
   it("refuses an invalid notifications block before calling the API", async () => {
     const api = createFakeApiGateway();
     const r = await updateCampaignTool.handler(
