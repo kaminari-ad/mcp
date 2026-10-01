@@ -27,6 +27,7 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
       "https://mcp.kaminari.ad/.well-known/oauth-protected-resource",
     oauthAuthorizationServerUrl: "https://app.kaminari.ad",
     oauthScopes: ["mcp:scans:read", "offline_access"],
+    landingUrl: "https://kaminari.ad/mcp",
     ...overrides,
   };
 }

@@ -56,6 +56,7 @@ function baseConfig(overrides: Partial<Config> = {}): Config {
       "mcp:webhooks:write",
       "offline_access",
     ],
+    landingUrl: "https://kaminari.ad/mcp",
     ...overrides,
   };
 }
