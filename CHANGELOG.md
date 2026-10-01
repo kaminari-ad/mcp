@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`GET /` on the hosted HTTP endpoint redirects to the landing page.** The
+  bare `mcp.kaminari.ad` used to answer `404 Not found`, a dead end for people
+  and crawlers arriving from MCP directories. It now returns `301` to
+  `https://kaminari.ad/mcp` (override with `KAMINARI_AD_MCP_LANDING_URL`). No
+  auth, no API call; `/mcp`, `/healthz` and the OAuth discovery document are
+  unchanged.
+
 ## [0.24.0] - 2026-09-30
 
 > Requires the API release with campaign `notifications` and label routing.

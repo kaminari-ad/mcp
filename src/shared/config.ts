@@ -80,6 +80,12 @@ export interface Config {
    * may override via `KAMINARI_AD_OAUTH_SCOPES` (space-separated).
    */
   readonly oauthScopes: readonly string[];
+  /**
+   * Public landing page for the MCP server. `GET /` on the hosted
+   * endpoint permanently redirects here so the bare subdomain is not a
+   * dead end for people and crawlers.
+   */
+  readonly landingUrl: string;
 }
 
 /**
@@ -120,6 +126,7 @@ const RawSchema = z.object({
   // Space-separated scope list. We split on /\s+/ post-parse and drop
   // empty tokens so accidental double-spaces don't corrupt the array.
   KAMINARI_AD_OAUTH_SCOPES: z.string().optional(),
+  KAMINARI_AD_MCP_LANDING_URL: z.string().url().default("https://kaminari.ad/mcp"),
 });
 
 /**
@@ -157,6 +164,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> 
     oauthProtectedResourceMetadataUrl: raw.KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL,
     oauthAuthorizationServerUrl: raw.KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL,
     oauthScopes,
+    landingUrl: raw.KAMINARI_AD_MCP_LANDING_URL,
   });
 }
 

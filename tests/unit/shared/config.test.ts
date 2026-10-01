@@ -160,4 +160,14 @@ describe("loadConfig", () => {
     const result = loadConfig({ KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: "not-a-url" });
     expect(result.isErr()).toBe(true);
   });
+
+  it("defaults the landing URL to the public MCP page", () => {
+    expect(loadConfig({})._unsafeUnwrap().landingUrl).toBe("https://kaminari.ad/mcp");
+  });
+
+  it("honours KAMINARI_AD_MCP_LANDING_URL and rejects non-URLs", () => {
+    const cfg = loadConfig({ KAMINARI_AD_MCP_LANDING_URL: "https://staging.example.test/mcp" });
+    expect(cfg._unsafeUnwrap().landingUrl).toBe("https://staging.example.test/mcp");
+    expect(loadConfig({ KAMINARI_AD_MCP_LANDING_URL: "not-a-url" }).isErr()).toBe(true);
+  });
 });

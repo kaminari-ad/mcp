@@ -60,6 +60,13 @@ export function createHttpRequestHandler(
       return;
     }
 
+    // Bare subdomain → public landing page. Data-free, no auth, no API call.
+    if ((req.method === "GET" || req.method === "HEAD") && isRootPath(req.url)) {
+      res.writeHead(301, { location: config.landingUrl });
+      res.end();
+      return;
+    }
+
     // RFC 9728 protected-resource metadata. Same data-free, no-auth
     // pattern as /healthz — see protected-resource-metadata-handler.ts.
     if (req.method === "GET" && req.url === "/.well-known/oauth-protected-resource") {
@@ -151,6 +158,10 @@ function writeJson(
 ): void {
   res.writeHead(status, { "content-type": "application/json", ...extraHeaders });
   res.end(JSON.stringify(body));
+}
+
+function isRootPath(url: string | undefined): boolean {
+  return url === "/" || (url?.startsWith("/?") ?? false);
 }
 
 function first(headerValue: string | string[] | number | undefined): string | undefined {
