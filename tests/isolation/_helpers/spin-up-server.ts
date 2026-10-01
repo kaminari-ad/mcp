@@ -53,10 +53,10 @@ class MemorySink extends Writable {
 /**
  * Build a real HTTP server with the production request handler.
  *
- * @param overrides - Per-test config overrides (rate limit).
+ * @param overrides - Per-test config overrides (rate limit, landing URL).
  */
 export async function spinUpServer(
-  overrides: { readonly RATE_LIMIT_RPM?: number } = {}
+  overrides: { readonly RATE_LIMIT_RPM?: number; readonly MCP_LANDING_URL?: string } = {}
 ): Promise<IsolationHarness> {
   const sink = new MemorySink();
   const logger = createPinoLogger("debug", "json", sink);
@@ -67,6 +67,9 @@ export async function spinUpServer(
     KAMINARI_AD_LOG_LEVEL: "debug",
     KAMINARI_AD_HTTP_PORT: "0",
     KAMINARI_AD_RATE_LIMIT_RPM: String(overrides.RATE_LIMIT_RPM ?? 1000),
+    ...(overrides.MCP_LANDING_URL === undefined
+      ? {}
+      : { KAMINARI_AD_MCP_LANDING_URL: overrides.MCP_LANDING_URL }),
   });
   if (configResult.isErr()) throw new Error("test config invalid");
   const config = configResult.value;

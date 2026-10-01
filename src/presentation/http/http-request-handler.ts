@@ -62,7 +62,7 @@ export function createHttpRequestHandler(
 
     // Bare subdomain → public landing page. Data-free, no auth, no API call.
     if ((req.method === "GET" || req.method === "HEAD") && isRootPath(req.url)) {
-      res.writeHead(301, { location: config.landingUrl });
+      res.writeHead(301, { location: config.landingUrl, "cache-control": "public, max-age=3600" });
       res.end();
       return;
     }
