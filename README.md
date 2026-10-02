@@ -10,13 +10,15 @@ Lets AI agents (Cursor, Claude Desktop, Cline, and any MCP-compatible client) la
 [![node](https://img.shields.io/node/v/@kaminari-ad/mcp)](https://nodejs.org)
 [![CI](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaminari-ad/mcp/actions/workflows/ci.yml)
 [![Provenance](https://img.shields.io/npm/v/@kaminari-ad/mcp?label=provenance&logo=github)](https://www.npmjs.com/package/@kaminari-ad/mcp)
-[![MCP Registry](https://img.shields.io/badge/MCP_Registry-listed-blue)](https://registry.modelcontextprotocol.io)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-listed-blue)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.kaminari-ad/mcp)
 
 ## Install (one click)
 
 ### Cursor
 
 <a href="https://kaminari.ad/mcp/install"><img alt="Install in Cursor" src="https://cursor.com/deeplink/mcp-install-dark.png" height="32" /></a>
+
+What the server can do and how to connect any client: [Kaminari Ad MCP overview](https://kaminari.ad/mcp).
 
 ### Claude Desktop
 
@@ -182,7 +184,7 @@ npm run lint && npm run typecheck && npm test
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and how to add a tool.
 
-> The maintainers run the full development gate (integration tests, deploy automation, prod smoke) on a private GitLab instance and mirror the repo to GitHub. The public CI on GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint + typecheck + unit tests + build + bundle-size check on every community PR, so contributors get fast green/red feedback without needing access to the internal infra. Tag pushes (`v*.*.*`) trigger [`.github/workflows/release.yml`](.github/workflows/release.yml), which publishes the package to npm with OIDC provenance and creates the GitHub Release.
+> The maintainers run the full development gate (integration tests, deploy automation, prod smoke) on a private GitLab instance and mirror the repo to GitHub. The public CI on GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint + typecheck + unit tests + build + bundle-size check on every community PR, so contributors get fast green/red feedback without needing access to the internal infra. Tag pushes (`v*.*.*`) trigger [`.github/workflows/release.yml`](.github/workflows/release.yml), which publishes the package to npm with OIDC provenance, creates the GitHub Release and publishes [`server.json`](server.json) to the official MCP Registry.
 
 ---
 
@@ -202,11 +204,19 @@ We follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for the two
 ## Privacy
 
 - **Data collected by the MCP server itself:** none beyond the `Authorization` header it forwards. The HTTP transport is stateless — no sessions are persisted; each request is authenticated independently by its own Bearer. The only in-memory state is the leaky-bucket rate limiter keyed by `sha256(bearer)`.
-- **Data forwarded to Kaminari Ad:** every tool call is a thin pass-through to `/api/v1` over HTTPS. The Kaminari Ad privacy policy applies: [https://kaminari.ad/legal/privacy](https://kaminari.ad/legal/privacy).
+- **Data forwarded to Kaminari Ad:** every tool call is a thin pass-through to `/api/v1` over HTTPS. The Kaminari Ad privacy policy applies: [https://kaminari.ad/privacy](https://kaminari.ad/privacy).
 - **Logs:** structured pino output, JSON in HTTP mode. The full Bearer token is redacted; only `bearer_hash = sha256(token).slice(0,8)` makes it into a log line, alongside `request_id`, `tool_name`, `api_status`, `elapsed_ms`. Tool inputs (which may contain customer scan IDs / URLs) are NOT logged.
 - **Telemetry:** none. The OSS build ships a `NoopErrorReporter`. We do not bundle Sentry, OpenTelemetry exporters, or PostHog.
 
 To report a security or privacy issue, see [SECURITY.md](SECURITY.md).
+
+## Learn more
+
+- [Kaminari Ad MCP overview](https://kaminari.ad/mcp) — what agents can do with the server, with setup for every client.
+- [MCP server developer docs](https://kaminari.ad/docs/developers/mcp-server) — transports, authentication and OAuth connected apps.
+- [REST API quickstart](https://kaminari.ad/docs/developers/rest-quickstart) — the `/api/v1` surface every tool calls.
+- [Malvertising, auto-redirect and cloaking detections](https://kaminari.ad/detections) — what a scan verdict can flag.
+- [DarkSword in the ad stack: an iOS exploit chain](https://kaminari.ad/blog/darksword-ios-exploit-chain-in-ad-traffic) — research from the Kaminari Ad team.
 
 ## License
 
