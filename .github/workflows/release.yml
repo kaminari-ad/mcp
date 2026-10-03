@@ -10,6 +10,7 @@ name: Release
 #      a sigstore attestation; npm trusted-publisher setup on the
 #      package side translates this into a verified provenance badge.
 #   5. Creates a GitHub Release with auto-generated commit summary.
+#   6. Publishes server.json to the official MCP Registry.
 
 on:
   push:
@@ -373,3 +374,38 @@ jobs:
         run: gh release upload ${{ github.ref_name }} mcpb-bundle/kaminari-ad-mcp.mcpb --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+
+  # ──────────────────────────────────────────────────────────────────
+  # Official MCP Registry (registry.modelcontextprotocol.io).
+  #
+  # `needs: publish` — the registry verifies ownership by reading
+  # `mcpName` from the npm manifest of the exact version in server.json,
+  # so that version must already be on npm.
+  # ──────────────────────────────────────────────────────────────────
+  publish-mcp-registry:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Stamp server.json with the package.json version
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          jq --arg v "$PKG_VERSION" '.version = $v | .packages[].version = $v' server.json > server.tmp
+          mv server.tmp server.json
+          jq '{name, version, packages: [.packages[] | {identifier, version}]}' server.json
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: ./mcp-publisher publish

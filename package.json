@@ -2,17 +2,24 @@
   "name": "@kaminari-ad/mcp",
   "version": "0.24.1",
   "description": "Official Model Context Protocol (MCP) server for the Kaminari Ad ad-verification platform.",
+  "mcpName": "io.github.kaminari-ad/mcp",
   "keywords": [
     "mcp",
+    "mcp-server",
     "model-context-protocol",
     "kaminari-ad",
     "ad-verification",
     "malvertising",
+    "ad-fraud",
+    "ad-quality",
+    "brand-safety",
+    "cloaking-detection",
+    "threat-intelligence",
     "cursor",
     "claude",
     "anthropic"
   ],
-  "homepage": "https://github.com/kaminari-ad/mcp",
+  "homepage": "https://kaminari.ad/mcp",
   "bugs": {
     "url": "https://github.com/kaminari-ad/mcp/issues"
   },

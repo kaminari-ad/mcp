@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Listed in the official MCP Registry.** Every release tag now publishes
+  `server.json` to `registry.modelcontextprotocol.io` as
+  `io.github.kaminari-ad/mcp`, with both the npm package and the hosted
+  `https://mcp.kaminari.ad/mcp` endpoint. `package.json` carries the matching
+  `mcpName` the registry uses to verify package ownership.
+
+### Fixed
+
+- **README privacy link.** It pointed at `kaminari.ad/legal/privacy`, which
+  returns 404; it now points at `kaminari.ad/privacy`.
+- **npm homepage** now points at `https://kaminari.ad/mcp` instead of the
+  GitHub repository.
+
 ## [0.24.1] - 2026-10-02
 
 ### Fixed
