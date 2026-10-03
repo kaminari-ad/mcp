@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-10-03
+
 ### Added
 
 - **Listed in the official MCP Registry.** Every release tag now publishes

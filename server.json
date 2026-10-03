@@ -8,7 +8,7 @@
     "url": "https://github.com/kaminari-ad/mcp",
     "source": "github"
   },
-  "version": "0.24.1",
+  "version": "0.24.2",
   "remotes": [
     {
       "type": "streamable-http",
@@ -20,7 +20,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@kaminari-ad/mcp",
-      "version": "0.24.1",
+      "version": "0.24.2",
       "transport": {
         "type": "stdio"
       },
