@@ -399,6 +399,19 @@ jobs:
           mv server.tmp server.json
           jq '{name, version, packages: [.packages[] | {identifier, version}]}' server.json
 
+      - name: Wait for the version to appear on npm
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          for i in $(seq 1 30); do
+            if curl -fsS "https://registry.npmjs.org/@kaminari-ad%2Fmcp/$PKG_VERSION" >/dev/null; then
+              echo "npm serves $PKG_VERSION"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "ERROR: @kaminari-ad/mcp@$PKG_VERSION not visible on npm after 5 minutes"
+          exit 1
+
       - name: Install mcp-publisher
         run: |
           curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" \
