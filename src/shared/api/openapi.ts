@@ -1130,6 +1130,33 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/custom-rules/test-batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run Rule Test Batch
+     * @description Test up to 20 unsaved rules against up to 50 stored scans in one call.
+     *
+     *     The reply always arrives within the request deadline. A cell the
+     *     deadline cut off carries ``error_code=deadline_exceeded``; send just
+     *     those again. A bad rule rejects the request with 422. A missing scan
+     *     or a failed evaluation is reported on its cell; the rest of the matrix
+     *     still returns. One batch per organization runs at a time: a second
+     *     one gets 429 ``checking.rule_test_batch_in_progress``.
+     */
+    post: operations["run_rule_test_batch_api_v1_custom_rules_test_batch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/policy-sets": {
     parameters: {
       query?: never;
@@ -4126,6 +4153,108 @@ export interface components {
       is_system: boolean;
       /** Permissions */
       permissions: string[];
+    };
+    /**
+     * RuleTestBatchCell
+     * @description One rule applied to one scan.
+     *
+     *     ``index`` is the rule's position in the request ``rules`` array.
+     *     ``rule_id`` echoes the optional client id. When the pair could not be
+     *     evaluated, ``error`` says why in words and ``error_code`` in a stable
+     *     value: ``timed_out``, ``deadline_exceeded``, ``failed``,
+     *     ``invalid_rule``, ``llm_failed``, ``content_prohibited`` or
+     *     ``scan_not_found``. Other cells of the batch still return.
+     *     ``deadline_exceeded`` means the batch ran out of time before this
+     *     cell; sending it again in a smaller batch may succeed.
+     */
+    RuleTestBatchCell: {
+      /** Index */
+      index: number;
+      /** Rule Id */
+      rule_id?: string | null;
+      /**
+       * Scan Id
+       * Format: uuid
+       */
+      scan_id: string;
+      /** Matched */
+      matched: boolean;
+      /** Tags */
+      tags: components["schemas"]["RuleTestTagResult"][];
+      /** Elapsed Ms */
+      elapsed_ms: number;
+      /** Error */
+      error?: string | null;
+      /** Error Code */
+      error_code?: string | null;
+    };
+    /**
+     * RuleTestBatchRequest
+     * @description Body for POST /api/v1/custom-rules/test-batch.
+     *
+     *     Up to 20 rules against up to 50 stored scans. A request over either
+     *     cap, or with any invalid rule, is rejected before a scan is loaded.
+     */
+    RuleTestBatchRequest: {
+      /** Rules */
+      rules: components["schemas"]["RuleTestBatchRule"][];
+      /** Scan Ids */
+      scan_ids: string[];
+    };
+    /**
+     * RuleTestBatchResponse
+     * @description Response from POST /api/v1/custom-rules/test-batch.
+     */
+    RuleTestBatchResponse: {
+      /** Results */
+      results: components["schemas"]["RuleTestBatchCell"][];
+      summary: components["schemas"]["RuleTestBatchSummary"];
+    };
+    /**
+     * RuleTestBatchRule
+     * @description One rule to evaluate. ``id`` is echoed back; it is not looked up.
+     *
+     *     ``name`` is the label the LLM prompt quotes, the same field the
+     *     single test sends as ``body.name``. The default matches that test,
+     *     so an omitted name does not change the prompt.
+     */
+    RuleTestBatchRule: {
+      /** Id */
+      id?: string | null;
+      /** Rule Type */
+      rule_type: string;
+      /** Config */
+      config: {
+        [key: string]: unknown;
+      };
+      /**
+       * Target
+       * @default page
+       */
+      target: string;
+      /**
+       * Name
+       * @default Test Rule
+       */
+      name: string;
+    };
+    /**
+     * RuleTestBatchSummary
+     * @description Counts over the flat cell list.
+     *
+     *     ``matched`` counts cells that matched and have no ``error``.
+     *     ``failed`` counts cells whose ``error`` is set; ``deadline_exceeded``
+     *     is the part of them the batch deadline cut off.
+     */
+    RuleTestBatchSummary: {
+      /** Total */
+      total: number;
+      /** Matched */
+      matched: number;
+      /** Failed */
+      failed: number;
+      /** Deadline Exceeded */
+      deadline_exceeded: number;
     };
     /**
      * RuleTestRequest
@@ -7431,6 +7560,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RuleTestResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  run_rule_test_batch_api_v1_custom_rules_test_batch_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RuleTestBatchRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuleTestBatchResponse"];
         };
       };
       /** @description Validation Error */

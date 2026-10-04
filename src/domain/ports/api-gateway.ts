@@ -615,6 +615,10 @@ export type RuleTestResponse = Pick<S["RuleTestResponse"], "matched" | "elapsed_
   readonly tags: readonly Readonly<{ tag_slug: string; detail?: string | null }>[];
 };
 
+export type RuleTestBatchRequest = S["RuleTestBatchRequest"];
+
+export type RuleTestBatchResponse = S["RuleTestBatchResponse"];
+
 /**
  * API source has `tag_slug` and `target` as required strings (with
  * defaults "" and "page"). Agent ergonomics — surface them as optional.
@@ -1458,6 +1462,9 @@ export interface ApiGateway {
   ): Promise<Result<CustomRuleResponse, ApiError>>;
   deleteCustomRule(id: string): Promise<Result<null, ApiError>>;
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
+  testCustomRulesBatch(
+    body: RuleTestBatchRequest
+  ): Promise<Result<RuleTestBatchResponse, ApiError>>;
 
   // Policy sets
   listPolicySets(

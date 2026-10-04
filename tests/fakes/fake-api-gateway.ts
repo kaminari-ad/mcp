@@ -76,6 +76,8 @@ import type {
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
+  RuleTestBatchRequest,
+  RuleTestBatchResponse,
   RuleTestRequest,
   RuleTestResponse,
   RunResponse,
@@ -222,6 +224,7 @@ type Call =
     }
   | { readonly method: "deleteCustomRule"; readonly id: string }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
+  | { readonly method: "testCustomRulesBatch"; readonly body: RuleTestBatchRequest }
   | { readonly method: "listPolicySets"; readonly filters: ListPolicySetsFilters }
   | { readonly method: "getPolicySet"; readonly id: string }
   | { readonly method: "createPolicySet"; readonly body: CreatePolicySetRequest }
@@ -385,6 +388,7 @@ export interface FakeApiGatewayState {
     updateCustomRule?: Result<CustomRuleResponse, ApiError>;
     deleteCustomRule?: Result<null, ApiError>;
     testCustomRule?: Result<RuleTestResponse, ApiError>;
+    testCustomRulesBatch?: Result<RuleTestBatchResponse, ApiError>;
     listPolicySets?: Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>;
     getPolicySet?: Result<PolicySetResponse, ApiError>;
     createPolicySet?: Result<PolicySetResponse, ApiError>;
@@ -1238,6 +1242,17 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       return (
         state.responses.testCustomRule ??
         ok<RuleTestResponse, ApiError>({ matched: false, elapsed_ms: 1, tags: [] })
+      );
+    },
+    async testCustomRulesBatch(body) {
+      push({ method: "testCustomRulesBatch", body });
+      await Promise.resolve();
+      return (
+        state.responses.testCustomRulesBatch ??
+        ok<RuleTestBatchResponse, ApiError>({
+          results: [],
+          summary: { total: 0, matched: 0, failed: 0, deadline_exceeded: 0 },
+        })
       );
     },
 

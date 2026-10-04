@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Requires the API-side batch rule test deploy. Until it lands, the tool
+> gets 404 from `POST /api/v1/custom-rules/test-batch`. Do not tag this
+> release ahead of the API.
+
+### Added
+
+- **`test_custom_rules_batch`.** Preview up to 20 unsaved rule definitions
+  against up to 50 stored scans in one call, instead of chaining
+  `test_custom_rule`. The reply is one cell per rule and scan plus counts.
+  A cell that could not run carries `error` and `error_code` without
+  failing the rest. `deadline_exceeded` means the call ran out of time
+  before that cell, and the agent re-sends just those cells. A
+  rate-limited error means the organization already has a batch running.
+  Request and response schemas are regenerated from the API, so the scan
+  cap comes from the API's own `maxItems`.
+
 ## [0.24.2] - 2026-10-03
 
 ### Added
