@@ -34,6 +34,7 @@ import {
   parsePolicyEntry,
   parseRole,
   parseRuleTest,
+  parseRuleTestBatch,
   parseScanTag,
   parseUsage,
   parseUsageSummary,
@@ -236,6 +237,42 @@ describe("parseRuleTest", () => {
   it("Ok with empty tags array", () => {
     const r = parseRuleTest({ matched: false, elapsed_ms: 5, tags: [] });
     expect(r._unsafeUnwrap().tags).toEqual([]);
+  });
+});
+
+describe("parseRuleTestBatch", () => {
+  it("Ok valid matrix", () => {
+    const r = parseRuleTestBatch({
+      results: [
+        {
+          index: 0,
+          rule_id: UUID_A,
+          scan_id: UUID_B,
+          matched: true,
+          tags: [{ tag_slug: "casino_kw", detail: "match" }],
+          elapsed_ms: 4,
+          error: null,
+          error_code: null,
+        },
+        {
+          index: 0,
+          rule_id: UUID_A,
+          scan_id: UUID_A,
+          matched: false,
+          tags: [],
+          elapsed_ms: 0,
+          error: "The batch ran out of time before this rule finished.",
+          error_code: "deadline_exceeded",
+        },
+      ],
+      summary: { total: 2, matched: 1, failed: 1, deadline_exceeded: 1 },
+    });
+    expect(r._unsafeUnwrap().results[0]?.matched).toBe(true);
+    expect(r._unsafeUnwrap().results[1]?.error_code).toBe("deadline_exceeded");
+    expect(r._unsafeUnwrap().summary.deadline_exceeded).toBe(1);
+  });
+  it("rejects a missing summary", () => {
+    expect(parseRuleTestBatch({ results: [] }).isErr()).toBe(true);
   });
 });
 

@@ -65,6 +65,7 @@ import { deleteCustomRuleTool } from "./tools/custom-rules/delete-custom-rule.to
 import { getCustomRuleTool } from "./tools/custom-rules/get-custom-rule.tool.js";
 import { listCustomRulesTool } from "./tools/custom-rules/list-custom-rules.tool.js";
 import { testCustomRuleTool } from "./tools/custom-rules/test-custom-rule.tool.js";
+import { testCustomRulesBatchTool } from "./tools/custom-rules/test-custom-rules-batch.tool.js";
 import { updateCustomRuleTool } from "./tools/custom-rules/update-custom-rule.tool.js";
 import { createCustomTaxonomyTool } from "./tools/custom-taxonomies/create-custom-taxonomy.tool.js";
 import { deleteCustomTaxonomyTool } from "./tools/custom-taxonomies/delete-custom-taxonomy.tool.js";
@@ -199,6 +200,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(updateCustomRuleTool);
   register(deleteCustomRuleTool);
   register(testCustomRuleTool);
+  register(testCustomRulesBatchTool);
   // custom taxonomies (per-org classification trees)
   register(listCustomTaxonomiesTool);
   register(getCustomTaxonomyTool);

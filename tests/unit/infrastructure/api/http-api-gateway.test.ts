@@ -1083,6 +1083,14 @@ describe("HttpApiGateway", () => {
       a.get(ORIGIN)
         .intercept({ path: "/api/v1/custom-rules/test", method: "POST" })
         .reply(200, { matched: true, elapsed_ms: 1, tags: [] });
+      a.get(ORIGIN)
+        .intercept({ path: "/api/v1/custom-rules/test-batch", method: "POST" })
+        .reply(200, {
+          results: [
+            { index: 0, scan_id: AID, matched: true, tags: [], elapsed_ms: 1, error: null },
+          ],
+          summary: { total: 1, matched: 1, failed: 0, deadline_exceeded: 0 },
+        });
       // ── policy sets ────────────────────────────────────────
       a.get(ORIGIN)
         .intercept({ path: `/api/v1/policy-sets/${PID}`, method: "PUT" })
@@ -1380,6 +1388,21 @@ describe("HttpApiGateway", () => {
       expect(
         (
           await gw.testCustomRule({ rule_type: "regex", config: {}, target: "page", scan_id: AID })
+        ).isOk()
+      ).toBe(true);
+      expect(
+        (
+          await gw.testCustomRulesBatch({
+            rules: [
+              {
+                rule_type: "stopword_content",
+                config: { contains: ["x"] },
+                target: "page",
+                name: "Test Rule",
+              },
+            ],
+            scan_ids: [AID],
+          })
         ).isOk()
       ).toBe(true);
       expect(

@@ -784,6 +784,47 @@ const RuleTestResponse = z
     llm_response_url: z.string().optional().default(""),
   })
   .passthrough();
+const RuleTestBatchRule = z
+  .object({
+    id: z.union([z.string(), z.null()]).optional(),
+    rule_type: z.string(),
+    config: z.object({}).partial().passthrough(),
+    target: z.string().optional().default("page"),
+    name: z.string().optional().default("Test Rule"),
+  })
+  .passthrough();
+const RuleTestBatchRequest = z
+  .object({
+    rules: z.array(RuleTestBatchRule).min(1).max(20),
+    scan_ids: z.array(z.string().uuid()).min(1).max(50),
+  })
+  .passthrough();
+const RuleTestBatchCell = z
+  .object({
+    index: z.number().int(),
+    rule_id: z.union([z.string(), z.null()]).optional(),
+    scan_id: z.string().uuid(),
+    matched: z.boolean(),
+    tags: z.array(RuleTestTagResult),
+    elapsed_ms: z.number().int(),
+    error: z.union([z.string(), z.null()]).optional(),
+    error_code: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const RuleTestBatchSummary = z
+  .object({
+    total: z.number().int(),
+    matched: z.number().int(),
+    failed: z.number().int(),
+    deadline_exceeded: z.number().int(),
+  })
+  .passthrough();
+const RuleTestBatchResponse = z
+  .object({
+    results: z.array(RuleTestBatchCell),
+    summary: RuleTestBatchSummary,
+  })
+  .passthrough();
 const IabV3PolicyCategoryRequest = z
   .object({
     tier1: z.string().min(1).max(200),
@@ -1417,6 +1458,11 @@ export const schemas = {
   RuleTestRequest,
   RuleTestTagResult,
   RuleTestResponse,
+  RuleTestBatchRule,
+  RuleTestBatchRequest,
+  RuleTestBatchCell,
+  RuleTestBatchSummary,
+  RuleTestBatchResponse,
   IabV3PolicyCategoryRequest,
   AiCategoryRequest,
   CustomTaxonomyRefRequest,

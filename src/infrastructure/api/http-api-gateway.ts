@@ -100,6 +100,8 @@ import type {
   RecheckRequest,
   RecheckResponse,
   RoleResponse,
+  RuleTestBatchRequest,
+  RuleTestBatchResponse,
   RuleTestRequest,
   RuleTestResponse,
   RunResponse,
@@ -174,6 +176,7 @@ import {
   parsePageOf,
   parseRole,
   parseRuleTest,
+  parseRuleTestBatch,
   parseScanTag,
   parseUsage,
   parseUsageSummary,
@@ -1004,6 +1007,11 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
     async testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>> {
       return call("POST", "/api/v1/custom-rules/test", { body }, parseRuleTest);
+    },
+    async testCustomRulesBatch(
+      body: RuleTestBatchRequest
+    ): Promise<Result<RuleTestBatchResponse, ApiError>> {
+      return call("POST", "/api/v1/custom-rules/test-batch", { body }, parseRuleTestBatch);
     },
 
     // ── Policy sets ───────────────────────────────────────────────

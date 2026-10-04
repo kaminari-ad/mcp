@@ -46,6 +46,7 @@ import type {
   OrgResponse,
   PolicyEntryResponse,
   RoleResponse,
+  RuleTestBatchResponse,
   RuleTestResponse,
   ScanTagResponse,
   UsagePeriodSummaryResponse,
@@ -194,6 +195,12 @@ const RuleTestSchema = schemas.RuleTestResponse.pick({
 
 export const parseRuleTest = (raw: unknown): Result<RuleTestResponse, ApiError> =>
   parseWithSchema(RuleTestSchema, raw, "rule-test");
+
+export const parseRuleTestBatch = (raw: unknown): Result<RuleTestBatchResponse, ApiError> =>
+  parseWithSchema(schemas.RuleTestBatchResponse.strip(), raw, "rule-test-batch") as Result<
+    RuleTestBatchResponse,
+    ApiError
+  >;
 
 const AlertStatsSchema = schemas.AlertStatsResponse.pick({
   open: true,
