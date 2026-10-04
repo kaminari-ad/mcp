@@ -11,8 +11,8 @@ import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
-import { patternRuleInputError } from "./_pattern-rule-input.js";
-import { patternAwareRuleConfigField } from "./_rule-config-input.js";
+import { PATTERN_RULE_CONFIG_DOC, patternRuleInputError } from "./_pattern-rule-input.js";
+import { COMBO_MATCH_SCOPE_DOC, patternAwareRuleConfigField } from "./_rule-config-input.js";
 
 const TestCustomRulesBatchInputShape = {
   rules: z
@@ -32,7 +32,10 @@ const TestCustomRulesBatchInputShape = {
             "Rule engine type. Same set as `test_custom_rule`: `stopword_content`, `stopword_url`, `regexp_content`, `regexp_url`, `regexp_request_url`, `regexp_request_body`, `blacklist_domain`, `combo`, `llm`."
           ),
         config: patternAwareRuleConfigField.describe(
-          "Rule-type-specific config. Same shape as `test_custom_rule`'s `config`."
+          "Rule-type-specific config. Same shape as `test_custom_rule`'s `config`. " +
+            PATTERN_RULE_CONFIG_DOC +
+            " " +
+            COMBO_MATCH_SCOPE_DOC
         ),
         target: z
           .string()
@@ -47,7 +50,7 @@ const TestCustomRulesBatchInputShape = {
           .max(200)
           .default("Test Rule")
           .describe(
-            "Label the LLM prompt quotes as [USER RULE: \"<name>\"]. Same field as the single test. Defaults to 'Test Rule', which is what that test sends when name is omitted."
+            "Label the LLM prompt quotes as [USER RULE: \"<name>\"]. Same field as the single test. Defaults to 'Test Rule', which is what that test sends when name is omitted. Capped at 200 like `create_custom_rule`'s name, so a draft that tests well can be saved as is."
           ),
       })
     )
@@ -68,7 +71,7 @@ export const testCustomRulesBatchTool: Tool<
 > = {
   name: "test_custom_rules_batch",
   description:
-    "Preview-test up to 20 rule definitions against up to 50 stored scans in one call, without saving them. Returns one cell per rule and scan plus counts. A cell that could not run has `error` and `error_code` and never fails the rest: `deadline_exceeded` means the call ran out of time before that cell (about 110s per call) — call again with just those rules and scans; others are `timed_out`, `llm_failed`, `content_prohibited`, `scan_not_found`, `invalid_rule`, `failed`. A rate-limited error means this organization already has a batch running; wait for it. Many AI (`llm`) rules over many scans are better split across calls. Historical limits match `test_custom_rule`: `regexp_request_body` only has captured bodies for the last day, and `regexp_request_url` on a stored scan is best-effort.",
+    "Preview-test up to 20 rule definitions against up to 50 stored scans in one call, without saving them. Returns one cell per rule and scan; a cell's `index` is the rule's position in `rules`, so pair it with `scan_id` to identify the cell. A rule definition the API rejects fails the whole call as invalid input before anything runs. Otherwise a cell that could not run has `error` and `error_code` and never fails the rest: `deadline_exceeded` means the call ran out of time before that cell (about 110s per call) — call again with just those rules and scans; others are `timed_out`, `llm_failed`, `content_prohibited`, `scan_not_found`, `invalid_rule`, `failed`. `summary.failed` counts every cell with an error and `summary.deadline_exceeded` is the part of them the deadline cut off. A rate-limited error means this organization already has a batch running; wait for it. Many AI (`llm`) rules over many scans are better split across calls. Historical limits match `test_custom_rule`: `regexp_request_body` only has captured bodies for the last day, and `regexp_request_url` on a stored scan is best-effort.",
   annotations: {
     title: "Test Custom Rules Batch",
     readOnlyHint: true,
