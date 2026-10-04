@@ -42,6 +42,37 @@ describe("testCustomRulesBatchTool", () => {
     expect(tooManyRules.success).toBe(false);
   });
 
+  it("defaults an omitted target to page and rejects a non-UUID id or empty lists", () => {
+    const parsed = testCustomRulesBatchTool.inputSchema.parse({
+      rules: [{ rule_type: "stopword_content", config: { contains: ["x"] } }],
+      scan_ids: [SID],
+    });
+    expect(parsed.rules[0]?.target).toBe("page");
+    for (const bad of [
+      { rules: [{ ...oneRule, id: "rule-1" }], scan_ids: [SID] },
+      { rules: [], scan_ids: [SID] },
+      { rules: [oneRule], scan_ids: [] },
+    ]) {
+      expect(testCustomRulesBatchTool.inputSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+
+  it("passes the API's whole-call rejection of a rule through as invalid input", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.testCustomRulesBatch = err(
+      makeApiError("invalid-input", "rules[0]: unsupported config key", "checking.invalid_config")
+    );
+    const result = await testCustomRulesBatchTool.handler(
+      { rules: [{ ...oneRule, name: "Test Rule" }], scan_ids: [SID] },
+      makeToolContext({ api })
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.kind).toBe("invalid-input");
+      expect(result.error.message).toContain("rules[0]");
+    }
+  });
+
   it("reports a batch already running for the organization as rate-limited", async () => {
     const api = createFakeApiGateway();
     api.state.responses.testCustomRulesBatch = err(

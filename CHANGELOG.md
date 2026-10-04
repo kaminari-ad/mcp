@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-04
+
 > Requires the API-side batch rule test deploy. Until it lands, the tool
 > gets 404 from `POST /api/v1/custom-rules/test-batch`. Do not tag this
 > release ahead of the API.
@@ -20,8 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failing the rest. `deadline_exceeded` means the call ran out of time
   before that cell, and the agent re-sends just those cells. A
   rate-limited error means the organization already has a batch running.
-  Request and response schemas are regenerated from the API, so the scan
-  cap comes from the API's own `maxItems`.
+  Request and response schemas are regenerated from the API. The scan cap
+  comes from the generated schema; the 20-rule cap is restated in the tool
+  because each rule carries its own agent-facing field descriptions.
 
 ## [0.24.2] - 2026-10-03
 

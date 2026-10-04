@@ -4158,11 +4158,11 @@ export interface components {
      * RuleTestBatchCell
      * @description One rule applied to one scan.
      *
-     *     ``index`` is the rule's position in the request ``rules`` array.
-     *     ``rule_id`` echoes the optional client id. When the pair could not be
-     *     evaluated, ``error`` says why in words and ``error_code`` in a stable
-     *     value: ``timed_out``, ``deadline_exceeded``, ``failed``,
-     *     ``invalid_rule``, ``llm_failed``, ``content_prohibited`` or
+     *     ``index`` is the rule's position in the request ``rules`` array, so it
+     *     repeats once per scan. ``rule_id`` echoes the optional client id. When
+     *     the pair could not be evaluated, ``error`` says why in words and
+     *     ``error_code`` in a stable value: ``timed_out``, ``deadline_exceeded``,
+     *     ``failed``, ``invalid_rule``, ``llm_failed``, ``content_prohibited`` or
      *     ``scan_not_found``. Other cells of the batch still return.
      *     ``deadline_exceeded`` means the batch ran out of time before this
      *     cell; sending it again in a smaller batch may succeed.
