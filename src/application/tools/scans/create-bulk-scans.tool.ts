@@ -11,10 +11,17 @@ import { z } from "zod";
 import type { ScanResponse } from "../../../domain/ports/api-gateway.js";
 import { err, ok, type Result } from "../../../shared/result.js";
 import { mapApiError } from "../../services/api-error-mapper.js";
+import { adFormatsField } from "../_shared/ad-formats-field.js";
 import { ignoreFirstNDomainsScanField } from "../_shared/ignore-first-n-domains-field.js";
+import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import {
+  scanAdDiscoveryField,
+  scanCampaignIdField,
+  scanRunIdField,
+} from "./_scan-campaign-input.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
 import { scanReferrerField } from "./_scan-referrer-input.js";
 
@@ -44,7 +51,9 @@ const CreateBulkScansInputShape = {
     .array(z.string().length(2))
     .min(1)
     .max(50)
-    .describe("List of ISO 3166-1 alpha-2 country codes; one scan per country is created."),
+    .describe(
+      "List of ISO 3166-1 alpha-2 country codes, any case; one scan per country is created."
+    ),
   emulator_id: z
     .string()
     .min(1)
@@ -55,6 +64,11 @@ const CreateBulkScansInputShape = {
     .record(z.string())
     .optional()
     .describe("Arbitrary metadata copied onto every created scan."),
+  campaign_id: scanCampaignIdField,
+  run_id: scanRunIdField,
+  ad_discovery: scanAdDiscoveryField,
+  max_discovered_ads: maxDiscoveredAdsField,
+  ad_formats: adFormatsField,
   ...repeatRetryFields,
 } as const;
 type CreateBulkScansInputShape = typeof CreateBulkScansInputShape;
@@ -67,7 +81,7 @@ export interface CreateBulkScansOutput {
 export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScansOutput> = {
   name: "create_bulk_scans",
   description:
-    "Queue one new scan per country in a single call (e.g. test the same URL, ad-tag, or VAST video tag from US + DE + JP). COSTS N CREDITS where N = number of countries times `repeat_count`. Returns one entry per country; each entry's `repeat_scan_ids` lists that country's extra repeats.",
+    "Queue one new scan per country in a single call (e.g. test the same URL, ad-tag, or VAST video tag from US + DE + JP). Every other field applies to each country, `campaign_id` included. COSTS N CREDITS where N = number of countries times `repeat_count`. Returns one entry per country; each entry's `repeat_scan_ids` lists that country's extra repeats.",
   annotations: {
     title: "Create Bulk Scans",
     readOnlyHint: false,
@@ -89,6 +103,13 @@ export const createBulkScansTool: Tool<CreateBulkScansInputShape, CreateBulkScan
         : {}),
       ...(input.proxy !== undefined ? { proxy: input.proxy } : {}),
       ...(input.labels !== undefined ? { labels: input.labels } : {}),
+      ...(input.campaign_id !== undefined ? { campaign_id: input.campaign_id } : {}),
+      ...(input.run_id !== undefined ? { run_id: input.run_id } : {}),
+      ...(input.ad_discovery !== undefined ? { ad_discovery: input.ad_discovery } : {}),
+      ...(input.max_discovered_ads !== undefined
+        ? { max_discovered_ads: input.max_discovered_ads }
+        : {}),
+      ...(input.ad_formats !== undefined ? { ad_formats: input.ad_formats } : {}),
       ...pickRepeatRetryBody(input),
     };
     const result = await ctx.api.createBulkScans(body);

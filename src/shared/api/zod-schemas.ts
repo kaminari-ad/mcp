@@ -162,7 +162,6 @@ const CreateScanRequest = z
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
     ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
-    country_code: z.string().min(2).max(2),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
     labels: z.record(z.string()).optional(),
@@ -174,6 +173,7 @@ const CreateScanRequest = z
     repeat_count: z.number().int().gte(1).optional().default(1),
     repeat_mode: RepeatModeType.optional(),
     retry_max_attempts: z.number().int().gte(0).optional().default(0),
+    country_code: z.string().min(2).max(2),
   })
   .passthrough();
 const ScanStatus = z.enum([
@@ -389,13 +389,18 @@ const BulkScanRequest = z
     vast_tag: z.union([z.string(), z.null()]).optional(),
     referrer: z.union([z.string(), z.null()]).optional(),
     ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
-    country_codes: z.array(z.string()).min(1),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
     labels: z.record(z.string()).optional(),
+    campaign_id: z.union([z.string(), z.null()]).optional(),
+    run_id: z.union([z.string(), z.null()]).optional(),
+    ad_discovery: z.boolean().optional().default(false),
+    max_discovered_ads: z.union([z.number(), z.null()]).optional(),
+    ad_formats: z.union([z.array(AdKind), z.null()]).optional(),
     repeat_count: z.number().int().gte(1).optional().default(1),
     repeat_mode: RepeatModeType.optional(),
     retry_max_attempts: z.number().int().gte(0).optional().default(0),
+    country_codes: z.array(z.string().min(2).max(2)).min(1),
   })
   .passthrough();
 const RecheckRequest = z

@@ -2340,7 +2340,7 @@ export interface components {
     };
     /**
      * BulkScanRequest
-     * @description Request body to create scans for a URL, ad tag, or VAST tag across countries.
+     * @description Request body to create one scan (or repeat group) per country.
      */
     BulkScanRequest: {
       /** Url */
@@ -2366,8 +2366,6 @@ export interface components {
        * @default 0
        */
       ignore_first_n_domains: number;
-      /** Country Codes */
-      country_codes: string[];
       /** Emulator Id */
       emulator_id: string;
       proxy?: components["schemas"]["ProxyTargetRequest"];
@@ -2376,17 +2374,50 @@ export interface components {
         [key: string]: string;
       };
       /**
+       * Campaign Id
+       * @description Campaign to attribute the scan to. Alerts are raised only for scans that carry a campaign whose policy set has rules.
+       */
+      campaign_id?: string | null;
+      /** Run Id */
+      run_id?: string | null;
+      /**
+       * Ad Discovery
+       * @description Publisher ad discovery: detect ad blocks on the page and spawn one child scan per detected ad. Only valid with url (not ad_tag/vast_tag).
+       * @default false
+       */
+      ad_discovery: boolean;
+      /**
+       * Max Discovered Ads
+       * @description How many ad blocks to look for on the publisher page before stopping. Each detected ad becomes its own scan with its own report, and is billed as a separate check. Only valid together with ad_discovery. Omit to use the platform default. Maximum 25.
+       */
+      max_discovered_ads?: number | null;
+      /**
+       * Ad Formats
+       * @description Which ad formats the discovery run captures: banner, video and/or pop (pop covers both pop-unders and tab-unders), each at most once. A format left out is neither captured nor billed — e.g. ['pop'] checks the page's pops without screenshotting or clicking its banners; a tab-under the page forces on its own is still reported as a pop. Only valid together with ad_discovery. Omit to capture every format.
+       */
+      ad_formats?: components["schemas"]["AdKind"][] | null;
+      /**
        * Repeat Count
+       * @description How many times to scan this combination. Each repeat is a full scan with its own report and its own billing.
        * @default 1
        */
       repeat_count: number;
-      /** @default isolated */
+      /**
+       * @description isolated: every repeat gets a fresh browser and a new IP. shared: all repeats run in one browser behind one IP, carrying cookies and localStorage over. Not available with ad_discovery.
+       * @default isolated
+       */
       repeat_mode: components["schemas"]["RepeatModeType"];
       /**
        * Retry Max Attempts
+       * @description Extra crawl attempts after a technical failure (dead proxy, timeout, browser crash). The same scan is reused, so a retry is never billed twice.
        * @default 0
        */
       retry_max_attempts: number;
+      /**
+       * Country Codes
+       * @description ISO 3166-1 alpha-2 country codes, case-insensitive; stored uppercase.
+       */
+      country_codes: string[];
     };
     /**
      * BulkUpdateAlertStatusRequest
@@ -2894,8 +2925,6 @@ export interface components {
        * @default 0
        */
       ignore_first_n_domains: number;
-      /** Country Code */
-      country_code: string;
       /** Emulator Id */
       emulator_id: string;
       proxy?: components["schemas"]["ProxyTargetRequest"];
@@ -2903,7 +2932,10 @@ export interface components {
       labels?: {
         [key: string]: string;
       };
-      /** Campaign Id */
+      /**
+       * Campaign Id
+       * @description Campaign to attribute the scan to. Alerts are raised only for scans that carry a campaign whose policy set has rules.
+       */
       campaign_id?: string | null;
       /** Run Id */
       run_id?: string | null;
@@ -2940,6 +2972,11 @@ export interface components {
        * @default 0
        */
       retry_max_attempts: number;
+      /**
+       * Country Code
+       * @description ISO 3166-1 alpha-2 country code, case-insensitive; stored uppercase.
+       */
+      country_code: string;
     };
     /**
      * CreateWebhookRequest

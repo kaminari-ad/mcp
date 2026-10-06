@@ -348,9 +348,24 @@ export type CreateScanRequest = Pick<
 
 export type BulkScanRequest = Pick<
   S["BulkScanRequest"],
-  "url" | "ad_tag" | "vast_tag" | "referrer" | "country_codes" | "emulator_id" | "labels"
-> & { readonly proxy?: ScanProxyTarget } & IgnoreFirstNDomains &
-  Partial<Pick<S["BulkScanRequest"], "repeat_count" | "repeat_mode" | "retry_max_attempts">>;
+  | "url"
+  | "ad_tag"
+  | "vast_tag"
+  | "referrer"
+  | "country_codes"
+  | "emulator_id"
+  | "labels"
+  | "campaign_id"
+  | "run_id"
+> & { readonly proxy?: ScanProxyTarget } & MaxDiscoveredAdsRequest &
+  AdFormatsRequest &
+  IgnoreFirstNDomains &
+  Partial<
+    Pick<
+      S["BulkScanRequest"],
+      "ad_discovery" | "repeat_count" | "repeat_mode" | "retry_max_attempts"
+    >
+  >;
 
 export type RecheckRequest = Pick<S["RecheckRequest"], "scope_type" | "scope_value">;
 
