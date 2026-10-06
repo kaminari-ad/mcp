@@ -289,6 +289,58 @@ describe("createBulkScansTool", () => {
     }
   });
 
+  it("forwards campaign attribution and ad discovery to every scan in the batch", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      {
+        url: "https://publisher.example/article",
+        country_codes: ["US", "DE"],
+        emulator_id: "default",
+        campaign_id: "00000000-0000-0000-0000-000000000ccc",
+        run_id: "00000000-0000-0000-0000-000000000ddd",
+        ad_discovery: true,
+        max_discovered_ads: 5,
+        ad_formats: ["pop"],
+      },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    expect(call.body.campaign_id).toBe("00000000-0000-0000-0000-000000000ccc");
+    expect(call.body.run_id).toBe("00000000-0000-0000-0000-000000000ddd");
+    expect(call.body.ad_discovery).toBe(true);
+    expect(call.body.max_discovered_ads).toBe(5);
+    expect(call.body.ad_formats).toEqual(["pop"]);
+  });
+
+  it("omits campaign attribution and ad discovery keys when the input leaves them unset", async () => {
+    const api = createFakeApiGateway();
+    const ctx = makeToolContext({ api });
+    await createBulkScansTool.handler(
+      { url: "https://x.com", country_codes: ["US"], emulator_id: "default" },
+      ctx
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createBulkScans") throw new Error("wrong method");
+    for (const key of [
+      "campaign_id",
+      "run_id",
+      "ad_discovery",
+      "max_discovered_ads",
+      "ad_formats",
+    ]) {
+      expect(key in call.body).toBe(false);
+    }
+  });
+
+  it("tells the agent that alerts need a campaign_id", () => {
+    const described = (
+      createBulkScansTool.inputSchema.shape.campaign_id as { description?: string }
+    ).description;
+    expect(described).toContain("Required for alerts");
+  });
+
   it("maps ApiError to ToolError", async () => {
     const api = createFakeApiGateway();
     api.state.responses.createBulkScans = err(makeApiError("forbidden", "billing suspended"));

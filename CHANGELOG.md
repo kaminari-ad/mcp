@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-06
+
+> Requires the API-side bulk parity deploy. Until it lands, the API
+> silently ignores the new `create_bulk_scans` fields. Do not tag this
+> release ahead of the API.
+
+### Added
+
+- **`create_bulk_scans` takes the same optional fields as `create_scan`.**
+  `campaign_id`, `run_id`, `ad_discovery`, `max_discovered_ads` and
+  `ad_formats` apply to every country in the batch. With a `campaign_id`,
+  bulk scans can raise alerts.
+
+### Changed
+
+- **`campaign_id` explains that alerts depend on it**, on both scan tools.
+  The three shared fields now live in one module, so the two tools'
+  descriptions cannot drift. Request schemas are regenerated from the API,
+  and country codes are documented as case-insensitive.
+
 ## [0.25.0] - 2026-10-04
 
 > Requires the API-side batch rule test deploy. Until it lands, the tool

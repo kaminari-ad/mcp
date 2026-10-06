@@ -16,6 +16,11 @@ import { maxDiscoveredAdsField } from "../_shared/max-discovered-ads-field.js";
 import { pickRepeatRetryBody, repeatRetryFields } from "../_shared/repeat-retry-fields.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
+import {
+  scanAdDiscoveryField,
+  scanCampaignIdField,
+  scanRunIdField,
+} from "./_scan-campaign-input.js";
 import { scanProxyField } from "./_scan-proxy-input.js";
 import { scanReferrerField } from "./_scan-referrer-input.js";
 
@@ -58,20 +63,9 @@ const CreateScanInputShape = {
     .record(z.string())
     .optional()
     .describe("Arbitrary string -> string metadata attached to the scan."),
-  campaign_id: z
-    .string()
-    .uuid()
-    .optional()
-    .describe("Optional campaign UUID to attribute the scan to."),
-  run_id: z.string().uuid().optional().describe("Optional run UUID inside the campaign."),
-  ad_discovery: z
-    .boolean()
-    .optional()
-    .describe(
-      "Publisher ad discovery: detect ad blocks on the page and spawn one child " +
-        "scan per detected ad (banner/video/pop). Only valid with `url`. Each child is a " +
-        "separate billed scan; list them with `list_scan_children`."
-    ),
+  campaign_id: scanCampaignIdField,
+  run_id: scanRunIdField,
+  ad_discovery: scanAdDiscoveryField,
   max_discovered_ads: maxDiscoveredAdsField,
   ad_formats: adFormatsField,
   ...repeatRetryFields,
