@@ -1474,6 +1474,7 @@ describe("HttpApiGateway", () => {
         slug: "brand-safety",
         description: "",
         is_active: true,
+        show_in_public_report: false,
         version: 1,
         nodes: [
           {
@@ -1499,6 +1500,7 @@ describe("HttpApiGateway", () => {
             slug: "brand-safety",
             description: "",
             is_active: true,
+            show_in_public_report: false,
             version: 1,
             node_count: 1,
             created_at: "2026-05-20T00:00:00Z",
@@ -1537,6 +1539,7 @@ describe("HttpApiGateway", () => {
           await gw.createCustomTaxonomy({
             name: "Brand-safety",
             description: "",
+            show_in_public_report: false,
             nodes: [],
           })
         ).isOk()
@@ -1547,6 +1550,7 @@ describe("HttpApiGateway", () => {
           await gw.updateCustomTaxonomy(TID, {
             name: "Brand-safety",
             description: "",
+            show_in_public_report: false,
             nodes: [],
           })
         ).isOk()

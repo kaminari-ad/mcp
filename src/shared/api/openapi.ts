@@ -2875,6 +2875,12 @@ export interface components {
        */
       description: string;
       /**
+       * Show In Public Report
+       * @description Show this taxonomy's tiers on the unauthenticated shared scan report.
+       * @default false
+       */
+      show_in_public_report: boolean;
+      /**
        * Nodes
        * @default []
        */
@@ -3054,6 +3060,8 @@ export interface components {
       description: string;
       /** Is Active */
       is_active: boolean;
+      /** Show In Public Report */
+      show_in_public_report: boolean;
       /** Version */
       version: number;
       /** Node Count */
@@ -3117,6 +3125,8 @@ export interface components {
       description: string;
       /** Is Active */
       is_active: boolean;
+      /** Show In Public Report */
+      show_in_public_report: boolean;
       /** Version */
       version: number;
       /** Nodes */
@@ -5285,6 +5295,12 @@ export interface components {
        * @default
        */
       description: string;
+      /**
+       * Show In Public Report
+       * @description Show this taxonomy's tiers on the unauthenticated shared scan report. Full-replace like every other field: omitting it hides the taxonomy.
+       * @default false
+       */
+      show_in_public_report: boolean;
       /**
        * Nodes
        * @default []

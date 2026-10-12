@@ -18,7 +18,19 @@ describe("createCustomTaxonomyTool", () => {
     if (call?.method !== "createCustomTaxonomy") throw new Error("wrong");
     expect(call.body.name).toBe("Risk");
     expect(call.body.description).toBe("");
+    expect(call.body.show_in_public_report).toBe(false);
     expect(call.body.nodes).toEqual([]);
+  });
+
+  it("forwards an explicit show_in_public_report", async () => {
+    const api = createFakeApiGateway();
+    await createCustomTaxonomyTool.handler(
+      { name: "Risk", show_in_public_report: true },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "createCustomTaxonomy") throw new Error("wrong");
+    expect(call.body.show_in_public_report).toBe(true);
   });
 
   it("normalises optional node fields (parent_client_id, description, is_default)", async () => {

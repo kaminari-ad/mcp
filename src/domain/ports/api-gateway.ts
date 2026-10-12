@@ -756,6 +756,7 @@ export type CustomTaxonomyListItem = Pick<
   | "slug"
   | "description"
   | "is_active"
+  | "show_in_public_report"
   | "version"
   | "node_count"
   | "created_at"
@@ -794,6 +795,7 @@ export type CustomTaxonomyResponse = Pick<
   | "slug"
   | "description"
   | "is_active"
+  | "show_in_public_report"
   | "version"
   | "created_at"
   | "updated_at"
@@ -816,12 +818,12 @@ export type TaxonomyNodeRequest = Pick<
 
 export type CreateCustomTaxonomyRequest = Pick<
   S["CreateCustomTaxonomyRequest"],
-  "name" | "description" | "nodes"
+  "name" | "description" | "show_in_public_report" | "nodes"
 >;
 
 export type UpdateCustomTaxonomyRequest = Pick<
   S["UpdateCustomTaxonomyRequest"],
-  "name" | "description" | "nodes"
+  "name" | "description" | "show_in_public_report" | "nodes"
 >;
 
 export type ParseTaxonomyTextRequest = Pick<S["ParseTaxonomyTextRequest"], "text">;

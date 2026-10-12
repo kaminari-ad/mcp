@@ -23,6 +23,7 @@ const TAXON = {
   slug: "brand-safety",
   description: "",
   is_active: true,
+  show_in_public_report: true,
   version: 2,
   nodes: [NODE],
   created_at: "2026-05-20T00:00:00Z",
@@ -38,6 +39,7 @@ describe("parseCustomTaxonomyList", () => {
         slug: "brand-safety",
         description: "",
         is_active: true,
+        show_in_public_report: false,
         version: 2,
         node_count: 1,
         created_at: "2026-05-20T00:00:00Z",
@@ -46,6 +48,7 @@ describe("parseCustomTaxonomyList", () => {
     ]);
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap()[0]?.slug).toBe("brand-safety");
+    expect(r._unsafeUnwrap()[0]?.show_in_public_report).toBe(false);
   });
   it("rejects envelope shape (api returns bare array)", () => {
     expect(parseCustomTaxonomyList({ items: [] }).isErr()).toBe(true);
@@ -59,6 +62,7 @@ describe("parseCustomTaxonomyList", () => {
           slug: "x",
           description: "",
           is_active: true,
+          show_in_public_report: false,
           version: 1,
           node_count: 0,
           created_at: "2026-05-20T00:00:00Z",
@@ -74,6 +78,7 @@ describe("parseCustomTaxonomy (single)", () => {
     const r = parseCustomTaxonomy(TAXON);
     expect(r.isOk()).toBe(true);
     expect(r._unsafeUnwrap().nodes).toHaveLength(1);
+    expect(r._unsafeUnwrap().show_in_public_report).toBe(true);
   });
   it("Ok with empty nodes", () => {
     expect(parseCustomTaxonomy({ ...TAXON, nodes: [] }).isOk()).toBe(true);

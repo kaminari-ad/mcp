@@ -627,6 +627,7 @@ const DEFAULT_CUSTOM_TAXONOMY: CustomTaxonomyResponse = {
   slug: "default",
   description: "",
   is_active: true,
+  show_in_public_report: false,
   version: 1,
   nodes: [],
   created_at: "2026-05-20T00:00:00Z",
