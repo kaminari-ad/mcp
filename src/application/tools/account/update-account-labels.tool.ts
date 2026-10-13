@@ -55,7 +55,7 @@ export const updateAccountLabelsTool: Tool<
 > = {
   name: "update_account_labels",
   description:
-    "REPLACE the organization's full set of custom label definitions. The API replaces the list (no merge); read the current list with `list_account_labels` first. Returns the persisted list with allocated positions.",
+    "REPLACE the organization's full set of custom label definitions, including each label's auto_extract and public-report visibility. The API replaces the list (no merge); read the current list with `list_account_labels` first. Returns the persisted list with allocated positions.",
   annotations: {
     title: "Update Account Labels",
     readOnlyHint: false,

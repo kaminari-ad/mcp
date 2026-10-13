@@ -10,8 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Requires the API-side public-report deploy first, for both the npm tag
 > and the hosted `mcp.kaminari.ad` deploy. Against an older API the
 > taxonomy create/update calls get 422 (the old request schemas forbid
-> the new field) and every taxonomy and label response fails to parse,
-> because the parsers now require `show_in_public_report`.
+> the new field), `update_account_labels` saves the labels but then
+> reports a parse error, and every other taxonomy and label response
+> fails to parse, because the parsers now require `show_in_public_report`.
+>
+> Once the API ships, 0.26.0 and earlier (including the hosted server
+> until it is redeployed) send no flag on updates, so every taxonomy or
+> label update through them turns public-report visibility off. Deploy
+> the hosted MCP right after the API.
 
 ### Added
 
@@ -24,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts it per label and `list_account_labels` returns it. When on, the
   label's value appears on public scan reports under its display name.
   Omitting it on update turns it off, like `auto_extract`.
+
+### Security
+
+- **`@modelcontextprotocol/sdk` 1.30.0 → 1.32.1** (GHSA-6qxp-vccf-f47h) and
+  **`handlebars` 4.7.9 → 4.7.10** (build-time, via `openapi-zod-client`),
+  clearing `npm audit`.
 
 ## [0.26.0] - 2026-10-06
 

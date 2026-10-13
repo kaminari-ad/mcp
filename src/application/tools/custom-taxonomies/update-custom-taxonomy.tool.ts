@@ -1,6 +1,6 @@
 /**
- * Tool: `update_custom_taxonomy` — replace name / description / tree
- * atomically and bump `version`.
+ * Tool: `update_custom_taxonomy` — replace name / description /
+ * public-report visibility / tree atomically and bump `version`.
  */
 
 import { z } from "zod";
