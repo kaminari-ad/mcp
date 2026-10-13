@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Requires the API-side public-report deploy. The response parsers now
-> require `show_in_public_report`, so do not tag this release ahead of
-> the API.
+> Requires the API-side public-report deploy first, for both the npm tag
+> and the hosted `mcp.kaminari.ad` deploy. Against an older API the
+> taxonomy create/update calls get 422 (the old request schemas forbid
+> the new field) and every taxonomy and label response fails to parse,
+> because the parsers now require `show_in_public_report`.
 
 ### Added
 

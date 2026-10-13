@@ -22,7 +22,7 @@ const CreateCustomTaxonomyInputShape = {
     .boolean()
     .optional()
     .describe(
-      "Show this taxonomy's tiers on unauthenticated public scan reports (anyone with the link). Defaults to false."
+      "Show this taxonomy's tiers on unauthenticated public scan reports. Defaults to false."
     ),
   nodes: z
     .array(TaxonomyNodeShape)
