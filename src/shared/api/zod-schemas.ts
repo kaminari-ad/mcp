@@ -74,6 +74,7 @@ const LabelDefinitionResponse = z
     display_name: z.string(),
     position: z.number().int(),
     auto_extract: z.boolean(),
+    show_in_public_report: z.boolean(),
   })
   .passthrough();
 const LabelDefinitionItem = z
@@ -81,6 +82,7 @@ const LabelDefinitionItem = z
     key: z.string().max(50),
     display_name: z.string().max(100),
     auto_extract: z.boolean().optional().default(false),
+    show_in_public_report: z.boolean().optional().default(false),
   })
   .passthrough();
 const UpdateLabelDefinitionsRequest = z
@@ -1322,6 +1324,7 @@ const CustomTaxonomyListItem = z
     slug: z.string(),
     description: z.string(),
     is_active: z.boolean(),
+    show_in_public_report: z.boolean(),
     version: z.number().int(),
     node_count: z.number().int(),
     created_at: z.string().datetime({ offset: true }),
@@ -1338,6 +1341,7 @@ const TaxonomyNodeRequest = z.object({
 const CreateCustomTaxonomyRequest = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional().default(""),
+  show_in_public_report: z.boolean().optional().default(false),
   nodes: z.array(TaxonomyNodeRequest).optional().default([]),
 });
 const TaxonomyNodeResponse = z
@@ -1359,6 +1363,7 @@ const CustomTaxonomyResponse = z
     slug: z.string(),
     description: z.string(),
     is_active: z.boolean(),
+    show_in_public_report: z.boolean(),
     version: z.number().int(),
     nodes: z.array(TaxonomyNodeResponse),
     created_at: z.string().datetime({ offset: true }),
@@ -1381,6 +1386,7 @@ const ParseTaxonomyTextResponse = z
 const UpdateCustomTaxonomyRequest = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional().default(""),
+  show_in_public_report: z.boolean().optional().default(false),
   nodes: z.array(TaxonomyNodeRequest).optional().default([]),
 });
 const TagMatchMode = z.enum(["any", "all"]);

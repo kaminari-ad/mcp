@@ -27,6 +27,12 @@ const LabelItem = z.object({
     .describe(
       "When true, the LLM auto-populates this label's value during scan classification. Defaults to false."
     ),
+  show_in_public_report: z
+    .boolean()
+    .optional()
+    .describe(
+      "When true, this label's value appears on unauthenticated public scan reports under its display_name. REPLACED like every other field: omitting it sets false, so pass the current value from `list_account_labels` to keep it."
+    ),
 });
 
 const UpdateAccountLabelsInputShape = {
@@ -49,7 +55,7 @@ export const updateAccountLabelsTool: Tool<
 > = {
   name: "update_account_labels",
   description:
-    "REPLACE the organization's full set of custom label definitions. The API replaces the list (no merge); read the current list with `list_account_labels` first. Returns the persisted list with allocated positions.",
+    "REPLACE the organization's full set of custom label definitions, including each label's auto_extract and public-report visibility. The API replaces the list (no merge); read the current list with `list_account_labels` first. Returns the persisted list with allocated positions.",
   annotations: {
     title: "Update Account Labels",
     readOnlyHint: false,
@@ -68,6 +74,7 @@ export const updateAccountLabelsTool: Tool<
         key: l.key,
         display_name: l.display_name,
         auto_extract: l.auto_extract ?? false,
+        show_in_public_report: l.show_in_public_report ?? false,
       })),
     });
     if (result.isErr()) return err(mapApiError(result.error));

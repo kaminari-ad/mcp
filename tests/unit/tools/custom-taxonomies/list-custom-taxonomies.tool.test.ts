@@ -11,6 +11,7 @@ const ITEM: CustomTaxonomyListItem = {
   slug: "brand-safety-risk",
   description: "",
   is_active: true,
+  show_in_public_report: false,
   version: 2,
   node_count: 12,
   created_at: "2026-05-20T00:00:00Z",

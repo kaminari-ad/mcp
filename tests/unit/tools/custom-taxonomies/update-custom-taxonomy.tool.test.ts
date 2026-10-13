@@ -30,6 +30,7 @@ describe("updateCustomTaxonomyTool", () => {
     expect(call.id).toBe(TID);
     expect(call.body.name).toBe("Renamed");
     expect(call.body.description).toBe("");
+    expect(call.body.show_in_public_report).toBe(false);
     expect(call.body.nodes[0]).toEqual({
       client_id: "r",
       parent_client_id: null,
@@ -37,6 +38,17 @@ describe("updateCustomTaxonomyTool", () => {
       description: "",
       is_default: false,
     });
+  });
+
+  it("forwards an explicit show_in_public_report", async () => {
+    const api = createFakeApiGateway();
+    await updateCustomTaxonomyTool.handler(
+      { taxonomy_id: TID, name: "n", show_in_public_report: true },
+      makeToolContext({ api })
+    );
+    const call = api.state.calls[0];
+    if (call?.method !== "updateCustomTaxonomy") throw new Error("wrong");
+    expect(call.body.show_in_public_report).toBe(true);
   });
 
   it("maps api error", async () => {

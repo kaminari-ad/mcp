@@ -36,7 +36,7 @@ export const listCustomTaxonomiesTool: Tool<
 > = {
   name: "list_custom_taxonomies",
   description:
-    "List the calling org's custom classification taxonomies. Returns slim summaries (id, name, slug, version, node_count, is_active). Only active taxonomies are listed unless you pass `include_inactive: true`; soft-deleted ones then appear with `is_active=false`. Fetch the full tree via `get_custom_taxonomy`.",
+    "List the calling org's custom classification taxonomies. Returns slim summaries (id, name, slug, version, node_count, is_active, show_in_public_report). Only active taxonomies are listed unless you pass `include_inactive: true`; soft-deleted ones then appear with `is_active=false`. Fetch the full tree via `get_custom_taxonomy`.",
   annotations: {
     title: "List Custom Taxonomies",
     readOnlyHint: true,

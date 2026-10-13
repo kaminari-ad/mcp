@@ -27,7 +27,7 @@ export interface ListAccountLabelsOutput {
 export const listAccountLabelsTool: Tool<ListAccountLabelsInputShape, ListAccountLabelsOutput> = {
   name: "list_account_labels",
   description:
-    "List the organization's custom label definitions (key, display_name, position, auto_extract). Labels enrich scans and can be used as filters in `list_scans`.",
+    "List the organization's custom label definitions (key, display_name, position, auto_extract, show_in_public_report). Labels enrich scans and can be used as filters in `list_scans`.",
   annotations: {
     title: "List Account Labels",
     readOnlyHint: true,

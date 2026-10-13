@@ -1,6 +1,6 @@
 /**
- * Tool: `update_custom_taxonomy` — replace name / description / tree
- * atomically and bump `version`.
+ * Tool: `update_custom_taxonomy` — replace name / description /
+ * public-report visibility / tree atomically and bump `version`.
  */
 
 import { z } from "zod";
@@ -20,6 +20,12 @@ const UpdateCustomTaxonomyInputShape = {
     .max(500)
     .optional()
     .describe("New description (defaults to empty string)."),
+  show_in_public_report: z
+    .boolean()
+    .optional()
+    .describe(
+      "Show this taxonomy's tiers on unauthenticated public scan reports. REPLACED like every other field: omitting it sets false and hides the taxonomy from public reports, so pass the current value from `get_custom_taxonomy` to keep it."
+    ),
   nodes: z
     .array(TaxonomyNodeShape)
     .max(2000)
@@ -38,7 +44,7 @@ export const updateCustomTaxonomyTool: Tool<
 > = {
   name: "update_custom_taxonomy",
   description:
-    "REPLACE a custom taxonomy's name, description, and full tree atomically. The API bumps `version` on every successful update; ongoing scan classifications continue with the previous tree until they finish, so updates are safe but not retroactive.",
+    "REPLACE a custom taxonomy's name, description, public-report visibility, and full tree atomically. The API bumps `version` on every successful update; ongoing scan classifications continue with the previous tree until they finish, so updates are safe but not retroactive.",
   annotations: {
     title: "Update Custom Taxonomy",
     readOnlyHint: false,
@@ -51,6 +57,7 @@ export const updateCustomTaxonomyTool: Tool<
     const result = await ctx.api.updateCustomTaxonomy(input.taxonomy_id, {
       name: input.name,
       description: input.description ?? "",
+      show_in_public_report: input.show_in_public_report ?? false,
       nodes: (input.nodes ?? []).map((n) => ({
         client_id: n.client_id,
         parent_client_id: n.parent_client_id ?? null,

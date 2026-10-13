@@ -20,7 +20,7 @@ export type GetCustomTaxonomyOutput = CustomTaxonomyResponse;
 export const getCustomTaxonomyTool: Tool<GetCustomTaxonomyInputShape, GetCustomTaxonomyOutput> = {
   name: "get_custom_taxonomy",
   description:
-    "Get one custom taxonomy by UUID with its full node tree (each node has id, parent_id, level, position, name, description, is_default).",
+    "Get one custom taxonomy by UUID with its full node tree (each node has id, parent_id, level, position, name, description, is_default) and its `show_in_public_report` flag.",
   annotations: {
     title: "Get Custom Taxonomy",
     readOnlyHint: true,

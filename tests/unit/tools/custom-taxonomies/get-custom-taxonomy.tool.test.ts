@@ -22,6 +22,7 @@ describe("getCustomTaxonomyTool", () => {
       slug: "brand-safety",
       description: "",
       is_active: true,
+      show_in_public_report: true,
       version: 3,
       nodes: [
         {

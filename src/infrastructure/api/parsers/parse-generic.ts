@@ -155,6 +155,7 @@ const LabelDefinitionSchema = schemas.LabelDefinitionResponse.pick({
   display_name: true,
   position: true,
   auto_extract: true,
+  show_in_public_report: true,
 }).strip();
 
 export const parseLabelDefinition = (raw: unknown): Result<LabelDefinitionResponse, ApiError> =>

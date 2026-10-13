@@ -18,6 +18,12 @@ const CreateCustomTaxonomyInputShape = {
     .max(500)
     .optional()
     .describe("Free-form description (defaults to empty string)."),
+  show_in_public_report: z
+    .boolean()
+    .optional()
+    .describe(
+      "Show this taxonomy's tiers on unauthenticated public scan reports. Defaults to false."
+    ),
   nodes: z
     .array(TaxonomyNodeShape)
     .max(2000)
@@ -49,6 +55,7 @@ export const createCustomTaxonomyTool: Tool<
     const result = await ctx.api.createCustomTaxonomy({
       name: input.name,
       description: input.description ?? "",
+      show_in_public_report: input.show_in_public_report ?? false,
       nodes: (input.nodes ?? []).map(toRequestNode),
     });
     if (result.isErr()) return err(mapApiError(result.error));
