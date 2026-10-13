@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-13
+
 > Requires the API-side public-report deploy first, for both the npm tag
 > and the hosted `mcp.kaminari.ad` deploy. Against an older API the
 > taxonomy create/update calls get 422 (the old request schemas forbid
