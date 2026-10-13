@@ -14,7 +14,13 @@ describe("listAccountLabelsTool", () => {
   it("returns wrapped items array", async () => {
     const api = createFakeApiGateway();
     const labels: readonly LabelDefinitionResponse[] = [
-      { key: "brand_safety", display_name: "Brand Safety", position: 0, auto_extract: true },
+      {
+        key: "brand_safety",
+        display_name: "Brand Safety",
+        position: 0,
+        auto_extract: true,
+        show_in_public_report: true,
+      },
     ];
     api.state.responses.listAccountLabels = ok<readonly LabelDefinitionResponse[]>(labels);
     const r = await listAccountLabelsTool.handler({}, makeToolContext({ api }));

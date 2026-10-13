@@ -3474,6 +3474,12 @@ export interface components {
        * @default false
        */
       auto_extract: boolean;
+      /**
+       * Show In Public Report
+       * @description Show this label's value on the unauthenticated shared scan report. The PUT replaces the whole list, so omitting it hides the label.
+       * @default false
+       */
+      show_in_public_report: boolean;
     };
     /**
      * LabelDefinitionResponse
@@ -3488,6 +3494,8 @@ export interface components {
       position: number;
       /** Auto Extract */
       auto_extract: boolean;
+      /** Show In Public Report */
+      show_in_public_report: boolean;
     };
     /**
      * LandingResponse

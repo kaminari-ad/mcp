@@ -10,12 +10,17 @@ describe("updateAccountLabelsTool", () => {
     expect(updateAccountLabelsTool.annotations.idempotentHint).toBe(true);
   });
 
-  it("forwards labels and defaults auto_extract to false", async () => {
+  it("forwards labels and defaults auto_extract / show_in_public_report to false", async () => {
     const api = createFakeApiGateway();
     await updateAccountLabelsTool.handler(
       {
         labels: [
-          { key: "brand_safety", display_name: "Brand Safety", auto_extract: true },
+          {
+            key: "brand_safety",
+            display_name: "Brand Safety",
+            auto_extract: true,
+            show_in_public_report: true,
+          },
           { key: "vertical", display_name: "Vertical" },
         ],
       },
@@ -24,8 +29,18 @@ describe("updateAccountLabelsTool", () => {
     const call = api.state.calls[0];
     if (call?.method !== "updateAccountLabels") throw new Error("wrong");
     expect(call.body.labels).toEqual([
-      { key: "brand_safety", display_name: "Brand Safety", auto_extract: true },
-      { key: "vertical", display_name: "Vertical", auto_extract: false },
+      {
+        key: "brand_safety",
+        display_name: "Brand Safety",
+        auto_extract: true,
+        show_in_public_report: true,
+      },
+      {
+        key: "vertical",
+        display_name: "Vertical",
+        auto_extract: false,
+        show_in_public_report: false,
+      },
     ]);
   });
 

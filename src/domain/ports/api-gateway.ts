@@ -1267,7 +1267,7 @@ export interface ListCustomTaxonomiesFilters {
 
 export type LabelDefinitionResponse = Pick<
   S["LabelDefinitionResponse"],
-  "key" | "display_name" | "position" | "auto_extract"
+  "key" | "display_name" | "position" | "auto_extract" | "show_in_public_report"
 >;
 
 /**
@@ -1276,7 +1276,7 @@ export type LabelDefinitionResponse = Pick<
  */
 export type LabelDefinitionItem = Pick<
   S["LabelDefinitionItem"],
-  "key" | "display_name" | "auto_extract"
+  "key" | "display_name" | "auto_extract" | "show_in_public_report"
 >;
 
 export type UpdateLabelDefinitionsRequest = Pick<S["UpdateLabelDefinitionsRequest"], "labels">;

@@ -1569,7 +1569,13 @@ describe("HttpApiGateway", () => {
         permissions: ["scans.read"],
       };
       const LABELS = [
-        { key: "brand_safety", display_name: "Brand Safety", position: 0, auto_extract: true },
+        {
+          key: "brand_safety",
+          display_name: "Brand Safety",
+          position: 0,
+          auto_extract: true,
+          show_in_public_report: false,
+        },
       ];
       agent
         .get(ORIGIN)
@@ -1589,7 +1595,14 @@ describe("HttpApiGateway", () => {
       expect(
         (
           await gw.updateAccountLabels({
-            labels: [{ key: "brand_safety", display_name: "Brand Safety", auto_extract: true }],
+            labels: [
+              {
+                key: "brand_safety",
+                display_name: "Brand Safety",
+                auto_extract: true,
+                show_in_public_report: false,
+              },
+            ],
           })
         ).isOk()
       ).toBe(true);

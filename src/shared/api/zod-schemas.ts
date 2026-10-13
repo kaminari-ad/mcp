@@ -74,6 +74,7 @@ const LabelDefinitionResponse = z
     display_name: z.string(),
     position: z.number().int(),
     auto_extract: z.boolean(),
+    show_in_public_report: z.boolean(),
   })
   .passthrough();
 const LabelDefinitionItem = z
@@ -81,6 +82,7 @@ const LabelDefinitionItem = z
     key: z.string().max(50),
     display_name: z.string().max(100),
     auto_extract: z.boolean().optional().default(false),
+    show_in_public_report: z.boolean().optional().default(false),
   })
   .passthrough();
 const UpdateLabelDefinitionsRequest = z

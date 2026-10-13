@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries it. When on, the taxonomy's tiers appear on unauthenticated
   public scan reports. `update_custom_taxonomy` replaces it like every
   other field: omitting it turns it off.
+- **`show_in_public_report` on account labels.** `update_account_labels`
+  accepts it per label and `list_account_labels` returns it. When on, the
+  label's value appears on public scan reports under its display name.
+  Omitting it on update turns it off, like `auto_extract`.
 
 ## [0.26.0] - 2026-10-06
 
