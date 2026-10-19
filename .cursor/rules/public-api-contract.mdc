@@ -1,0 +1,67 @@
+---
+description: Any public /api/v1 contract change must ship with documentation and MCP updates
+globs: ["src/**"]
+alwaysApply: false
+---
+
+# Public API Contract — docs + MCP move with it
+
+The public contract has three surfaces that must change together: the `/api/v1`
+routes (`api/src/app/*/presentation/api/`), the docs corpus (`api/content/docs/`,
+published at kaminari.ad/docs), and the MCP server (`mcp/`, `@kaminari-ad/mcp`).
+A v1 change that lands alone rots the other two: kaminari.ad/docs keeps publishing
+the old contract, and MCP's generated zod parsers go stale and start rejecting real
+responses at the boundary — the mcp CHANGELOG's "parser-drift phase 1" records 8 of
+82 tools broken in prod by exactly that drift.
+
+## What counts as a public-API change
+
+| Change | Contract change? |
+|---|---|
+| New / removed / renamed `/api/v1` route | Yes |
+| Field added, removed, or renamed on a v1 `*Request` / `*Response` DTO | Yes |
+| New or removed enum value reachable through a v1 DTO | Yes |
+| New or changed error `code` (`main/_exception_handlers.py::_APP_ERROR_CODE`) | Yes |
+| Changed auth, `required_permission`, pagination, or quota behaviour of a v1 route | Yes |
+| Changed semantics of an existing v1 field — units, default, nullability, validation | Yes |
+| New config key accepted inside a v1 request body (e.g. the combo-rule `match_scope`) | Yes |
+| `/api/internal`, `/api/admin`, `/api/service`, `/api/webhooks`, `/healthz` only | No |
+| Refactor with byte-identical `/openapi.json` (renamed private helper, moved use case) | No |
+| Fix that makes a route obey its already-documented contract | No — docs are already right |
+
+In doubt: diff `/openapi.json` before and after. Non-empty diff = contract change.
+
+## Required updates per surface
+
+| Surface | What to update | Ships in |
+|---|---|---|
+| `api/` v1 route + DTO | The code. Docstrings and `Field(description=...)` generate `/openapi.json` — keep them true. | api MR |
+| `api/content/docs/` | The articles covering the surface: `developers/` (REST, webhooks, OAuth, MCP), `getting-started/quickstart-api.md`, plus `platform/` + `ui-reference/` when the UI exposes the same concept. Add a dated entry to `resources/release-notes.md` for anything an integrator must react to. | **same api MR** |
+| `mcp/` | Regenerate `src/shared/api/{openapi,zod-schemas}.ts` (`make gen-api-types`). Then the tool input schema + `.describe()` text, the parser in `src/infrastructure/api/parsers/`, `tool-registry.ts` and the `## Tools` list in `README.md` for a new/removed tool, `CHANGELOG.md`. | separate mcp MR |
+
+Docs need no manual publish step: the api entrypoint runs `scripts/import_docs.py`
+(`DOCUMENTATION__IMPORT_AT_STARTUP`) and the import is provenance-safe, so editing
+the markdown in the api MR is the whole delivery path.
+
+## MCP carve-out — declare it, never skip it silently
+
+MCP is obliged only when the changed surface is actually reachable through a tool
+(`mcp/src/application/tools/**`) or its generated schemas. For a v1 route no tool
+wraps, it genuinely does not apply.
+
+State the verdict in one line in the api MR description — `MCP: n/a (no tool wraps
+POST /api/v1/...)` or `MCP: adverif/mcp!<id>`. No gate in
+[`quality-gates.mdc`](.cursor/rules/quality-gates.mdc) catches an omission here;
+the MR description is the check.
+
+## Sequencing — two repos, two MRs
+
+One MR per repo per [`git-workflow.mdc`](.cursor/rules/git-workflow.mdc): docs ride
+the api MR, MCP is its own MR and its own deploy.
+
+| v1 change | Deploy order | Why |
+|---|---|---|
+| Additive (new route, new optional field) | api, then mcp | Generated zod objects strip unknown keys, so the live MCP tolerates the new field; a tool cannot call a route that is not deployed yet. |
+| Removal, rename, or narrowed validation | mcp, then api | The live MCP parser still requires the old shape. Land the tolerant parser first, regenerating against your own branch (`API_OPENAPI_URL=http://localhost:8000/openapi.json`) — `make gen-api-types` otherwise reads prod `https://app.kaminari.ad/openapi.json` and cannot see an undeployed change. |
+
+Tool-authoring specifics: [`mcp-tool-authoring.mdc`](.cursor/rules/mcp-tool-authoring.mdc).

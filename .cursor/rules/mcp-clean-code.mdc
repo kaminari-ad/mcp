@@ -1,0 +1,76 @@
+---
+description: TS code-quality rules for @kaminari-ad/mcp — stricter than Python repos because it ships to npm
+globs: ["**"]
+alwaysApply: false
+---
+
+# Clean Code Rules — `mcp/` (TypeScript)
+
+This is OSS infrastructure that other people's data flows through. We hold it to a higher bar than internal services. Every rule below is enforced by ESLint, a custom CI gate, or both.
+
+## File Size
+
+- **Maximum 200 effective lines per file** (excluding imports and blank lines). Enforced by `mcp/scripts/check-file-sizes.ts` via `make check`.
+- If a file is too long, split by responsibility. If a tool needs 200+ lines, it is probably doing more than one thing — extract a domain service.
+- Composition roots (`presentation/<transport>/<transport>-bootstrap.ts`, `application/tool-registry.ts`) grow with the tool count and are grandfathered in `check-file-sizes.ts`. To add a new file to the grandfather list, do it in a separate PR with a justification comment.
+
+## One file = one exported thing
+
+- One `Tool`, one class, one interface, one port — per file. File name in **kebab-case**, exported symbol in **camelCase** (functions, consts) or **PascalCase** (types, classes).
+- No "barrel grab-bag" files (`types.ts`, `helpers.ts`, `utils.ts`). Either it belongs in `shared/` because it is truly generic, or it belongs next to its single consumer.
+- `index.ts` re-exports may be used to keep import paths short, but the underlying file is still one-thing-per-file.
+
+## Type strictness — no `any`, no bare `as`, no silent escapes
+
+- `any` is banned. Use `unknown` and narrow with type guards.
+- `as Type` casts are banned (ESLint `consistent-type-assertions: never`). If TypeScript needs help, write a type guard or use `satisfies`.
+- `// @ts-ignore` is banned. `// @ts-expect-error` is allowed only with a 10+ character explanation: `// @ts-expect-error MSW types do not include the override`.
+- Every function — public AND private — has an explicit return type. ESLint `explicit-function-return-type: error`.
+- Every public function/method has a JSDoc comment. ESLint `jsdoc/require-jsdoc: warn` (escalated to error in CI).
+- No non-null assertions (`x!`). If TS can't prove non-null, it isn't.
+
+## Immutability
+
+- All DTOs are `readonly` interfaces. All arrays are `ReadonlyArray<T>` in signatures. All Maps are `ReadonlyMap<K, V>` in signatures.
+- Mutation is allowed only inside the infrastructure adapter that owns the state (e.g. `InMemorySessionStore`). The mutation must never escape the class boundary.
+- No module-level mutable state. **No `let` or `var` at module scope.** ESLint `no-restricted-syntax` blocks it; `scripts/check-no-shared-state.ts` blocks it again. See [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc) hard rule #1.
+
+## Error handling — `Result<T, E>`, not throw
+
+- Domain and application code use `Result<T, E>` from `neverthrow` for expected errors. **Do not throw for control flow.**
+- Throw is reserved for programmer errors: assertion failures, invariant violations, "this should be unreachable". These crash the process; that's the point.
+- Adapters at the infrastructure boundary catch typed exceptions from third-party libs and convert them to `Err`.
+- The transport layer (`presentation/http/*`, `presentation/stdio/*`) is the ONLY place a `Result.Err` becomes a thrown MCP error envelope, and even there it is mapped, not re-thrown.
+
+## Async discipline
+
+- Every async function returns `Promise<T>` (enforced: `@typescript-eslint/promise-function-async`).
+- Floating promises are banned (`@typescript-eslint/no-floating-promises`). Either `await`, `void`, or `.catch(handler)`.
+- No misused promises in conditionals or event handlers (`@typescript-eslint/no-misused-promises`).
+- `useUnknownInCatchVariables: true` means `catch (e)` is `unknown`. Narrow before reading.
+
+## Logging — `Logger` port only, never `console.*`
+
+- `no-console: error` is on. Use the `Logger` port injected via `ToolContext` or wired by the bootstrap.
+- Pino redacts known sensitive fields (`Authorization`, `Bearer`, `password`). `console.log` does not — a single stray `console.log(req.headers)` is a token leak.
+- Structured fields only, never string-interpolated PII. Field naming mirrors the api repo: `request_id`, `tool_name`, `elapsed_ms`, `bearer_hash`.
+
+## No raw HTTP in domain/application
+
+- `domain/` and `application/` may not import `undici`, `node:http`, `fetch`, or anything network. Only the `ApiGateway` port.
+- The single concrete `HttpApiGateway` lives in `infrastructure/api/`. Tests use `FakeApiGateway`. dependency-cruiser enforces this boundary.
+
+## Cleanup discipline
+
+- No commented-out code. Git has history.
+- No `TODO` without a tracking issue: `// TODO(#42): explain`. Bare `// TODO` lints as warning.
+- Delete the file when the last symbol moves out — don't leave empty `index.ts` exports.
+
+## Where rules differ from the api repo
+
+| Topic                | api (Python)                                                 | mcp (TypeScript)                                                                       |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Error reporting port | `ErrorReporter` (Sentry adapter)                             | Same pattern, but OSS default is `NoopErrorReporter` (no Sentry in OSS)                |
+| Datetime             | `app.shared.utc.utcnow()`                                    | `domain/ports/clock.ts` via `Clock` port                                               |
+| Coverage             | `pyproject.toml fail_under = N` (ratchet)                    | `vitest.config.ts thresholds.lines = 100` (lock at 100%, branch at 95%)                |
+| Org-scoping checks   | Mandatory in every use case                                  | **NEVER** in MCP (single source of truth is the API). See `mcp-tenant-isolation.mdc`.  |

@@ -1,0 +1,118 @@
+---
+description: How to add a new MCP tool in @kaminari-ad/mcp — template, checklist, anti-patterns
+globs: ["src/application/tools/**", "tests/unit/tools/**"]
+alwaysApply: false
+---
+
+# Tool Authoring Guide — `mcp/`
+
+## What is a tool?
+
+A tool is **one user-visible MCP action** that wraps **exactly one** Kaminari Ad `/api/v1` endpoint call. If you need two API calls, you need a domain service (in `mcp/src/domain/services/`), not a single tool.
+
+## File layout — one tool per file
+
+```
+mcp/src/application/tools/<domain>/<tool-name>.tool.ts
+```
+
+| Source                              | File path                                                  |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `GET /api/v1/scans`                 | `mcp/src/application/tools/scans/list-scans.tool.ts`       |
+| `GET /api/v1/scans/{id}`            | `mcp/src/application/tools/scans/get-scan.tool.ts`         |
+| `POST /api/v1/scans`                | `mcp/src/application/tools/scans/create-scan.tool.ts`      |
+| `POST /api/v1/scans/{id}/cancel`    | `mcp/src/application/tools/scans/cancel-scan.tool.ts`      |
+
+## Template
+
+```ts
+import { z } from "zod";
+import { ok, err, type Result } from "neverthrow";
+
+import type { Tool } from "../_shared/tool.js";
+import type { ToolError } from "../_shared/tool-result.js";
+
+// 1. Input schema. Every field has .describe() for the agent.
+const ListScansInput = z.object({
+  status: z
+    .string()
+    .optional()
+    .describe("Comma-separated statuses: pending,running,done,failed."),
+  date_from: z.string().date().optional().describe("ISO date, inclusive."),
+  date_to: z.string().date().optional().describe("ISO date, inclusive."),
+  page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
+  limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
+});
+type ListScansInput = z.infer<typeof ListScansInput>;
+
+// 2. Output type — the shape the agent sees in the tool result.
+interface ListScansOutput {
+  readonly total: number;
+  readonly items: readonly ScanSummary[];
+}
+
+// 3. The tool. Named export = camelCase of filename + "Tool".
+export const listScansTool: Tool<ListScansInput, ListScansOutput> = {
+  name: "list_scans",
+  description: "List scans for the caller's organization, with filters.",
+  inputSchema: ListScansInput,
+  handler: async (input, ctx): Promise<Result<ListScansOutput, ToolError>> => {
+    const apiResult = await ctx.api.listScans(input);
+    if (apiResult.isErr()) {
+      return err(apiResult.error);
+    }
+    return ok({
+      total: apiResult.value.total,
+      items: apiResult.value.items.map(toScanSummary),
+    });
+  },
+};
+```
+
+## Checklist before opening a PR
+
+- [ ] File at `mcp/src/application/tools/<domain>/<kebab-name>.tool.ts`. Filename in **kebab-case**, ending `.tool.ts`.
+- [ ] Single named export: `const <camelName>Tool: Tool<I, O>`.
+- [ ] `name` is **snake_case**, matches filename (e.g. `list-scans.tool.ts` → `"list_scans"`).
+- [ ] `description` is 1-2 sentences, written for the AGENT (clear, action-oriented). Re-read it imagining you are an LLM with no context.
+- [ ] Input schema is `zod`. Every field has `.describe()`. Defaults are sensible. No `z.any()` or `z.unknown()`.
+- [ ] Handler signature: `(input, ctx) => Promise<Result<Output, ToolError>>`. Never `throw`. Never accesses globals (no `process.env`, no module-level state, no `console`).
+- [ ] Handler makes **exactly one** `ctx.api.<method>(...)` call. If you need more, lift the orchestration into a domain service.
+- [ ] Registered in `mcp/src/application/tool-registry.ts`.
+- [ ] Unit test at `mcp/tests/unit/tools/<domain>/<kebab-name>.tool.test.ts` covering:
+  - [ ] Success path with a `FakeApiGateway` returning a representative response.
+  - [ ] At least one error path (e.g. gateway returns `err(NotFoundError(...))`).
+  - [ ] Zod validation: invalid input is rejected before the gateway is called.
+- [ ] `cd mcp && make check` is green (lint, typecheck, file-sizes, imports, tool-naming, tests, coverage).
+
+## Patterns
+
+### Pagination
+
+If the API returns a paginated list, the tool input MUST accept `page` and `limit` (defaults 1 and 50, max 200 — matches api). The tool output includes `total`, `page`, `limit`, `items`.
+
+### IDs
+
+UUIDs flow as strings end-to-end (`z.string().uuid()`). Don't try to parse them into a branded type inside the tool — that's the API's job.
+
+### Screenshots & binary content
+
+Screenshots return MCP `image` content blocks (base64 **WebP**), not URL references. Every screenshot route on the api hardcodes `image/webp`; the mcp server does no image processing and passes the response's own content type through, so a client that cannot decode WebP has to transcode on its own side. Say WebP in the tool `description` — do not promise PNG. Cap the images: only the main scan screenshot, not all landing-tab screenshots. If a tool returns >5 images, split it.
+
+### Read-only vs mutating
+
+Read-only tools are first. Mutating tools (`create_*`, `update_*`, `delete_*`) must have `description` that includes the side effect explicitly: `"Create a new scan. Costs N credits; charged immediately."`.
+
+### Errors
+
+The `ToolError` union has typed variants: `Unauthorized | Forbidden | NotFound | RateLimited | InvalidInput | UpstreamError`. The transport layer maps each to the appropriate MCP error envelope. Tools just return them.
+
+## Anti-patterns — REJECT in review
+
+- ❌ `handler: async (input) => { ... }` — missing `ctx` parameter. ToolContext is the ONLY way to reach the outside world.
+- ❌ `import { httpApiGateway } from "../infrastructure/..."` — tools may not import infrastructure. ESLint rejects this.
+- ❌ `try { ... } catch (e) { throw new Error(...) }` — tools return `Result`, not throw.
+- ❌ `const cache = new Map()` at module top — banned by `no-shared-state` gate. See [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc).
+- ❌ `description: "Lists scans"` — write FOR the agent. Use "List scans for the caller's organization, with optional filters by status, country, date range."
+- ❌ Multi-call orchestration in the handler — extract a domain service.
+- ❌ `z.any()` or unschema'd inputs — every field, every shape, every time.

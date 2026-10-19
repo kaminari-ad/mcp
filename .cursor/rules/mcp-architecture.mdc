@@ -1,0 +1,119 @@
+---
+description: DDD + Hexagonal architecture rules for @kaminari-ad/mcp
+globs: ["**"]
+alwaysApply: false
+---
+
+# Architecture Rules — `mcp/`
+
+This project follows **DDD** (Domain-Driven Design) + **Hexagonal Architecture** (Ports & Adapters) with manual constructor injection. The structure mirrors the api repo, adapted for TypeScript.
+
+## Layers
+
+```
+src/
+├── domain/          # Inner core — depends on nothing outward
+│   ├── value-objects/
+│   ├── ports/       # interfaces (1 file = 1 port)
+│   └── services/    # pure decision policies (no I/O)
+├── application/     # use cases
+│   ├── tools/       # MCP tool definitions (1 file = 1 tool)
+│   └── tool-registry.ts
+├── infrastructure/  # adapters implementing ports
+│   ├── api/
+│   ├── logging/
+│   ├── session/
+│   ├── rate-limit/
+│   ├── clock/
+│   └── error-reporting/
+├── presentation/    # transports — composition roots
+│   ├── stdio/
+│   └── http/
+├── shared/          # generic utilities (Result, config schema)
+└── bin.ts           # CLI entry; dispatches to a bootstrap
+```
+
+## Dependency direction (enforced by `dependency-cruiser`)
+
+```
+presentation ──→ application ──→ domain
+                                ↑
+infrastructure ─────────────────┘   (implements ports)
+
+shared ←── used by anyone, depends on nothing
+```
+
+Concretely:
+
+- `domain/` imports from nowhere outward. Defines ports; doesn't know what implements them.
+- `application/` imports from `domain/` only. Tools depend on `ApiGateway`, `Logger`, `Clock`, etc. — never on concrete classes.
+- `infrastructure/` implements `domain/ports/*`. Wires fetch/pino/etc. to satisfy a port. Stays out of `application/`.
+- `presentation/` wires everything together. The `*-bootstrap.ts` files are the **only** place `new HttpApiGateway(...)` exists.
+- `shared/` is generic utilities (`Result`, env-schema). No domain types live here.
+
+ESLint enforces this with `no-restricted-imports` patterns. dependency-cruiser enforces it again with `mcp/.dependency-cruiser.cjs`. Two locks beats one.
+
+## Ports & Adapters
+
+Every external interaction (HTTP, logging, time, randomness) goes through a port:
+
+| Port              | Adapter                       | Purpose                                            |
+| ----------------- | ----------------------------- | -------------------------------------------------- |
+| `ApiGateway`      | `HttpApiGateway`              | Calls Kaminari Ad `/api/v1` via undici             |
+| `Logger`          | `PinoLogger`                  | Structured logs with redaction                     |
+| `Clock`           | `SystemClock`                 | `now(): Date` — mocked in tests                    |
+| `RateLimiter`     | `LeakyBucketRateLimiter`      | Per-tenant rate limit (HTTP mode)                  |
+| `SessionStore`    | `InMemorySessionStore`        | Mcp-Session-Id <-> bearer-hash binding             |
+| `ErrorReporter`   | `NoopErrorReporter`           | OSS default. Operators may swap in Sentry locally. |
+
+## Tools are use cases
+
+A tool corresponds to exactly one outbound API call. Multi-step orchestration belongs in `domain/services/`, with the tool calling the service. If your tool handler grows past 30 lines, that's a smell — extract.
+
+```ts
+// application/tools/scans/list-scans.tool.ts
+export const listScansTool: Tool<ListScansInput, ListScansOutput> = {
+  name: "list_scans",
+  description: "List scans for the caller's organization with filters.",
+  inputSchema: ListScansInputSchema,
+  handler: async (input, ctx) => {
+    const result = await ctx.api.listScans(input);
+    return result.map(formatAsToolOutput);
+  },
+};
+```
+
+Note:
+
+- No `throw` — `handler` returns `Result<Output, ToolError>` (the type is enforced by the `Tool<I,O>` interface).
+- No `ctx.api.listScans(input as any)` — strict typing all the way through.
+- The `formatAsToolOutput` helper is in the same file unless it's reused by 3+ tools.
+
+## Composition roots
+
+Two composition roots, one per transport:
+
+- `presentation/stdio/stdio-bootstrap.ts` — takes `Config`, returns a ready `McpServer`. Used by `bin.ts --transport=stdio`.
+- `presentation/http/http-bootstrap.ts` — takes `Config`, returns a `http.Server`. Builds long-lived stores (session, rate-limit); per-request creates a fresh `HttpApiGateway` from the incoming Bearer.
+
+Composition roots are the ONLY place where `new ConcreteAdapter(...)` is allowed. Every other file works with port interfaces.
+
+There is NO DI framework. Manual constructor injection. At this scale, a DI framework is more cognitive overhead than it saves.
+
+## Tenant isolation governs the HTTP composition root
+
+The HTTP bootstrap MUST follow every rule in [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc). In particular:
+
+- The long-lived top-level singletons (`SessionStore`, `RateLimiter`, `Logger` parent) hold **no** tenant data — only by-Bearer-hash entries.
+- The per-request `ToolContext` (containing the `HttpApiGateway` instance bound to the request's Bearer) is created inside the request handler and lives only in that handler's closure.
+
+The bootstrap MUST `assert(!config.stdioApiKey, ...)` on startup in HTTP mode. The `KAMINARI_AD_API_KEY` env var is a stdio-only fallback; having it set in HTTP mode is an operator error.
+
+## What `shared/` is for
+
+- `Result<T, E>` re-export and helpers
+- `Config` zod schema + parser for env vars
+- Branded type helpers
+- Generic timing utilities
+
+What `shared/` is NOT for: anything domain-specific. If it knows about Bearer, Scan, Campaign — it belongs in `domain/`.
