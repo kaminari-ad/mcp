@@ -142,7 +142,7 @@ function formatToolError(error: ToolError): string {
     case "invalid-input":
       return `Invalid input${error.code === undefined ? "" : ` (${error.code})`}: ${error.message}`;
     case "upstream":
-      return `Upstream error: ${error.message}`;
+      return `Upstream error${error.code === undefined ? "" : ` (${error.code})`}: ${error.message}`;
     case "internal":
       return `Internal error: ${error.message}`;
   }

@@ -52,7 +52,13 @@ export type ApiError =
        */
       readonly code?: string;
     }
-  | { readonly kind: "upstream"; readonly detail: string; readonly status?: number };
+  | {
+      readonly kind: "upstream";
+      readonly detail: string;
+      readonly status?: number;
+      /** Machine-readable API code, e.g. `checking.tag_in_use_by_other_orgs` on a 409. */
+      readonly code?: string;
+    };
 
 /** Generic paginated envelope (matches every `PaginatedResponse_*_`). */
 export interface PaginatedResponse<T> {

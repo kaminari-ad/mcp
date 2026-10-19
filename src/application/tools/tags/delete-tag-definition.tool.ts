@@ -26,7 +26,7 @@ export const deleteTagDefinitionTool: Tool<
 > = {
   name: "delete_tag_definition",
   description:
-    "Delete a CUSTOM tag definition. Historical tag assignments are preserved; future scans will not receive this tag. System tags cannot be deleted.",
+    "Delete a CUSTOM tag definition your organization owns. Historical tag assignments are preserved; future scans will not receive this tag. System tags cannot be deleted. A tag other organizations depend on (shared with every organization, or emitted by other organizations' rules) returns HTTP 409 / `checking.tag_in_use_by_other_orgs`.",
   annotations: {
     title: "Delete Tag Definition",
     readOnlyHint: false,

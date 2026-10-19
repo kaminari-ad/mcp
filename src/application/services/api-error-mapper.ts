@@ -37,9 +37,14 @@ export function mapApiError(apiError: ApiError): ToolError {
       if (apiError.code !== undefined) out.code = apiError.code;
       return out;
     }
-    case "upstream":
-      return apiError.status === undefined
-        ? { kind: "upstream", message: apiError.detail }
-        : { kind: "upstream", message: apiError.detail, status: apiError.status };
+    case "upstream": {
+      const out: { kind: "upstream"; message: string; status?: number; code?: string } = {
+        kind: "upstream",
+        message: apiError.detail,
+      };
+      if (apiError.status !== undefined) out.status = apiError.status;
+      if (apiError.code !== undefined) out.code = apiError.code;
+      return out;
+    }
   }
 }

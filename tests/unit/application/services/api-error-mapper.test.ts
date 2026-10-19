@@ -112,4 +112,20 @@ describe("mapApiError", () => {
       status: 502,
     });
   });
+
+  it("passes the upstream code through", () => {
+    expect(
+      mapApiError({
+        kind: "upstream",
+        detail: "in use",
+        status: 409,
+        code: "checking.tag_in_use_by_other_orgs",
+      })
+    ).toEqual({
+      kind: "upstream",
+      message: "in use",
+      status: 409,
+      code: "checking.tag_in_use_by_other_orgs",
+    });
+  });
 });
