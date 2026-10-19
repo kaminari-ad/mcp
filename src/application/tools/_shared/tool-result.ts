@@ -31,7 +31,12 @@ export type ToolError =
        */
       readonly code?: string;
     }
-  | { readonly kind: "upstream"; readonly message: string; readonly status?: number }
+  | {
+      readonly kind: "upstream";
+      readonly message: string;
+      readonly status?: number;
+      readonly code?: string;
+    }
   | { readonly kind: "internal"; readonly message: string };
 
 /**

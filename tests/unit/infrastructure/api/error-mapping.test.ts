@@ -103,6 +103,21 @@ describe("toApiError", () => {
     });
   });
 
+  it("409 -> upstream keeps the machine-readable code", () => {
+    expect(
+      toApiError(
+        409,
+        { detail: "Tag 'casino' is shared", code: "checking.tag_in_use_by_other_orgs" },
+        undefined
+      )
+    ).toEqual({
+      kind: "upstream",
+      detail: "Tag 'casino' is shared",
+      status: 409,
+      code: "checking.tag_in_use_by_other_orgs",
+    });
+  });
+
   it("missing body falls back to 'Upstream error'", () => {
     expect(toApiError(500, undefined, undefined)).toEqual({
       kind: "upstream",

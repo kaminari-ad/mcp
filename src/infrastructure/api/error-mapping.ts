@@ -82,5 +82,8 @@ export function toApiError(
       ? { kind: "rate-limited", detail: message }
       : { kind: "rate-limited", detail: message, retryAfterMs: retryMs };
   }
-  return { kind: "upstream", detail: message, status };
+  const code = errCode(parsed);
+  return code === undefined
+    ? { kind: "upstream", detail: message, status }
+    : { kind: "upstream", detail: message, status, code };
 }
