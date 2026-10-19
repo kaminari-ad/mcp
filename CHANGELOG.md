@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-10-19
+
+> Requires the API v1.90.2 deploy first: the documented 409 / 422 codes
+> below only exist from that API version on.
+
+### Fixed
+
+- Upstream errors (e.g. HTTP 409) now keep the API's machine-readable
+  `code` — `delete_tag_definition` surfaces
+  `checking.tag_in_use_by_other_orgs`.
+- `create_custom_rule` / `update_custom_rule` no longer suggest a rule
+  can register or rename another organization's tag; such a slug now
+  returns 422 `checking.slug_owned_by_other_org`.
+- `update_tag_definition` / `delete_tag_definition` describe the
+  own-organization ownership rule.
+
 ## [0.27.0] - 2026-10-13
 
 > Requires the API-side public-report deploy first, for both the npm tag
