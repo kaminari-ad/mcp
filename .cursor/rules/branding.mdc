@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Branding — Kaminari Ad
 
-The naming bans (never `AdVerif` in user-facing text, display name vs domain, the grandfathered list) are in [`core.mdc`](.cursor/rules/core.mdc).
+The naming bans (never `AdVerif` in user-facing text, display name vs domain, the grandfathered list) are in `core`.
 
 ## Trademark name vs domain
 

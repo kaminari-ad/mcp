@@ -10,7 +10,7 @@ alwaysApply: false
 
 ## Threat model
 
-The Kaminari Ad API is already secure: middleware resolves the `Authorization` header into an `AuthContext.organization_id`, and every use case enforces `auth.organization_id == resource.organization_id` (see [`clean-code.mdc`](clean-code.mdc) → "Authorization and org-scoping").
+The Kaminari Ad API is already secure: middleware resolves the `Authorization` header into an `AuthContext.organization_id`, and every use case enforces `auth.organization_id == resource.organization_id` (see `clean-code` → "Authorization and org-scoping").
 
 **MCP does NOT duplicate those checks.** MCP's single job is: **the Bearer that came in with request X must reach only the outbound API calls made by request X.** Any leak of auth context between concurrent requests = a vulnerability that did not exist at the API.
 

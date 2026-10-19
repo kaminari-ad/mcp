@@ -51,12 +51,12 @@ wraps, it genuinely does not apply.
 
 State the verdict in one line in the api MR description — `MCP: n/a (no tool wraps
 POST /api/v1/...)` or `MCP: adverif/mcp!<id>`. No gate in
-[`quality-gates.mdc`](.cursor/rules/quality-gates.mdc) catches an omission here;
+`quality-gates` catches an omission here;
 the MR description is the check.
 
 ## Sequencing — two repos, two MRs
 
-One MR per repo per [`git-workflow.mdc`](.cursor/rules/git-workflow.mdc): docs ride
+One MR per repo per `git-workflow`: docs ride
 the api MR, MCP is its own MR and its own deploy.
 
 | v1 change | Deploy order | Why |

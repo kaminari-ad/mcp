@@ -112,7 +112,7 @@ The `ToolError` union has typed variants: `Unauthorized | Forbidden | NotFound |
 - ❌ `handler: async (input) => { ... }` — missing `ctx` parameter. ToolContext is the ONLY way to reach the outside world.
 - ❌ `import { httpApiGateway } from "../infrastructure/..."` — tools may not import infrastructure. ESLint rejects this.
 - ❌ `try { ... } catch (e) { throw new Error(...) }` — tools return `Result`, not throw.
-- ❌ `const cache = new Map()` at module top — banned by `no-shared-state` gate. See [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc).
+- ❌ `const cache = new Map()` at module top — banned by `no-shared-state` gate. See [`mcp-tenant-isolation.mdc`](.cursor/rules/mcp-tenant-isolation.mdc).
 - ❌ `description: "Lists scans"` — write FOR the agent. Use "List scans for the caller's organization, with optional filters by status, country, date range."
 - ❌ Multi-call orchestration in the handler — extract a domain service.
 - ❌ `z.any()` or unschema'd inputs — every field, every shape, every time.

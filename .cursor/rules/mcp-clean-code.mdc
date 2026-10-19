@@ -33,7 +33,7 @@ This is OSS infrastructure that other people's data flows through. We hold it to
 
 - All DTOs are `readonly` interfaces. All arrays are `ReadonlyArray<T>` in signatures. All Maps are `ReadonlyMap<K, V>` in signatures.
 - Mutation is allowed only inside the infrastructure adapter that owns the state (e.g. `InMemorySessionStore`). The mutation must never escape the class boundary.
-- No module-level mutable state. **No `let` or `var` at module scope.** ESLint `no-restricted-syntax` blocks it; `scripts/check-no-shared-state.ts` blocks it again. See [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc) hard rule #1.
+- No module-level mutable state. **No `let` or `var` at module scope.** ESLint `no-restricted-syntax` blocks it; `scripts/check-no-shared-state.ts` blocks it again. See [`mcp-tenant-isolation.mdc`](.cursor/rules/mcp-tenant-isolation.mdc) hard rule #1.
 
 ## Error handling — `Result<T, E>`, not throw
 

@@ -102,7 +102,7 @@ There is NO DI framework. Manual constructor injection. At this scale, a DI fram
 
 ## Tenant isolation governs the HTTP composition root
 
-The HTTP bootstrap MUST follow every rule in [`mcp-tenant-isolation.mdc`](mcp-tenant-isolation.mdc). In particular:
+The HTTP bootstrap MUST follow every rule in [`mcp-tenant-isolation.mdc`](.cursor/rules/mcp-tenant-isolation.mdc). In particular:
 
 - The long-lived top-level singletons (`SessionStore`, `RateLimiter`, `Logger` parent) hold **no** tenant data — only by-Bearer-hash entries.
 - The per-request `ToolContext` (containing the `HttpApiGateway` instance bound to the request's Bearer) is created inside the request handler and lives only in that handler's closure.

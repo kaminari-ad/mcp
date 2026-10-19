@@ -69,7 +69,7 @@ docker compose -f docker-compose.dev.yml run --rm mcp-dev npm install --save-dev
 ctx.logger.info({ tool_name: "list_scans", elapsed_ms: 42, api_status: 200 }, "tool.done");
 ```
 
-Field names mirror the api repo so cross-system grep just works (see [`mcp-naming-conventions.mdc`](mcp-naming-conventions.mdc) § Field names).
+Field names mirror the api repo so cross-system grep just works (see [`mcp-naming-conventions.mdc`](.cursor/rules/mcp-naming-conventions.mdc) § Field names).
 
 ## Pre-commit hooks
 
