@@ -34,7 +34,7 @@ export const updateTagDefinitionTool: Tool<
 > = {
   name: "update_tag_definition",
   description:
-    "Update display fields of a CUSTOM tag (system tags are read-only). Only supplied fields are touched. To read the updated definition, follow up with `get_tag_definition`.",
+    "Update display fields of a CUSTOM tag your organization owns (system tags and other organizations' tags are read-only). Only supplied fields are touched. To read the updated definition, follow up with `get_tag_definition`.",
   annotations: {
     title: "Update Tag Definition",
     readOnlyHint: false,

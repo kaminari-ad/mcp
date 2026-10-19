@@ -21,14 +21,14 @@ const CreateCustomRuleInputShape = {
     .min(1)
     .max(200)
     .describe(
-      "Display name. For non-LLM rules this also becomes the `display_name` of the auto-registered tag definition (see `tag_slug`)."
+      "Display name. For non-LLM rules this also becomes the `display_name` of the auto-registered tag definition (see `tag_slug`) — only when the tag is new or owned by your organization."
     ),
   tag_slug: z
     .string()
     .max(100)
     .optional()
     .describe(
-      "Tag slug to assign on match. Empty = create-only (advanced). The API auto-registers a custom tag definition for this slug with `display_name = name`. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. For `rule_type='llm'` use `config.tags` keys instead and leave `tag_slug` empty."
+      "Tag slug to assign on match. Empty = create-only (advanced). The API auto-registers a custom tag definition for this slug with `display_name = name` when the slug is new or owned by your organization; a slug owned by another organization is used as-is and its name/description are never changed. Do not create rules just to register or rename a tag. **MUST NOT collide with a built-in system tag slug** (see `list_tags` where `scope=system`); colliding requests return 422 with code `checking.system_slug_reserved`. For `rule_type='llm'` use `config.tags` keys instead and leave `tag_slug` empty."
     ),
   rule_type: z
     .string()
@@ -39,7 +39,7 @@ const CreateCustomRuleInputShape = {
   config: patternAwareRuleConfigField.describe(
     "Rule-type-specific configuration object. Shape depends on `rule_type`. " +
       PATTERN_RULE_CONFIG_DOC +
-      " `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
+      " `regexp_url` remains redirect-chain-only. For `rule_type='llm'` the shape is `{ prompt: string, tags: { <tag_slug>: <description>, ... } }`; each key in `config.tags` is auto-registered as a custom tag definition (new or own-org slugs only; another organization's tag is used as-is) AND must not collide with a system slug (same 422 contract as `tag_slug`). " +
       COMBO_MATCH_SCOPE_DOC
   ),
   target: z
@@ -57,7 +57,7 @@ export type CreateCustomRuleOutput = CustomRuleResponse;
 export const createCustomRuleTool: Tool<CreateCustomRuleInputShape, CreateCustomRuleOutput> = {
   name: "create_custom_rule",
   description:
-    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. Use `rule_type='regexp_request_body'` to match the CONTENTS of those sub-resources instead — the right choice when the code you want to catch keeps changing its filename; those contents are kept for one day. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
+    "Define a custom tag-detection rule. Use `rule_type='regexp_request_url'` to match captured network and subresource URLs; fresh scans carry up to 5,000 URLs, while later tests/rechecks use a reduced persisted request tree and are best-effort. Use `rule_type='regexp_request_body'` to match the CONTENTS of those sub-resources instead — the right choice when the code you want to catch keeps changing its filename; those contents are kept for one day. `rule_type='regexp_url'` remains redirect-chain-only. The API auto-registers a tag definition for each emitted slug that is new or owned by your organization (another organization's tag is used as-is, never renamed) and rejects built-in system-slug collisions with HTTP 422 / `checking.system_slug_reserved`. Matches tag future scans; existing scans are untouched until `recheck_scans`.",
   annotations: {
     title: "Create Custom Rule",
     readOnlyHint: false,

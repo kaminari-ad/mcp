@@ -36,7 +36,7 @@ const UpdateCustomRuleInputShape = {
   config: patternAwareRuleConfigField
     .optional()
     .describe(
-      "New rule-type-specific config object. Replaces the stored config wholesale — resend every key you want to keep, including a combo rule's `match_scope`. For `rule_type='llm'` the keys of `config.tags` are auto-registered as tag definitions; any key that collides with a system slug returns the same 422 contract. " +
+      "New rule-type-specific config object. Replaces the stored config wholesale — resend every key you want to keep, including a combo rule's `match_scope`. For `rule_type='llm'` the keys of `config.tags` are auto-registered as tag definitions (new or own-org slugs only; another organization's tag is used as-is); any key that collides with a system slug returns the same 422 contract. " +
         PATTERN_RULE_CONFIG_DOC +
         " Read the rule first because `rule_type` is immutable and is not repeated in this update input. " +
         COMBO_MATCH_SCOPE_DOC
