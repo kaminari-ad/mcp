@@ -143,15 +143,21 @@ async function writeZodSchemas(spec: unknown): Promise<void> {
       shouldExportAllTypes: false,
     },
   });
-  await writeFormatted(ZOD_OUTPUT, zodHeader() + withRecordKeys(stripZodiosRuntime(raw)));
+  await writeFormatted(ZOD_OUTPUT, zodHeader() + toZod4(stripZodiosRuntime(raw)));
 }
 
 /**
- * Rewrite every single-argument `z.record(V)` into `z.record(z.string(), V)`.
+ * Adapt openapi-zod-client's zod 3 output to zod 4.
  *
- * openapi-zod-client still emits the zod 3 form, which zod 4 rejects:
- * `z.record` there takes an explicit key schema.
+ * `z.string().uuid()` becomes `z.guid()`, which keeps zod 3's any-hex
+ * check (zod 4's `uuid` enforces RFC version and variant bits), and
+ * single-argument `z.record(V)` gains the key schema zod 4 requires.
  */
+function toZod4(source: string): string {
+  return withRecordKeys(source.replaceAll("z.string().uuid()", "z.guid()"));
+}
+
+/** Rewrite every single-argument `z.record(V)` into `z.record(z.string(), V)`. */
 function withRecordKeys(source: string): string {
   const marker = "z.record(";
   let out = "";

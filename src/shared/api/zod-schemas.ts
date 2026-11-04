@@ -41,7 +41,7 @@ const OrgTransitionOptionResponse = z
   .passthrough();
 const OrgResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     owner_id: z.union([z.string(), z.null()]),
     status: OrganizationStatus,
@@ -90,13 +90,13 @@ const UpdateLabelDefinitionsRequest = z
   .passthrough();
 const UserResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     email: z.string(),
     name: z.string(),
-    role_id: z.string().uuid(),
+    role_id: z.guid(),
     role_name: z.string(),
     role_scope: z.string().optional().default("org"),
-    organization_id: z.string().uuid(),
+    organization_id: z.guid(),
     organization_name: z.string(),
     is_active: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
@@ -105,13 +105,13 @@ const UserResponse = z
 const InviteUserRequest = z.object({
   email: z.string().max(254),
   name: z.string().max(200).optional().default(""),
-  role_id: z.string().uuid(),
+  role_id: z.guid(),
   timezone: z.union([z.string(), z.null()]).optional(),
 });
-const UpdateUserRoleRequest = z.object({ role_id: z.string().uuid() }).passthrough();
+const UpdateUserRoleRequest = z.object({ role_id: z.guid() }).passthrough();
 const ApiKeyResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     key_prefix: z.string(),
     name: z.string(),
     expires_at: z.union([z.string(), z.null()]),
@@ -126,7 +126,7 @@ const CreateApiKeyRequest = z
   .passthrough();
 const ApiKeyCreatedResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     key_prefix: z.string(),
     full_key: z.string(),
     name: z.string(),
@@ -136,7 +136,7 @@ const ApiKeyCreatedResponse = z
   .passthrough();
 const RoleResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     scope: z.string(),
     is_system: z.boolean(),
@@ -252,7 +252,7 @@ const IabV3CategoryResponse = z
   .passthrough();
 const ScanTaxonomyClassificationResponse = z
   .object({
-    taxonomy_id: z.string().uuid(),
+    taxonomy_id: z.guid(),
     taxonomy_name: z.string(),
     taxonomy_slug: z.string(),
     taxonomy_version: z.number().int(),
@@ -288,7 +288,7 @@ const LandingResponse = z
   .passthrough();
 const ScanResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     url: z.string(),
     country_code: z.string(),
     emulator_id: z.string(),
@@ -335,7 +335,7 @@ const ScanResponse = z
     repeat_index: z.number().int().optional().default(0),
     repeat_total: z.number().int().optional().default(1),
     repeat_session_id: z.union([z.string(), z.null()]).optional(),
-    repeat_scan_ids: z.array(z.string().uuid()).optional(),
+    repeat_scan_ids: z.array(z.guid()).optional(),
     retry_attempt: z.number().int().optional().default(0),
     retry_max_attempts: z.number().int().optional().default(0),
   })
@@ -343,7 +343,7 @@ const ScanResponse = z
 const status = z.union([z.string(), z.null()]).optional();
 const ScanBriefResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     url: z.string(),
     country_code: z.string(),
     proxy_type: z.string().optional().default("residential"),
@@ -444,7 +444,7 @@ const EmulatorResponse = z
 const CreateCampaignGroupRequest = z.object({ name: z.string().min(1).max(200) }).passthrough();
 const CampaignGroupResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     is_default: z.boolean(),
     is_archived: z.boolean(),
@@ -460,17 +460,17 @@ const UpdateCampaignGroupRequest = z
   .passthrough();
 const BulkCampaignFailure = z
   .object({
-    campaign_id: z.string().uuid(),
+    campaign_id: z.guid(),
     error_code: z.string(),
     detail: z.string(),
   })
   .passthrough();
 const GroupActionResponse = z
   .object({
-    group_id: z.string().uuid(),
+    group_id: z.guid(),
     affected_campaigns: z.number().int(),
     cancelled_count: z.number().int().optional().default(0),
-    run_ids: z.array(z.string().uuid()).optional(),
+    run_ids: z.array(z.guid()).optional(),
     failures: z.array(BulkCampaignFailure).optional(),
   })
   .passthrough();
@@ -479,7 +479,7 @@ const RepeatMode = z.enum(["isolated", "shared"]);
 const CampaignNotificationsRequest = z
   .object({
     mode: z.enum(["inherit", "override", "silence"]),
-    destination_ids: z.array(z.string().uuid()).optional(),
+    destination_ids: z.array(z.guid()).optional(),
     routing_label_key: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
@@ -527,7 +527,7 @@ const EmulatorSelectionResponse = z
   .passthrough();
 const CampaignResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     campaign_type: z.string().optional().default("url"),
     url: z.string(),
@@ -538,7 +538,7 @@ const CampaignResponse = z
     max_discovered_ads: z.union([z.number(), z.null()]).optional(),
     ad_formats: z.union([z.array(DiscoveryAdFormat), z.null()]).optional(),
     country_codes: z.array(z.string()),
-    group_id: z.string().uuid(),
+    group_id: z.guid(),
     emulator_selection: EmulatorSelectionResponse,
     proxy_type: z.string().optional().default("residential"),
     proxy_region: z.string().optional().default(""),
@@ -572,9 +572,9 @@ const PaginatedResponse_CampaignResponse_ = z
   .passthrough();
 const CampaignPickerItem = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
-    group_id: z.string().uuid(),
+    group_id: z.guid(),
     is_archived: z.boolean(),
     policy_set_id: z.union([z.string(), z.null()]).optional(),
   })
@@ -615,8 +615,8 @@ const UpdateCampaignRequest = z
 const RunSource = z.enum(["ui", "api"]);
 const RunResponse = z
   .object({
-    id: z.string().uuid(),
-    campaign_id: z.string().uuid(),
+    id: z.guid(),
+    campaign_id: z.guid(),
     label: z.string(),
     total: z.number().int(),
     completed: z.number().int(),
@@ -638,7 +638,7 @@ const PaginatedResponse_RunResponse_ = z
   .passthrough();
 const ScanTileResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     country_code: z.string(),
     status: z.string(),
     offer_url: z.string().optional().default(""),
@@ -660,8 +660,8 @@ const PaginatedResponse_ScanTileResponse_ = z
   .passthrough();
 const ScanTagResponse = z
   .object({
-    id: z.string().uuid(),
-    scan_id: z.string().uuid(),
+    id: z.guid(),
+    scan_id: z.guid(),
     tag_slug: z.string(),
     detail: z.string(),
     url: z.string().optional().default(""),
@@ -690,7 +690,7 @@ const TagDefinitionWithStatsResponse = z
   .passthrough();
 const LinkedRuleResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     rule_type: z.string(),
     target: z.string(),
@@ -737,7 +737,7 @@ const CreateCustomRuleRequest = z
   .passthrough();
 const CustomRuleResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     organization_id: z.union([z.string(), z.null()]),
     name: z.string(),
     tag_slug: z.string(),
@@ -772,7 +772,7 @@ const UpdateCustomRuleRequest = z
   .passthrough();
 const RuleTestRequest = z
   .object({
-    scan_id: z.string().uuid(),
+    scan_id: z.guid(),
     rule_type: z.string(),
     config: z.object({}).partial().passthrough(),
     target: z.string().optional().default("page"),
@@ -807,14 +807,14 @@ const RuleTestBatchRule = z
 const RuleTestBatchRequest = z
   .object({
     rules: z.array(RuleTestBatchRule).min(1).max(20),
-    scan_ids: z.array(z.string().uuid()).min(1).max(50),
+    scan_ids: z.array(z.guid()).min(1).max(50),
   })
   .passthrough();
 const RuleTestBatchCell = z
   .object({
     index: z.number().int(),
     rule_id: z.union([z.string(), z.null()]).optional(),
-    scan_id: z.string().uuid(),
+    scan_id: z.guid(),
     matched: z.boolean(),
     tags: z.array(RuleTestTagResult),
     elapsed_ms: z.number().int(),
@@ -854,7 +854,7 @@ const AiCategoryRequest = z
   .passthrough();
 const CustomTaxonomyRefRequest = z
   .object({
-    taxonomy_id: z.string().uuid(),
+    taxonomy_id: z.guid(),
     tier1: z.string().min(1).max(200),
     tier2: z.union([z.string(), z.null()]).optional(),
     tier3: z.union([z.string(), z.null()]).optional(),
@@ -878,7 +878,7 @@ const CreatePolicySetRequest = z
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
     entries: z.array(PolicyEntryRequest).min(1).max(500),
-    campaign_ids: z.array(z.string().uuid()).max(2000).optional(),
+    campaign_ids: z.array(z.guid()).max(2000).optional(),
   })
   .passthrough();
 const PolicyEntryIabV3Response = z
@@ -899,7 +899,7 @@ const PolicyEntryAiCategoryResponse = z
   .passthrough();
 const PolicyEntryCustomTaxonomyResponse = z
   .object({
-    taxonomy_id: z.string().uuid(),
+    taxonomy_id: z.guid(),
     tier1: z.string(),
     tier2: z.union([z.string(), z.null()]).optional(),
     tier3: z.union([z.string(), z.null()]).optional(),
@@ -908,7 +908,7 @@ const PolicyEntryCustomTaxonomyResponse = z
   .passthrough();
 const PolicyEntryResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     rule_type: z.string(),
     tag_slug: z.union([z.string(), z.null()]).optional(),
     iab_v3: z.union([PolicyEntryIabV3Response, z.null()]).optional(),
@@ -919,14 +919,14 @@ const PolicyEntryResponse = z
   })
   .passthrough();
 const LinkedCampaignResponse = z
-  .object({ id: z.string().uuid(), name: z.string(), is_archived: z.boolean() })
+  .object({ id: z.guid(), name: z.string(), is_archived: z.boolean() })
   .passthrough();
 const PolicySetResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     description: z.string(),
-    organization_id: z.string().uuid(),
+    organization_id: z.guid(),
     visibility: z.string(),
     is_approved: z.boolean(),
     is_default: z.boolean(),
@@ -940,10 +940,10 @@ const VisibilityType = z.enum(["private", "public"]);
 const visibility = z.union([VisibilityType, z.null()]).optional();
 const PolicySetListItem = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     description: z.string(),
-    organization_id: z.string().uuid(),
+    organization_id: z.guid(),
     visibility: z.string(),
     is_approved: z.boolean(),
     is_default: z.boolean(),
@@ -964,7 +964,7 @@ const UpdatePolicySetRequest = z
     name: z.string().min(1).max(200),
     description: z.string().max(2000).optional().default(""),
     entries: z.array(PolicyEntryRequest).min(1).max(500),
-    campaign_ids: z.array(z.string().uuid()).max(2000).optional(),
+    campaign_ids: z.array(z.guid()).max(2000).optional(),
   })
   .passthrough();
 const PaginatedResponse_LinkedCampaignResponse_ = z
@@ -977,11 +977,11 @@ const PaginatedResponse_LinkedCampaignResponse_ = z
   })
   .passthrough();
 const AttachCampaignsRequest = z
-  .object({ campaign_ids: z.array(z.string().uuid()).min(1).max(500) })
+  .object({ campaign_ids: z.array(z.guid()).min(1).max(500) })
   .passthrough();
 const DetachCampaignsRequest = z
   .object({
-    campaign_ids: z.array(z.string().uuid()).max(500),
+    campaign_ids: z.array(z.guid()).max(500),
     detach_all: z.boolean().default(false),
   })
   .partial()
@@ -991,12 +991,12 @@ const AlertStatus = z.enum(["open", "escalated", "resolved", "dismissed"]);
 const status__2 = z.union([AlertStatus, z.null()]).optional();
 const AlertResponse = z
   .object({
-    id: z.string().uuid(),
-    scan_id: z.string().uuid(),
-    campaign_id: z.string().uuid(),
+    id: z.guid(),
+    scan_id: z.guid(),
+    campaign_id: z.guid(),
     policy_set_id: z.union([z.string(), z.null()]),
     violation_rule_id: z.union([z.string(), z.null()]),
-    organization_id: z.string().uuid(),
+    organization_id: z.guid(),
     tag_slug: z.string(),
     country_code: z.string(),
     status: AlertStatus,
@@ -1024,11 +1024,11 @@ const UpdateAlertStatusRequest = z.object({ status: AlertStatus }).passthrough()
 const BulkUpdateAlertStatusRequest = z
   .object({
     status: AlertStatus,
-    ids: z.union([z.array(z.string().uuid()), z.null()]).optional(),
+    ids: z.union([z.array(z.guid()), z.null()]).optional(),
     all_matching: z.boolean().optional().default(false),
     filter_status: z.union([AlertStatus, z.null()]).optional(),
     filter_campaign_id: z.union([z.string(), z.null()]).optional(),
-    filter_policy_set_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(),
+    filter_policy_set_ids: z.union([z.array(z.guid()), z.null()]).optional(),
     filter_tag_slugs: z.union([z.array(z.string()), z.null()]).optional(),
     filter_country_codes: z.union([z.array(z.string()), z.null()]).optional(),
     filter_date_from: z.union([z.string(), z.null()]).optional(),
@@ -1072,8 +1072,8 @@ const BillingSummaryResponse = z
   .passthrough();
 const UsageResponse = z
   .object({
-    id: z.string().uuid(),
-    scan_id: z.string().uuid(),
+    id: z.guid(),
+    scan_id: z.guid(),
     charged_micros: z.number().int(),
     balance_after_micros: z.number().int(),
     within_plan: z.boolean(),
@@ -1117,7 +1117,7 @@ const BalanceTransactionType = z.enum([
 const type = z.union([z.array(BalanceTransactionType), z.null()]).optional();
 const BalanceTransactionResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     type: z.string(),
     amount_micros: z.number().int(),
     balance_after_micros: z.number().int(),
@@ -1150,11 +1150,11 @@ const EndpointHealthResponse = z
   .passthrough();
 const WebhookResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     url: z.string(),
     description: z.string(),
     event_types: z.array(z.string()),
-    campaign_ids: z.union([z.array(z.string().uuid()), z.null()]),
+    campaign_ids: z.union([z.array(z.guid()), z.null()]),
     is_active: z.boolean(),
     disabled_reason: z.union([z.string(), z.null()]),
     disabled_reason_detail: z.union([z.string(), z.null()]),
@@ -1169,7 +1169,7 @@ const CreateWebhookRequest = z
     url: z.string().min(1).max(2048),
     description: z.string().max(256).optional().default(""),
     event_types: z.array(z.string()).optional(),
-    campaign_ids: z.union([z.array(z.string().uuid()), z.null()]).optional(),
+    campaign_ids: z.union([z.array(z.guid()), z.null()]).optional(),
   })
   .passthrough();
 const WebhookCreatedResponse = z
@@ -1190,7 +1190,7 @@ const UpdateWebhookRequest = z
     url: z.union([z.string(), z.null()]),
     description: z.union([z.string(), z.null()]),
     event_types: z.union([z.array(z.string()), z.null()]),
-    campaign_ids: z.union([z.array(z.string().uuid()), z.null()]),
+    campaign_ids: z.union([z.array(z.guid()), z.null()]),
     clear_campaign_ids: z.boolean().default(false),
     is_active: z.union([z.boolean(), z.null()]),
   })
@@ -1209,8 +1209,8 @@ const TestWebhookResponse = z
 const success = z.union([z.boolean(), z.null()]).optional();
 const DeliveryAttemptResponse = z
   .object({
-    id: z.string().uuid(),
-    event_id: z.string().uuid(),
+    id: z.guid(),
+    event_id: z.guid(),
     event_type: z.string(),
     response_status: z.union([z.number(), z.null()]),
     response_body: z.union([z.string(), z.null()]),
@@ -1242,8 +1242,8 @@ const BulkReplayResponse = z
 const AlertNotificationVersion = z.enum(["public", "internal"]);
 const AlertNotificationDestinationResponse = z
   .object({
-    id: z.string().uuid(),
-    organization_id: z.string().uuid(),
+    id: z.guid(),
+    organization_id: z.guid(),
     channel: z.string(),
     name: z.string(),
     is_active: z.boolean(),
@@ -1271,16 +1271,16 @@ const SetDestinationVersionRequest = z.object({ version: AlertNotificationVersio
 const CampaignOverrideMode = z.enum(["inherit", "override", "silence"]);
 const CampaignOverridesResponse = z
   .object({
-    campaign_id: z.string().uuid(),
+    campaign_id: z.guid(),
     mode: CampaignOverrideMode,
-    destination_ids: z.array(z.string().uuid()),
+    destination_ids: z.array(z.guid()),
     routing_label_key: z.union([z.string(), z.null()]),
   })
   .passthrough();
 const SetCampaignOverridesRequest = z
   .object({
     mode: CampaignOverrideMode,
-    destination_ids: z.array(z.string().uuid()).optional().default([]),
+    destination_ids: z.array(z.guid()).optional().default([]),
     routing_label_key: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
@@ -1290,9 +1290,9 @@ const InvoiceStatus = z.enum(["draft", "issued", "paid", "voided", "overdue"]);
 const status__3 = z.union([InvoiceStatus, z.null()]).optional();
 const InvoiceResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     number: z.string(),
-    organization_id: z.string().uuid(),
+    organization_id: z.guid(),
     type: z.string(),
     status: z.string(),
     total_micros: z.number().int(),
@@ -1323,7 +1323,7 @@ const PaginatedResponse_InvoiceResponse_ = z
   .passthrough();
 const CustomTaxonomyListItem = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     name: z.string(),
     slug: z.string(),
     description: z.string(),
@@ -1350,7 +1350,7 @@ const CreateCustomTaxonomyRequest = z.object({
 });
 const TaxonomyNodeResponse = z
   .object({
-    id: z.string().uuid(),
+    id: z.guid(),
     parent_id: z.union([z.string(), z.null()]),
     level: z.number().int(),
     position: z.number().int(),
@@ -1361,8 +1361,8 @@ const TaxonomyNodeResponse = z
   .passthrough();
 const CustomTaxonomyResponse = z
   .object({
-    id: z.string().uuid(),
-    organization_id: z.string().uuid(),
+    id: z.guid(),
+    organization_id: z.guid(),
     name: z.string(),
     slug: z.string(),
     description: z.string(),
