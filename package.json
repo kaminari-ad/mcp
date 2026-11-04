@@ -90,7 +90,7 @@
     "openapi-fetch": "0.17.0",
     "pino": "9.5.0",
     "pino-pretty": "13.0.0",
-    "undici": "8.11.2",
+    "undici": "8.12.3",
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -101,7 +101,7 @@
     "@types/node": "22.10.5",
     "@typescript-eslint/eslint-plugin": "8.65.0",
     "@typescript-eslint/parser": "8.65.0",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "@vitest/eslint-plugin": "1.6.24",
     "dependency-cruiser": "16.9.0",
     "eslint": "10.8.0",
@@ -124,7 +124,7 @@
     "tsx": "4.22.0",
     "typescript": "5.7.3",
     "typescript-eslint": "8.65.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "publishConfig": {
     "access": "public",
@@ -132,17 +132,21 @@
     "registry": "https://registry.npmjs.org"
   },
   "overrides": {
+    "@modelcontextprotocol/sdk": {
+      "zod": "^4.6.7"
+    },
     "@redocly/openapi-core": {
-      "minimatch": "10.2.6"
+      "minimatch": "11.0.4"
     },
     "esbuild": "0.28.1",
     "glob": {
-      "minimatch": "10.2.6"
+      "minimatch": "11.0.4"
     },
-    "hono": "^4.13.7",
+    "hono": "^4.13.11",
     "js-yaml": "4.3.2",
     "minimatch": {
-      "brace-expansion": "5.0.9"
+      ".": "11.0.4",
+      "brace-expansion": "^5.0.12"
     }
   }
 }
