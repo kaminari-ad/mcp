@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UnarchiveCampaignGroupInputShape = {
-  group_id: z.string().uuid().describe("Campaign group UUID."),
+  group_id: z.guid().describe("Campaign group UUID."),
 } as const;
 type UnarchiveCampaignGroupInputShape = typeof UnarchiveCampaignGroupInputShape;
 

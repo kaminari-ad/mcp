@@ -10,7 +10,7 @@ import { makeToolContext } from "../../../fakes/make-tool-context.js";
 const transactionTypeOptions = (): readonly string[] =>
   (
     listBalanceHistoryTool.inputSchema.shape.type.unwrap().element as z.ZodEnum<
-      [string, ...string[]]
+      Record<string, string>
     >
   ).options;
 

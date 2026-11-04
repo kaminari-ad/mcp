@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetInvoicePdfInputShape = {
-  invoice_id: z.string().uuid().describe("Invoice UUID — see `list_invoices`."),
+  invoice_id: z.guid().describe("Invoice UUID — see `list_invoices`."),
 } as const;
 type GetInvoicePdfInputShape = typeof GetInvoicePdfInputShape;
 

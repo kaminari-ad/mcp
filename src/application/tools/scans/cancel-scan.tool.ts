@@ -15,7 +15,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const CancelScanInputShape = {
-  scan_id: z.string().uuid().describe("UUID of the pending scan to cancel."),
+  scan_id: z.guid().describe("UUID of the pending scan to cancel."),
 } as const;
 type CancelScanInputShape = typeof CancelScanInputShape;
 

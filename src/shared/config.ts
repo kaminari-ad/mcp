@@ -108,7 +108,7 @@ const RawSchema = z.object({
   // Setting this wrong (e.g. the root domain) makes every tool call
   // fail with HTTP 404 — the symptom that surfaced this default bug
   // in v0.2.0.
-  KAMINARI_AD_API_URL: z.string().url().default("https://app.kaminari.ad"),
+  KAMINARI_AD_API_URL: z.url().default("https://app.kaminari.ad"),
   KAMINARI_AD_LOG_LEVEL: LogLevelSchema.default("info"),
   KAMINARI_AD_LOG_FORMAT: LogFormatSchema.optional(),
   KAMINARI_AD_HTTP_PORT: z.coerce.number().int().min(0).max(65535).default(8080),
@@ -117,16 +117,15 @@ const RawSchema = z.object({
   // OAuth discovery (RFC 9728 protected-resource + RFC 8414 AS
   // metadata). All three URLs default to the production deployment;
   // local/staging operators override per-environment.
-  KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: z.string().url().default("https://mcp.kaminari.ad/mcp"),
+  KAMINARI_AD_OAUTH_PROTECTED_RESOURCE: z.url().default("https://mcp.kaminari.ad/mcp"),
   KAMINARI_AD_OAUTH_PROTECTED_RESOURCE_METADATA_URL: z
-    .string()
     .url()
     .default("https://mcp.kaminari.ad/.well-known/oauth-protected-resource"),
-  KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL: z.string().url().default("https://app.kaminari.ad"),
+  KAMINARI_AD_OAUTH_AUTHORIZATION_SERVER_URL: z.url().default("https://app.kaminari.ad"),
   // Space-separated scope list. We split on /\s+/ post-parse and drop
   // empty tokens so accidental double-spaces don't corrupt the array.
   KAMINARI_AD_OAUTH_SCOPES: z.string().optional(),
-  KAMINARI_AD_MCP_LANDING_URL: z.string().url().default("https://kaminari.ad/mcp"),
+  KAMINARI_AD_MCP_LANDING_URL: z.url().default("https://kaminari.ad/mcp"),
 });
 
 /**
@@ -142,7 +141,7 @@ const RawSchema = z.object({
 export function loadConfig(env: NodeJS.ProcessEnv): Result<Config, ConfigError> {
   const parsed = RawSchema.safeParse(env);
   if (!parsed.success) {
-    return err({ kind: "invalid", issues: parsed.error.flatten().fieldErrors });
+    return err({ kind: "invalid", issues: z.flattenError(parsed.error).fieldErrors });
   }
   const raw = parsed.data;
   const transport = raw.KAMINARI_AD_TRANSPORT;

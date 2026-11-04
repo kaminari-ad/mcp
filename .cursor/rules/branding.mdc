@@ -1,0 +1,23 @@
+---
+description: Kaminari Ad naming and brand positioning — trademark name vs domain, the grandfathered adverif references, and how to reference the sister product Kaminari.Click in marketing copy. Read before writing user-facing copy or marketing content.
+alwaysApply: false
+---
+
+# Branding — Kaminari Ad
+
+The naming bans (never `AdVerif` in user-facing text, display name vs domain, the grandfathered list) are in `core`.
+
+## Trademark name vs domain
+
+- **Display name in copy:** `Kaminari Ad` — headlines, marketing copy, About pages, footer wordmarks, email subject lines, sales decks.
+- **Domain:** `kaminari.ad` — URLs, hostnames, email addresses, technical docs.
+
+The dotted form `Kaminari.Ad` is deprecated. Legacy files carrying it are grandfathered; new user-facing text uses the space form.
+
+## Family: Kaminari Ad ↔ Kaminari.Click
+
+Kaminari is a family of two products. **Kaminari.Click** (https://kaminari.click) is anti-fraud / incoming traffic protection, in a separate repo outside this workspace. **Kaminari Ad** (https://kaminari.ad) is ad verification — this monorepo.
+
+In marketing copy (landing pages, UI footer, About, sales decks), reference Click as the sister product — "from the team behind Kaminari.Click", "pair with Kaminari.Click". In technical docs (runtime, runbooks, error messages), do not mention Click at all.
+
+Brand identity, inherited from Click: deep eggplant purple background, teal accent, white cards, teal lightning bolts, kanji 雷 watermark. Pricing tiers: Basic / Pro / Enterprise / Threat Intelligence DB.

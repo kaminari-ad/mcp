@@ -1,0 +1,88 @@
+---
+description: Naming conventions for files, types, ports, adapters, and tools in @kaminari-ad/mcp
+globs: ["**"]
+alwaysApply: false
+---
+
+# Naming Conventions — `mcp/` (TypeScript)
+
+## File names — kebab-case, suffixed by role
+
+| Role                | Filename pattern                  | Example                            |
+| ------------------- | --------------------------------- | ---------------------------------- |
+| Tool                | `<name>.tool.ts`                  | `list-scans.tool.ts`               |
+| Port (interface)    | `<concept>.ts`                    | `api-gateway.ts`                   |
+| Adapter             | `<tech>-<concept>.ts`             | `http-api-gateway.ts`              |
+| Value object        | `<concept>.ts`                    | `bearer-token.ts`                  |
+| Domain service      | `<concept>-<role>.ts`             | `session-binding-policy.ts`        |
+| Bootstrap           | `<transport>-bootstrap.ts`        | `stdio-bootstrap.ts`               |
+| Middleware          | `<concept>-middleware.ts`         | `auth-middleware.ts`               |
+| Test (mirror src)   | `<file>.test.ts`                  | `list-scans.tool.test.ts`          |
+| Fake (in tests/)    | `fake-<port>.ts`                  | `fake-api-gateway.ts`              |
+
+`mcp/scripts/check-tool-naming.ts` enforces tool naming.
+
+## Symbol names
+
+| Kind                     | Convention                            | Example                  |
+| ------------------------ | ------------------------------------- | ------------------------ |
+| Tool const               | `<camelCase>Tool` (matches filename)  | `listScansTool`          |
+| Tool `name` literal      | `<snake_case>` (matches filename)     | `"list_scans"`           |
+| Interface                | PascalCase, no `I` prefix             | `ApiGateway`             |
+| Type alias               | PascalCase                            | `ToolError`              |
+| Concrete class           | PascalCase with role suffix           | `HttpApiGateway`         |
+| Function                 | camelCase verb phrase                 | `createPinoLogger`       |
+| Const                    | camelCase, `UPPER_SNAKE` for true constants only | `defaultRateLimitRpm` / `LINE_LIMIT` |
+| Enum-like union          | `as const` object, PascalCase keys    | `ToolStatus.Success`     |
+
+## Suffix table
+
+| Suffix       | Meaning                                                             |
+| ------------ | ------------------------------------------------------------------- |
+| `*Tool`      | An MCP tool definition (single instance per file)                   |
+| `*Gateway`   | An outbound port to a remote system (the API, an LLM, etc.)         |
+| `*Port`      | Avoided — use the noun directly (`Logger`, not `LoggerPort`)        |
+| `*Adapter`   | Optional infrastructure adapter; usually prefix with tech name      |
+| `*Bootstrap` | Composition root function                                           |
+| `*Policy`    | Pure decision function in `domain/services/`                        |
+| `*Service`   | Stateful domain service in `domain/services/`                       |
+| `*Mapper`    | Pure transformation between two representations                     |
+| `*Error`     | Typed error variant (e.g. `ApiError`, `ToolError`)                  |
+| `*Request`   | DTO sent OUT to the API                                             |
+| `*Response`  | DTO received FROM the API                                           |
+| `*Input`     | Tool input shape (zod-validated)                                    |
+| `*Output`    | Tool output shape                                                   |
+
+## Tool naming — `<verb>_<noun>` (snake_case)
+
+MCP convention is snake_case for tool names. Use the verb that matches the HTTP method semantically:
+
+| Verb         | HTTP                | Example tool names                                |
+| ------------ | ------------------- | ------------------------------------------------- |
+| `list_*`     | `GET /resource`     | `list_scans`, `list_campaigns`                    |
+| `get_*`      | `GET /resource/:id` | `get_scan`, `get_account`                         |
+| `create_*`   | `POST /resource`    | `create_scan`, `create_api_key`                   |
+| `update_*`   | `PATCH /resource`   | `update_campaign`                                 |
+| `delete_*`   | `DELETE /resource`  | `delete_webhook`                                  |
+| `<domain>_*` | Custom action       | `recheck_scans`, `archive_campaign`, `cancel_scan`|
+
+## Field names in logs and structured data
+
+Mirror the api repo for cross-system grep-friendliness:
+
+| Field           | Meaning                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| `request_id`    | Per-incoming-HTTP-request UUID (also propagated to API as a header)  |
+| `bearer_hash`   | First 8 chars of `sha256(bearer)` — never the bearer itself          |
+| `tool_name`     | Snake_case MCP tool name                                             |
+| `api_status`    | HTTP status code returned by the API                                 |
+| `elapsed_ms`    | Wall-clock elapsed milliseconds                                      |
+| `session_id`    | MCP `Mcp-Session-Id` value                                           |
+
+## Banned names
+
+- `*Manager` — too vague. Use `*Service`, `*Policy`, `*Coordinator`.
+- `*Helper`, `*Utils` — split into named small modules with explicit purpose.
+- `*Impl`, `*Default` — the implementation IS the class; no need to call it out.
+- `I*` interface prefix — TypeScript doesn't need it.
+- `New*`, `Old*`, `Legacy*` — pick a name and refactor or delete.

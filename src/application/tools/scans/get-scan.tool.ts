@@ -16,10 +16,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetScanInputShape = {
-  scan_id: z
-    .string()
-    .uuid()
-    .describe("The scan's UUID (returned by `list_scans` or `create_scan`)."),
+  scan_id: z.guid().describe("The scan's UUID (returned by `list_scans` or `create_scan`)."),
 } as const;
 type GetScanInputShape = typeof GetScanInputShape;
 

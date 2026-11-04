@@ -14,9 +14,9 @@ import type { ToolError } from "../_shared/tool-result.js";
 const MAX_CAMPAIGNS = 500;
 
 const AttachPolicySetCampaignsInputShape = {
-  policy_set_id: z.string().uuid().describe("Policy set UUID."),
+  policy_set_id: z.guid().describe("Policy set UUID."),
   campaign_ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .min(1)
     .max(MAX_CAMPAIGNS)
     .describe(

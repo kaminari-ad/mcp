@@ -13,7 +13,7 @@ import { z } from "zod";
 
 /** Filters shared by the alert list and the stats endpoint. */
 export const alertFilterFields = {
-  campaign_id: z.string().uuid().optional().describe("Filter to one campaign's alerts."),
+  campaign_id: z.guid().optional().describe("Filter to one campaign's alerts."),
   policy_set_id: z
     .string()
     .optional()
@@ -28,13 +28,11 @@ export const alertFilterFields = {
     .string()
     .optional()
     .describe("Comma-separated ISO 3166-1 alpha-2 country codes, e.g. US,DE,JP."),
-  date_from: z
-    .string()
+  date_from: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive lower bound on alert creation."),
-  date_to: z
-    .string()
+  date_to: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive upper bound on alert creation."),

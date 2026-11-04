@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UnpublishPolicySetInputShape = {
-  policy_set_id: z.string().uuid().describe("Policy set UUID."),
+  policy_set_id: z.guid().describe("Policy set UUID."),
 } as const;
 type UnpublishPolicySetInputShape = typeof UnpublishPolicySetInputShape;
 

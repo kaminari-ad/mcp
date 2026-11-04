@@ -27,7 +27,6 @@ import { scanReferrerField } from "./_scan-referrer-input.js";
 
 const CreateBulkScansInputShape = {
   url: z
-    .string()
     .url()
     .optional()
     .describe("Direct URL. Provide exactly one of `url`, `ad_tag`, or `vast_tag`."),
@@ -61,7 +60,7 @@ const CreateBulkScansInputShape = {
     .describe("Device/OS profile slug; same for every country in the batch."),
   proxy: scanProxyField,
   labels: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe("Arbitrary metadata copied onto every created scan."),
   campaign_id: scanCampaignIdField,

@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const DeleteAlertDestinationInputShape = {
-  destination_id: z.string().uuid().describe("Destination UUID."),
+  destination_id: z.guid().describe("Destination UUID."),
 } as const;
 type DeleteAlertDestinationInputShape = typeof DeleteAlertDestinationInputShape;
 

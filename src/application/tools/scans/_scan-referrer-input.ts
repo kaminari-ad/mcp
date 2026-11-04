@@ -8,7 +8,7 @@
  * URL.
  *
  * The scheme and length bounds mirror the API (`AnyHttpUrl` against a
- * `varchar(2048)` column): `z.string().url()` alone accepts
+ * `varchar(2048)` column): `z.url()` alone accepts
  * `javascript:`, `file:` and `data:` URLs the API answers with a 422.
  * Both bounds land in the JSON Schema the model reads (`pattern`,
  * `maxLength`), which a `.refine()` would not.
@@ -16,7 +16,6 @@
 import { z } from "zod";
 
 export const scanReferrerField = z
-  .string()
   .url()
   .regex(/^https?:\/\//i, "Must be an http(s) URL.")
   .max(2048)

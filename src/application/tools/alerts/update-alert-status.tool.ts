@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateAlertStatusInputShape = {
-  alert_id: z.string().uuid().describe("Alert UUID."),
+  alert_id: z.guid().describe("Alert UUID."),
   status: z
     .enum(["open", "escalated", "resolved", "dismissed"])
     .describe("New status: open | escalated | resolved | dismissed."),

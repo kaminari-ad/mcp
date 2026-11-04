@@ -35,8 +35,8 @@ const TransactionTypeEnum = z.enum([
 ]);
 
 const ListBalanceHistoryInputShape = {
-  date_from: z.string().date().optional().describe("ISO date, inclusive."),
-  date_to: z.string().date().optional().describe("ISO date, inclusive."),
+  date_from: z.iso.date().optional().describe("ISO date, inclusive."),
+  date_to: z.iso.date().optional().describe("ISO date, inclusive."),
   type: z
     .array(TransactionTypeEnum)
     .max(TransactionTypeEnum.options.length)

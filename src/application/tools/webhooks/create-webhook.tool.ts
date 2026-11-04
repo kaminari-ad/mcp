@@ -15,7 +15,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const CreateWebhookInputShape = {
-  url: z.string().url().describe("HTTPS endpoint URL."),
+  url: z.url().describe("HTTPS endpoint URL."),
   description: z.string().max(200).default("").describe("Free-form label shown in the dashboard."),
   event_types: z
     .array(z.string())
@@ -26,7 +26,7 @@ const CreateWebhookInputShape = {
       "Event-type slugs to subscribe to (see `list_webhook_event_types`). Empty array = subscribe to ALL events."
     ),
   campaign_ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .max(50)
     .default([])
     .describe("Restrict to events from these campaigns. Empty array = events from every campaign."),

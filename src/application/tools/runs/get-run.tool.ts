@@ -10,7 +10,7 @@ import { mapApiError } from "../../services/api-error-mapper.js";
 import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
-const GetRunInputShape = { run_id: z.string().uuid().describe("Run UUID.") } as const;
+const GetRunInputShape = { run_id: z.guid().describe("Run UUID.") } as const;
 type GetRunInputShape = typeof GetRunInputShape;
 
 export type GetRunOutput = RunResponse;

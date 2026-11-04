@@ -13,7 +13,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const RevokeApiKeyInputShape = {
-  key_id: z.string().uuid().describe("UUID of the key to revoke (from `list_api_keys`)."),
+  key_id: z.guid().describe("UUID of the key to revoke (from `list_api_keys`)."),
 } as const;
 type RevokeApiKeyInputShape = typeof RevokeApiKeyInputShape;
 

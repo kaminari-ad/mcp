@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetScanCreativeScreenshotInputShape = {
-  scan_id: z.string().uuid().describe("Scan UUID — must be an ad-tag scan (is_ad_tag=true)."),
+  scan_id: z.guid().describe("Scan UUID — must be an ad-tag scan (is_ad_tag=true)."),
   width: z.number().int().min(50).max(2000).optional().describe("Optional resize width in pixels."),
 } as const;
 type GetScanCreativeScreenshotInputShape = typeof GetScanCreativeScreenshotInputShape;

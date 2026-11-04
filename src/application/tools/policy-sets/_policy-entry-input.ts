@@ -34,8 +34,7 @@ const AiCategoryBlock = z.object({
 
 const CustomTaxonomyBlock = z.object({
   taxonomy_id: z
-    .string()
-    .uuid()
+    .guid()
     .describe("ID of the per-org custom taxonomy (see `list_custom_taxonomies`)."),
   tier1: TIER1.describe("Top-level node name in the taxonomy."),
   tier2: TIER_OPT.describe("Tier 2 node name (optional)."),

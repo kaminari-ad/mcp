@@ -1,0 +1,104 @@
+---
+description: Dev environment for @kaminari-ad/mcp — Docker-first, make-driven
+globs: ["**"]
+alwaysApply: false
+---
+
+# Dev Environment — `mcp/`
+
+## Everything runs in Docker
+
+Production runs `node:20-alpine` in a pinned image. To avoid host-Node version drift, all dev commands execute inside the same image via `make` (run from `mcp/`).
+
+```bash
+cd mcp/
+
+make lint              # eslint --max-warnings 0
+make lint-fix          # eslint --fix
+make format            # prettier --write
+make format-check      # prettier --check
+make typecheck         # tsc --noEmit
+make test              # vitest run (all suites)
+make test-unit         # vitest run tests/unit
+make test-integration  # vitest run tests/integration
+make test-isolation    # vitest run tests/isolation (mandatory merge gate)
+make test-cov          # vitest run --coverage
+make check             # everything; ~3 min on first run
+
+# Architecture / quality gates (run inside `make check`)
+make check-file-sizes
+make check-imports
+make check-shared-state
+make check-tool-naming
+
+# Security
+make audit             # npm audit --audit-level=moderate
+make license-check     # license-checker, MIT/Apache/BSD/ISC whitelist
+```
+
+**Rules:**
+
+- NEVER run `tsc`, `eslint`, `vitest`, or `node` directly on the host. Use `make`. (You may run them via your IDE for inline feedback; commit-time validation is `make check`.)
+- NEVER install project dependencies on host Node. The Docker image owns `node_modules` via a named volume.
+- Use `make build` to rebuild the image after dependency changes.
+
+## Dependency management — npm
+
+```bash
+make install           # npm ci (or npm install if no lockfile)
+# Manual deps still go through docker-compose run
+docker compose -f docker-compose.dev.yml run --rm mcp-dev npm install <pkg>
+docker compose -f docker-compose.dev.yml run --rm mcp-dev npm install --save-dev <pkg>
+```
+
+`.npmrc` enforces `save-exact=true`. Always commit `package.json` AND `package-lock.json`.
+
+## Secrets & .env
+
+- `.env` in `mcp/` root, gitignored.
+- `.env.example` documents every var with safe defaults.
+- The TypeScript `Config` schema (`src/shared/config.ts`, zod-based) is the ONLY way `src/` reads env vars. Direct `process.env.X` outside `Config` is a code-review blocker.
+
+## Logging
+
+- Use the `Logger` port everywhere. NEVER `console.*` (ESLint rejects it).
+- `LOG_LEVEL` env var: `trace | debug | info | warn | error | fatal`.
+- `LOG_FORMAT`: `json` (prod default) or `pretty` (dev). `pretty` is `pino-pretty` piped from `pino`.
+
+```ts
+ctx.logger.info({ tool_name: "list_scans", elapsed_ms: 42, api_status: 200 }, "tool.done");
+```
+
+Field names mirror the api repo so cross-system grep just works (see [`mcp-naming-conventions.mdc`](.cursor/rules/mcp-naming-conventions.mdc) § Field names).
+
+## Pre-commit hooks
+
+```bash
+make install-hooks   # one-time: installs lefthook
+```
+
+Hooks run on `git commit`:
+
+- Prettier on staged TS/JSON/MD files.
+- ESLint --fix on staged TS files.
+- A quick scan that refuses to commit `.env`, `*.pem`, `id_rsa`, etc.
+- commitlint on the commit message.
+
+On `git push`: `tsc --noEmit` + `vitest run tests/unit --no-coverage` (fast feedback before CI).
+
+The full gate runs in CI; hooks are just early-fail.
+
+## IDE
+
+- VS Code / Cursor: install the ESLint and Prettier extensions. The flat config and `.prettierrc.json` Just Work.
+- TypeScript "Use Workspace Version" — match the pinned `typescript` in `package.json`, not the IDE's bundled one.
+- `.editorconfig` ensures spaces/LF/2-indent consistency across editors.
+
+## Production parity
+
+The Docker image used for `make check` IS the image deployed to `mcp.kaminari.ad`. No "dev vs prod" runtime differences. The only difference is:
+
+- Dev: `command: ["npx", "tsx", "src/bin.ts", "--transport=stdio"]`.
+- Prod: `command: ["node", "dist/bin.js", "--transport=http"]`.
+
+Both run inside the same `node:20-alpine` base.

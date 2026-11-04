@@ -44,11 +44,11 @@ export const COMBO_MATCH_SCOPE_READ_DOC =
  * `match_scope` before the request leaves the process. Each tool calls
  * `.describe(...)` on it to add its own prose.
  */
-export const ruleConfigField = z.record(z.unknown()).superRefine((config, ctx) => {
+export const ruleConfigField = z.record(z.string(), z.unknown()).superRefine((config, ctx) => {
   const scope = config["match_scope"];
   if (scope !== undefined && scope !== "scan" && scope !== "url") {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       path: ["match_scope"],
       message:
         'config.match_scope must be "scan" or "url". Omit the key for scan-wide matching (the default).',

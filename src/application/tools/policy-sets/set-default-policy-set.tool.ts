@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const SetDefaultPolicySetInputShape = {
-  policy_set_id: z.string().uuid().describe("Owned policy set UUID."),
+  policy_set_id: z.guid().describe("Owned policy set UUID."),
   is_default: z
     .boolean()
     .describe(

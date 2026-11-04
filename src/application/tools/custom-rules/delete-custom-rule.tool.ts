@@ -13,7 +13,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const DeleteCustomRuleInputShape = {
-  rule_id: z.string().uuid().describe("Rule UUID to delete."),
+  rule_id: z.guid().describe("Rule UUID to delete."),
 } as const;
 type DeleteCustomRuleInputShape = typeof DeleteCustomRuleInputShape;
 

@@ -12,7 +12,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListScanTagsInputShape = {
-  scan_id: z.string().uuid().describe("Scan UUID."),
+  scan_id: z.guid().describe("Scan UUID."),
 } as const;
 type ListScanTagsInputShape = typeof ListScanTagsInputShape;
 

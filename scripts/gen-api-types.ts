@@ -143,7 +143,53 @@ async function writeZodSchemas(spec: unknown): Promise<void> {
       shouldExportAllTypes: false,
     },
   });
-  await writeFormatted(ZOD_OUTPUT, zodHeader() + stripZodiosRuntime(raw));
+  await writeFormatted(ZOD_OUTPUT, zodHeader() + toZod4(stripZodiosRuntime(raw)));
+}
+
+/**
+ * Adapt openapi-zod-client's zod 3 output to zod 4.
+ *
+ * `z.string().uuid()` becomes `z.guid()`, which keeps zod 3's any-hex
+ * check (zod 4's `uuid` enforces RFC version and variant bits), and
+ * single-argument `z.record(V)` gains the key schema zod 4 requires.
+ */
+function toZod4(source: string): string {
+  return withRecordKeys(source.replaceAll("z.string().uuid()", "z.guid()"));
+}
+
+/** Rewrite every single-argument `z.record(V)` into `z.record(z.string(), V)`. */
+function withRecordKeys(source: string): string {
+  const marker = "z.record(";
+  let out = "";
+  let from = 0;
+  for (let at = source.indexOf(marker); at !== -1; at = source.indexOf(marker, from)) {
+    const argsStart = at + marker.length;
+    out += source.slice(from, argsStart);
+    if (!hasTopLevelComma(source, argsStart)) {
+      out += "z.string(), ";
+    }
+    from = argsStart;
+  }
+  return out + source.slice(from);
+}
+
+/** True when the argument list starting at `start` has a comma outside nested brackets. */
+function hasTopLevelComma(source: string, start: number): boolean {
+  let depth = 0;
+  for (let i = start; i < source.length; i += 1) {
+    const ch = source.charAt(i);
+    if (ch === "(" || ch === "[" || ch === "{") {
+      depth += 1;
+    } else if (ch === ")" || ch === "]" || ch === "}") {
+      if (depth === 0) {
+        return false;
+      }
+      depth -= 1;
+    } else if (ch === "," && depth === 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

@@ -15,7 +15,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetScanLandingScreenshotInputShape = {
-  scan_id: z.string().uuid().describe("Scan UUID (ad-tag scan)."),
+  scan_id: z.guid().describe("Scan UUID (ad-tag scan)."),
   landing_ord: z
     .number()
     .int()

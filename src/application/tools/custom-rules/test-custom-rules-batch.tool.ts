@@ -19,8 +19,7 @@ const TestCustomRulesBatchInputShape = {
     .array(
       z.object({
         id: z
-          .string()
-          .uuid()
+          .guid()
           .optional()
           .describe(
             "Optional UUID you choose to tell rules apart in the reply; echoed back as rule_id. The API accepts only a UUID here. It is not looked up and does not select a saved rule."

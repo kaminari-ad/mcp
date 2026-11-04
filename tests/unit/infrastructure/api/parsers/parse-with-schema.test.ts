@@ -83,7 +83,7 @@ describe("parseWithSchema", () => {
     // explicit `undefined` value (e.g. an upstream proxy that forwards
     // a JSON `null`-was-coerced-to-undefined field). The stripper's
     // `if (v === undefined) continue;` branch covers this case.
-    const Loose = z.object({ id: z.string() }).passthrough();
+    const Loose = z.object({ id: z.string() }).loose();
     const r = parseWithSchema(Loose, { id: "x", extra: undefined }, "loose");
     expect(r.isOk()).toBe(true);
     expect(Object.keys(r._unsafeUnwrap())).toEqual(["id"]);

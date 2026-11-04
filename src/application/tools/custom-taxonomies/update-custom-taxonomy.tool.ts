@@ -13,7 +13,7 @@ import type { ToolError } from "../_shared/tool-result.js";
 import { TaxonomyNodeShape } from "./_taxonomy-nodes-input.js";
 
 const UpdateCustomTaxonomyInputShape = {
-  taxonomy_id: z.string().uuid().describe("Custom taxonomy UUID."),
+  taxonomy_id: z.guid().describe("Custom taxonomy UUID."),
   name: z.string().min(1).max(100).describe("New display name."),
   description: z
     .string()

@@ -12,7 +12,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const RunCampaignInputShape = {
-  campaign_id: z.string().uuid().describe("Campaign UUID to run now."),
+  campaign_id: z.guid().describe("Campaign UUID to run now."),
 } as const;
 type RunCampaignInputShape = typeof RunCampaignInputShape;
 

@@ -14,7 +14,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateCampaignGroupInputShape = {
-  group_id: z.string().uuid().describe("Group UUID to update."),
+  group_id: z.guid().describe("Group UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
 } as const;
 type UpdateCampaignGroupInputShape = typeof UpdateCampaignGroupInputShape;

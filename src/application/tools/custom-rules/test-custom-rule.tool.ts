@@ -33,7 +33,7 @@ const TestCustomRuleInputShape = {
     .describe(
       "Where to apply the rule (e.g. 'page' for landing HTML). `regexp_request_url` and `regexp_request_body` also accept `'creative'` and `'creative_and_page'`. See API docs for the full set of valid values."
     ),
-  scan_id: z.string().uuid().describe("Existing scan UUID to evaluate the rule against."),
+  scan_id: z.guid().describe("Existing scan UUID to evaluate the rule against."),
 } as const;
 type TestCustomRuleInputShape = typeof TestCustomRuleInputShape;
 

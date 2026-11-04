@@ -15,13 +15,11 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const BulkReplayWebhookInputShape = {
-  webhook_id: z.string().uuid().describe("Webhook endpoint UUID."),
-  from_ts: z
-    .string()
+  webhook_id: z.guid().describe("Webhook endpoint UUID."),
+  from_ts: z.iso
     .datetime()
     .describe("ISO-8601 lower bound (inclusive) of the time window to replay."),
-  to_ts: z
-    .string()
+  to_ts: z.iso
     .datetime()
     .describe("ISO-8601 upper bound (exclusive) of the time window to replay."),
 } as const;

@@ -13,8 +13,7 @@ import { fileURLToPath } from "node:url";
 
 import js from "@eslint/js";
 import vitest from "@vitest/eslint-plugin";
-import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
-import importX from "eslint-plugin-import-x";
+import importLite from "eslint-plugin-import-lite";
 import jsdoc from "eslint-plugin-jsdoc";
 import noSecrets from "eslint-plugin-no-secrets";
 import promise from "eslint-plugin-promise";
@@ -59,19 +58,13 @@ export default tseslint.config(
       },
     },
     plugins: {
-      "import-x": importX,
+      "import-lite": importLite,
       "simple-import-sort": simpleImportSort,
       promise,
       unicorn,
       security,
       "no-secrets": noSecrets,
       jsdoc,
-    },
-    settings: {
-      "import-x/resolver-next": [
-        createTypeScriptImportResolver({ alwaysTryTypes: true }),
-        importX.createNodeResolver(),
-      ],
     },
   },
 
@@ -125,12 +118,11 @@ export default tseslint.config(
       "promise/no-promise-in-callback": "warn",
 
       // === Import discipline ===
-      "import-x/no-cycle": ["error", { maxDepth: 10 }],
-      "import-x/no-self-import": "error",
-      "import-x/no-default-export": "error", // named exports only — better grep / refactor
-      "import-x/no-duplicates": "error",
-      "import-x/first": "error",
-      "import-x/newline-after-import": "error",
+      // Cycles and self-imports: dependency-cruiser `no-circular` (`check:imports`).
+      "import-lite/no-default-export": "error", // named exports only — better grep / refactor
+      "import-lite/no-duplicates": "error",
+      "import-lite/first": "error",
+      "import-lite/newline-after-import": "error",
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
 
@@ -294,7 +286,7 @@ export default tseslint.config(
       "jsdoc/require-description": "off",
       "no-console": "off",
       "no-secrets/no-secrets": "off",
-      "import-x/no-default-export": "off",
+      "import-lite/no-default-export": "off",
       "no-restricted-imports": "off",
     },
   },
@@ -303,7 +295,7 @@ export default tseslint.config(
   {
     files: ["*.config.ts", "*.config.mts"],
     rules: {
-      "import-x/no-default-export": "off",
+      "import-lite/no-default-export": "off",
       "@typescript-eslint/no-require-imports": "off",
     },
   },

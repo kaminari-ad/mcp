@@ -15,18 +15,16 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListWebhookDeliveriesInputShape = {
-  webhook_id: z.string().uuid().describe("Webhook endpoint UUID."),
+  webhook_id: z.guid().describe("Webhook endpoint UUID."),
   success: z
     .boolean()
     .optional()
     .describe("Filter to delivered (true) or failed (false) attempts only."),
-  from_ts: z
-    .string()
+  from_ts: z.iso
     .datetime({ offset: true })
     .optional()
     .describe("ISO 8601 datetime (with offset), inclusive lower bound on attempt time."),
-  to_ts: z
-    .string()
+  to_ts: z.iso
     .datetime({ offset: true })
     .optional()
     .describe("ISO 8601 datetime (with offset), inclusive upper bound."),

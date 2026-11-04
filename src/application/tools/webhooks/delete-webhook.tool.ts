@@ -12,7 +12,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const DeleteWebhookInputShape = {
-  webhook_id: z.string().uuid().describe("Webhook endpoint UUID to remove."),
+  webhook_id: z.guid().describe("Webhook endpoint UUID to remove."),
 } as const;
 type DeleteWebhookInputShape = typeof DeleteWebhookInputShape;
 

@@ -1,0 +1,107 @@
+---
+description: CRITICAL — multi-tenant safety rules for the hosted HTTP MCP server. Mandatory reading before touching HTTP-mode code.
+globs: ["**"]
+alwaysApply: false
+---
+
+# Tenant Isolation Rules — `mcp/` (hosted HTTP mode)
+
+> The hosted MCP endpoint at `mcp.kaminari.ad` serves many organizations from a single process. A bug here = cross-tenant data leak = customer trust event. **Read this file before touching any code in `mcp/src/presentation/http/`, `mcp/src/infrastructure/session/`, or `mcp/src/infrastructure/rate-limit/`.**
+
+## Threat model
+
+The Kaminari Ad API is already secure: middleware resolves the `Authorization` header into an `AuthContext.organization_id`, and every use case enforces `auth.organization_id == resource.organization_id` (see `clean-code` → "Authorization and org-scoping").
+
+**MCP does NOT duplicate those checks.** MCP's single job is: **the Bearer that came in with request X must reach only the outbound API calls made by request X.** Any leak of auth context between concurrent requests = a vulnerability that did not exist at the API.
+
+## Hard rules (CI-enforced)
+
+### 1. No module-level mutable state
+
+`let` and `var` are banned at module scope. `static` class fields must be `readonly`. ESLint `no-restricted-syntax` blocks the syntax; `mcp/scripts/check-no-shared-state.ts` walks the AST as a belt-and-suspenders gate. To bypass either, you must edit BOTH files in the same MR, and reviewers will reject without a multi-tenant safety analysis.
+
+### 2. No caches indexed by tenant data
+
+Zero caches. No `Map<orgId, ...>`, no `Map<scanId, ...>`, no per-Bearer memo, no LRU on tool results. Every tool call is a fresh API request. The performance cost is acceptable; the correctness benefit is non-negotiable.
+
+The two exceptions live in `mcp/src/infrastructure/session/` and `mcp/src/infrastructure/rate-limit/`. They hold only `Map<sha256(bearer), {...}>` entries, never user data. Both have isolation tests proving they cannot be queried with a different Bearer.
+
+### 3. `ApiGateway` per request, never singleton
+
+`HttpApiGateway` is constructed per incoming HTTP request, from that request's `Authorization` header. It lives in the request handler's closure and is garbage-collected when the request ends. There is no `globalApiGateway`.
+
+### 4. AsyncLocalStorage if you must propagate context
+
+If a transport uses AsyncLocalStorage to thread `ToolContext` through async boundaries, every entry point MUST use `als.run(ctx, async () => {...})`. There is a regression test (`mcp/tests/isolation/error_path_isolation.test.ts`) that asserts ALS context does not leak across requests, including on unhandled rejection. If you change ALS wiring, update that test.
+
+### 5. `KAMINARI_AD_API_KEY` is rejected in HTTP mode
+
+The bootstrap MUST assert this env var is unset when starting in HTTP mode, exit non-zero with a clear error. The env var exists for stdio mode only. Without this guard, an operator who exports the variable would inadvertently create a default fallback token that gets used when an incoming request has no `Authorization`.
+
+### 6. Missing `Authorization` = 401 WITHOUT calling the API
+
+The HTTP middleware MUST short-circuit any request that lacks `Authorization: Bearer ...` with HTTP 401, before constructing an `ApiGateway`, before invoking any tool. Test: `mcp/tests/isolation/missing_auth.test.ts` asserts the API MockAgent records zero outbound calls.
+
+### 7. Pass `Authorization` through verbatim
+
+MCP does not decode, parse, validate, or extract anything from the Bearer. If the API rejects it, so be it. MCP must not make any local authorization decision based on Bearer contents. This keeps the API as the single source of truth.
+
+### 8. Header allowlist
+
+When building the outbound request to the API, copy **only** `Authorization` from the incoming HTTP request. Strip everything else: `X-Org-Id`, `X-User-Id`, `X-Forwarded-User`, `X-Real-IP`, `Cookie`, `Cookie2`. Even if nginx (or a malicious client) injects them, MCP ignores them. Test: `mcp/tests/isolation/header_injection.test.ts`.
+
+### 9. Session-id binding
+
+When a client `initialize`s, the MCP SDK issues an `Mcp-Session-Id`. The HTTP transport MUST bind that session-id to `sha256(bearer)` and reject subsequent requests on the same session-id from a different Bearer (HTTP 401, destroy the session). Test: `mcp/tests/isolation/bearer_swap_session.test.ts`.
+
+### 10. No cross-request state on the MCP `Server` instance
+
+Either construct a fresh `Server` per request, OR verify (and assert in tests) that the official SDK's `Server` holds no per-call state on the instance. The performance test in `mcp/tests/isolation/concurrent_bearers.test.ts` runs 1000 concurrent requests across 50 Bearers and asserts zero cross-talk in the responses.
+
+### 11. Logging discipline — never log a Bearer
+
+- Bearers go through pino's redaction config. The full token never lands in any log line, including on `error` and `fatal`.
+- `bearer_hash = sha256(token).slice(0, 8)` is the only correlation field. Eight hex chars is enough to correlate one customer's activity across services, not enough to recover the token.
+- Response bodies from the API are NOT logged in production (`LOG_LEVEL=info`). Only `LOG_LEVEL=debug` logs bodies, and that level is never enabled in the hosted deployment.
+- Tool inputs (`args`) are NOT logged. Args may contain scan IDs, URLs, customer-confidential data. Log only `tool_name` and `args_summary` (a redacted schema, e.g. `{filters: 3, scan_id: <uuid>}` with the UUID shape but not the value).
+
+Test: `mcp/tests/isolation/token_in_logs.test.ts` shoves a unique marker into the Bearer and asserts the marker never appears in pino output.
+
+### 12. No CORS
+
+`Access-Control-Allow-Origin` is NOT set. MCP HTTP is server-to-server; it is not designed for browser calls. If a future feature requires browser access, add an explicit allowlist for known origins, never `*`.
+
+### 13. TLS only
+
+nginx terminates HTTPS; HSTS is on; plain `http://` 80 → 301 → `https://`. MCP listens on loopback inside the Docker network only.
+
+### 14. Per-Bearer rate limit
+
+A leaky-bucket rate limiter (default 120 rpm) is keyed by `bearer_hash`. Defends against token brute-force and runaway agent loops. The API has its own rate limit; this is a first-line defense, not a replacement.
+
+### 15. No telemetry / analytics SDK by default
+
+The OSS build ships with `NoopErrorReporter`. We do NOT bundle Sentry, OpenTelemetry exporters, or PostHog in the published npm package. Operators may swap in their own reporter — but they assume responsibility for redacting bearer tokens themselves.
+
+### 16. `GET /healthz` is data-free
+
+The k8s/compose health probe returns `{"status": "ok"}` only. No auth state, no version, no uptime, no per-tenant data. It is distinct from the `/mcp` JSON-RPC endpoint.
+
+## Boundary of responsibility
+
+MCP does not:
+
+- Validate Bearer format (length, prefix, signing). Pass through; let the API reject.
+- Cache responses, even briefly.
+- Maintain a per-user view of "their" resources. The API view is authoritative for every request.
+- Implement org-scoping. Not its job.
+
+MCP must:
+
+- Forward `Authorization` exactly.
+- Never store anything tenant-related between requests.
+- Make every isolation invariant testable and tested.
+
+## When in doubt
+
+If you find yourself writing code that "remembers" anything across requests, STOP and ask: "could this remember something for tenant A and return it to tenant B?" If the answer is anything other than a confident "no, because [X]", remove it.

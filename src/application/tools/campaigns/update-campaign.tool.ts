@@ -21,13 +21,9 @@ import { campaignNotificationsField, notificationsBody } from "./_campaign-notif
 import { campaignReferrerUpdateField } from "./_campaign-referrer-input.js";
 
 const UpdateCampaignInputShape = {
-  campaign_id: z.string().uuid().describe("Campaign UUID to update."),
+  campaign_id: z.guid().describe("Campaign UUID to update."),
   name: z.string().min(1).max(200).optional().describe("New display name."),
-  url: z
-    .string()
-    .url()
-    .optional()
-    .describe("New target URL (url-type and ad_discovery campaigns)."),
+  url: z.url().optional().describe("New target URL (url-type and ad_discovery campaigns)."),
   ad_tag: z
     .string()
     .optional()
@@ -47,12 +43,11 @@ const UpdateCampaignInputShape = {
   max_discovered_ads: maxDiscoveredAdsUpdateField,
   ad_formats: adFormatsUpdateField,
   country_codes: z.array(z.string().length(2)).optional().describe("Replace the country list."),
-  group_id: z.string().uuid().optional().describe("Move the campaign to another group."),
+  group_id: z.guid().optional().describe("Move the campaign to another group."),
   ...campaignConfigFields,
-  labels: z.record(z.string()).optional().describe("Replace the label map."),
+  labels: z.record(z.string(), z.string()).optional().describe("Replace the label map."),
   policy_set_id: z
-    .string()
-    .uuid()
+    .guid()
     .nullable()
     .optional()
     .describe("New policy set UUID; pass null to clear."),

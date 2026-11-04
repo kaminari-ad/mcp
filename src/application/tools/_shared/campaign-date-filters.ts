@@ -10,25 +10,21 @@
 import { z } from "zod";
 
 export const campaignDateFilterFields = {
-  created_from: z
-    .string()
+  created_from: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive lower bound on the creation day."),
-  created_to: z
-    .string()
+  created_to: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive upper bound on the creation day."),
-  last_run_from: z
-    .string()
+  last_run_from: z.iso
     .date()
     .optional()
     .describe(
       "ISO date (YYYY-MM-DD), inclusive lower bound on the most recent run. Setting either last-run bound excludes anything that has never run."
     ),
-  last_run_to: z
-    .string()
+  last_run_to: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive upper bound on the most recent run."),

@@ -26,7 +26,6 @@ import { scanReferrerField } from "./_scan-referrer-input.js";
 
 const CreateScanInputShape = {
   url: z
-    .string()
     .url()
     .optional()
     .describe(
@@ -60,7 +59,7 @@ const CreateScanInputShape = {
     .describe("Device/OS profile slug; use `list_emulators` to discover valid values."),
   proxy: scanProxyField,
   labels: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe("Arbitrary string -> string metadata attached to the scan."),
   campaign_id: scanCampaignIdField,

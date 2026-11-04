@@ -16,7 +16,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListRunScansInputShape = {
-  run_id: z.string().uuid().describe("Run UUID."),
+  run_id: z.guid().describe("Run UUID."),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size."),
 } as const;

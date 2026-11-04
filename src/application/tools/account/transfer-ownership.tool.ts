@@ -13,7 +13,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const TransferOwnershipInputShape = {
-  user_id: z.string().uuid().describe("UUID of the existing member to become the new owner."),
+  user_id: z.guid().describe("UUID of the existing member to become the new owner."),
 } as const;
 type TransferOwnershipInputShape = typeof TransferOwnershipInputShape;
 

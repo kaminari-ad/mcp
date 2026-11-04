@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetCustomTaxonomyInputShape = {
-  taxonomy_id: z.string().uuid().describe("Custom taxonomy UUID."),
+  taxonomy_id: z.guid().describe("Custom taxonomy UUID."),
 } as const;
 type GetCustomTaxonomyInputShape = typeof GetCustomTaxonomyInputShape;
 

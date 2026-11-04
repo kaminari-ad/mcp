@@ -11,10 +11,9 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const InviteUserInputShape = {
-  email: z.string().email().describe("Email of the person to invite. They get a signup link."),
+  email: z.email().describe("Email of the person to invite. They get a signup link."),
   role_id: z
-    .string()
-    .uuid()
+    .guid()
     .describe("UUID of the role to assign on accept. Get UUIDs from `list_org_roles`."),
   name: z.string().min(1).optional().describe("Optional display name for the invitee."),
   timezone: z

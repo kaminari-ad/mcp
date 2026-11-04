@@ -22,7 +22,7 @@ const ListCampaignsPickerInputShape = {
     .boolean()
     .optional()
     .describe("Pass true to include archived campaigns. Defaults to active-only."),
-  group_id: z.string().uuid().optional().describe("Filter to one campaign group."),
+  group_id: z.guid().optional().describe("Filter to one campaign group."),
   q: z
     .string()
     .min(1)
