@@ -66,13 +66,11 @@ const BulkUpdateAlertStatusInputShape = {
     .min(1)
     .optional()
     .describe("Only with `all_matching`: restrict to these ISO 3166-1 alpha-2 countries."),
-  filter_date_from: z
-    .string()
+  filter_date_from: z.iso
     .date()
     .optional()
     .describe("Only with `all_matching`: inclusive lower bound (YYYY-MM-DD) on alert creation."),
-  filter_date_to: z
-    .string()
+  filter_date_to: z.iso
     .date()
     .optional()
     .describe("Only with `all_matching`: inclusive upper bound (YYYY-MM-DD) on alert creation."),

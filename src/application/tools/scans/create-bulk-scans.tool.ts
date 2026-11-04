@@ -60,7 +60,7 @@ const CreateBulkScansInputShape = {
     .describe("Device/OS profile slug; same for every country in the batch."),
   proxy: scanProxyField,
   labels: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe("Arbitrary metadata copied onto every created scan."),
   campaign_id: scanCampaignIdField,

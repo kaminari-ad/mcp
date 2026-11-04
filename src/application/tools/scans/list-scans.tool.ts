@@ -28,13 +28,11 @@ const ListScansInputShape = {
     .describe("Comma-separated ISO 3166-1 alpha-2 country codes, e.g. US,DE,JP."),
   url: z.string().optional().describe("Substring match against the scanned URL."),
   scan_id: z.string().optional().describe("Comma-separated scan UUIDs to fetch a specific set."),
-  date_from: z
-    .string()
+  date_from: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive lower bound on scan creation."),
-  date_to: z
-    .string()
+  date_to: z.iso
     .date()
     .optional()
     .describe("ISO date (YYYY-MM-DD), inclusive upper bound on scan creation."),

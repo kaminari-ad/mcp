@@ -56,7 +56,7 @@ const CreateCampaignInputShape = {
   group_id: z.guid().optional().describe("Parent group UUID; defaults to the org's default group."),
   ...campaignConfigFields,
   labels: z
-    .record(z.string())
+    .record(z.string(), z.string())
     .optional()
     .describe("Arbitrary metadata applied to every queued scan."),
   policy_set_id: z

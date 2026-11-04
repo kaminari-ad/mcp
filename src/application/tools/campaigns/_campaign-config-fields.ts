@@ -90,7 +90,7 @@ export const campaignConfigFields = {
         "'interval' (run every schedule_interval_seconds). Omit for a manual (run-on-demand) campaign."
     ),
   schedule_weekly: z
-    .record(z.array(z.number().int().min(0).max(23)))
+    .record(z.string(), z.array(z.number().int().min(0).max(23)))
     .optional()
     .describe(
       "Weekly run grid for schedule_type='weekly'. Keys are weekdays '0'-'6' (Mon-Sun); " +

@@ -26,7 +26,7 @@ import { err, ok, type Result } from "../../../shared/result.js";
  * "webhook") — used to produce a readable error like
  * `"malformed campaign: Expected string, received null"`.
  */
-export function parseWithSchema<S extends z.ZodTypeAny>(
+export function parseWithSchema<S extends z.ZodType>(
   schema: S,
   raw: unknown,
   label: string
@@ -69,7 +69,7 @@ function stripUndefinedKeys(value: unknown): unknown {
  * the `pages` field — agents don't need it; total + limit is enough
  * to derive page count when relevant).
  */
-export function parsePagedWithItemSchema<S extends z.ZodTypeAny>(
+export function parsePagedWithItemSchema<S extends z.ZodType>(
   itemSchema: S,
   raw: unknown,
   label: string
@@ -100,7 +100,7 @@ export function parsePagedWithItemSchema<S extends z.ZodTypeAny>(
  * wrapping in a future API release (and vice-versa). Matches the
  * `unwrapItems` pattern from `parsePolicySetList`.
  */
-export function parseArrayOrItemsWithSchema<S extends z.ZodTypeAny>(
+export function parseArrayOrItemsWithSchema<S extends z.ZodType>(
   itemSchema: S,
   raw: unknown,
   label: string
