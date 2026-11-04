@@ -15,7 +15,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const SetAlertDestinationVersionInputShape = {
-  destination_id: z.string().uuid().describe("Destination UUID."),
+  destination_id: z.guid().describe("Destination UUID."),
   version: z
     .enum(["public", "internal"])
     .describe(

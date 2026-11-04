@@ -8,8 +8,7 @@
 import { z } from "zod";
 
 export const scanCampaignIdField = z
-  .string()
-  .uuid()
+  .guid()
   .optional()
   .describe(
     "Optional campaign UUID to attribute the scan to. Required for alerts: " +
@@ -18,8 +17,7 @@ export const scanCampaignIdField = z
   );
 
 export const scanRunIdField = z
-  .string()
-  .uuid()
+  .guid()
   .optional()
   .describe(
     "Optional run UUID inside the campaign. Omit it to join the campaign's API run for the day."

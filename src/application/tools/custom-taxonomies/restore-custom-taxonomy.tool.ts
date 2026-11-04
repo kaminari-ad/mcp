@@ -11,10 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const RestoreCustomTaxonomyInputShape = {
-  taxonomy_id: z
-    .string()
-    .uuid()
-    .describe("Custom taxonomy UUID (must currently be is_active=false)."),
+  taxonomy_id: z.guid().describe("Custom taxonomy UUID (must currently be is_active=false)."),
 } as const;
 type RestoreCustomTaxonomyInputShape = typeof RestoreCustomTaxonomyInputShape;
 

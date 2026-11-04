@@ -13,7 +13,7 @@ import { z } from "zod";
 
 /** Filters shared by the alert list and the stats endpoint. */
 export const alertFilterFields = {
-  campaign_id: z.string().uuid().optional().describe("Filter to one campaign's alerts."),
+  campaign_id: z.guid().optional().describe("Filter to one campaign's alerts."),
   policy_set_id: z
     .string()
     .optional()

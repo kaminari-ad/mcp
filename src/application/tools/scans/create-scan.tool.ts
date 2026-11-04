@@ -26,7 +26,6 @@ import { scanReferrerField } from "./_scan-referrer-input.js";
 
 const CreateScanInputShape = {
   url: z
-    .string()
     .url()
     .optional()
     .describe(

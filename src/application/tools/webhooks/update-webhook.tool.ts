@@ -11,8 +11,8 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateWebhookInputShape = {
-  webhook_id: z.string().uuid().describe("Webhook UUID."),
-  url: z.string().url().optional().describe("New endpoint URL."),
+  webhook_id: z.guid().describe("Webhook UUID."),
+  url: z.url().optional().describe("New endpoint URL."),
   description: z.string().max(256).optional().describe("New human-readable label."),
   event_types: z
     .array(z.string())
@@ -20,7 +20,7 @@ const UpdateWebhookInputShape = {
     .optional()
     .describe("Replace the subscribed-event-types list."),
   campaign_ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .optional()
     .describe("Restrict deliveries to these campaign UUIDs (replaces the current set)."),
   clear_campaign_ids: z

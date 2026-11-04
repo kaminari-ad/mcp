@@ -12,7 +12,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const RemoveUserInputShape = {
-  user_id: z.string().uuid().describe("UUID of the member to remove."),
+  user_id: z.guid().describe("UUID of the member to remove."),
 } as const;
 type RemoveUserInputShape = typeof RemoveUserInputShape;
 

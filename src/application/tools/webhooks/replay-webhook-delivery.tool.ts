@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ReplayWebhookDeliveryInputShape = {
-  attempt_id: z.string().uuid().describe("Delivery-attempt UUID (from `list_webhook_deliveries`)."),
+  attempt_id: z.guid().describe("Delivery-attempt UUID (from `list_webhook_deliveries`)."),
 } as const;
 type ReplayWebhookDeliveryInputShape = typeof ReplayWebhookDeliveryInputShape;
 

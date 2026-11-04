@@ -10,8 +10,8 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UpdateUserRoleInputShape = {
-  user_id: z.string().uuid().describe("UUID of the member to update."),
-  role_id: z.string().uuid().describe("UUID of the new role (see `list_org_roles`)."),
+  user_id: z.guid().describe("UUID of the member to update."),
+  role_id: z.guid().describe("UUID of the new role (see `list_org_roles`)."),
 } as const;
 type UpdateUserRoleInputShape = typeof UpdateUserRoleInputShape;
 

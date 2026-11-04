@@ -13,7 +13,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const UnarchiveCampaignInputShape = {
-  campaign_id: z.string().uuid().describe("Campaign UUID."),
+  campaign_id: z.guid().describe("Campaign UUID."),
 } as const;
 type UnarchiveCampaignInputShape = typeof UnarchiveCampaignInputShape;
 

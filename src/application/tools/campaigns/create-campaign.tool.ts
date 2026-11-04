@@ -30,11 +30,7 @@ const CreateCampaignInputShape = {
         "`ad_discovery` is a publisher-page scan: set `url`; each run detects the page's " +
         "ad blocks and opens a child scan per detected ad."
     ),
-  url: z
-    .string()
-    .url()
-    .optional()
-    .describe("Target URL (required if campaign_type=url or ad_discovery)."),
+  url: z.url().optional().describe("Target URL (required if campaign_type=url or ad_discovery)."),
   ad_tag: z
     .string()
     .optional()
@@ -57,18 +53,14 @@ const CreateCampaignInputShape = {
     .array(z.string().length(2))
     .min(1)
     .describe("ISO 3166-1 alpha-2 codes — one scan per country per run."),
-  group_id: z
-    .string()
-    .uuid()
-    .optional()
-    .describe("Parent group UUID; defaults to the org's default group."),
+  group_id: z.guid().optional().describe("Parent group UUID; defaults to the org's default group."),
   ...campaignConfigFields,
   labels: z
     .record(z.string())
     .optional()
     .describe("Arbitrary metadata applied to every queued scan."),
   policy_set_id: z
-    .union([z.string().uuid(), z.null()])
+    .union([z.guid(), z.null()])
     .optional()
     .describe(
       "Policy set to evaluate every scan against. Omit to bind the organization's default (if any). Pass null for no policy set and no policy alerts."

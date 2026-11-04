@@ -14,7 +14,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const DeleteCustomTaxonomyInputShape = {
-  taxonomy_id: z.string().uuid().describe("Custom taxonomy UUID."),
+  taxonomy_id: z.guid().describe("Custom taxonomy UUID."),
 } as const;
 type DeleteCustomTaxonomyInputShape = typeof DeleteCustomTaxonomyInputShape;
 

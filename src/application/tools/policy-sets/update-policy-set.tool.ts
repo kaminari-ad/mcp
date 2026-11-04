@@ -12,7 +12,7 @@ import type { ToolError } from "../_shared/tool-result.js";
 import { PolicyEntryInput, policyEntryToRequest } from "./_policy-entry-input.js";
 
 const UpdatePolicySetInputShape = {
-  policy_set_id: z.string().uuid().describe("Policy set UUID."),
+  policy_set_id: z.guid().describe("Policy set UUID."),
   name: z.string().min(1).max(200).describe("New name (always required by the API on update)."),
   description: z.string().max(2000).describe("New description (empty string allowed)."),
   entries: z

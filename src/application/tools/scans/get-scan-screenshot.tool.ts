@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetScanScreenshotInputShape = {
-  scan_id: z.string().uuid().describe("Scan UUID."),
+  scan_id: z.guid().describe("Scan UUID."),
   width: z
     .number()
     .int()

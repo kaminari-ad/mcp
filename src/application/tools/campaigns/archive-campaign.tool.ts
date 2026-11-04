@@ -14,7 +14,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ArchiveCampaignInputShape = {
-  campaign_id: z.string().uuid().describe("Campaign UUID to archive."),
+  campaign_id: z.guid().describe("Campaign UUID to archive."),
 } as const;
 type ArchiveCampaignInputShape = typeof ArchiveCampaignInputShape;
 

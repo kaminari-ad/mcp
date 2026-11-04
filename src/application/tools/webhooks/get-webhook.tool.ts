@@ -11,7 +11,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const GetWebhookInputShape = {
-  webhook_id: z.string().uuid().describe("Webhook endpoint UUID."),
+  webhook_id: z.guid().describe("Webhook endpoint UUID."),
 } as const;
 type GetWebhookInputShape = typeof GetWebhookInputShape;
 

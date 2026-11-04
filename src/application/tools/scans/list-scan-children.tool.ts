@@ -18,8 +18,7 @@ import type { ToolError } from "../_shared/tool-result.js";
 
 const ListScanChildrenInputShape = {
   scan_id: z
-    .string()
-    .uuid()
+    .guid()
     .describe("The publisher scan's UUID (an ad-discovery scan created with ad_discovery=true)."),
   page: z.number().int().min(1).max(500).default(1).describe("1-indexed page number."),
   limit: z.number().int().min(1).max(200).default(50).describe("Page size (1-200). Default 50."),

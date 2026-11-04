@@ -143,7 +143,47 @@ async function writeZodSchemas(spec: unknown): Promise<void> {
       shouldExportAllTypes: false,
     },
   });
-  await writeFormatted(ZOD_OUTPUT, zodHeader() + stripZodiosRuntime(raw));
+  await writeFormatted(ZOD_OUTPUT, zodHeader() + withRecordKeys(stripZodiosRuntime(raw)));
+}
+
+/**
+ * Rewrite every single-argument `z.record(V)` into `z.record(z.string(), V)`.
+ *
+ * openapi-zod-client still emits the zod 3 form, which zod 4 rejects:
+ * `z.record` there takes an explicit key schema.
+ */
+function withRecordKeys(source: string): string {
+  const marker = "z.record(";
+  let out = "";
+  let from = 0;
+  for (let at = source.indexOf(marker); at !== -1; at = source.indexOf(marker, from)) {
+    const argsStart = at + marker.length;
+    out += source.slice(from, argsStart);
+    if (!hasTopLevelComma(source, argsStart)) {
+      out += "z.string(), ";
+    }
+    from = argsStart;
+  }
+  return out + source.slice(from);
+}
+
+/** True when the argument list starting at `start` has a comma outside nested brackets. */
+function hasTopLevelComma(source: string, start: number): boolean {
+  let depth = 0;
+  for (let i = start; i < source.length; i += 1) {
+    const ch = source.charAt(i);
+    if (ch === "(" || ch === "[" || ch === "{") {
+      depth += 1;
+    } else if (ch === ")" || ch === "]" || ch === "}") {
+      if (depth === 0) {
+        return false;
+      }
+      depth -= 1;
+    } else if (ch === "," && depth === 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

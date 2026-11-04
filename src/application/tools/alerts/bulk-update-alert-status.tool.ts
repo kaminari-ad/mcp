@@ -30,7 +30,7 @@ const BulkUpdateAlertStatusInputShape = {
     .enum(["open", "escalated", "resolved", "dismissed"])
     .describe("Status to move the selected alerts to."),
   ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .min(1)
     .max(MAX_IDS)
     .optional()
@@ -48,12 +48,11 @@ const BulkUpdateAlertStatusInputShape = {
     .optional()
     .describe("Only with `all_matching`: restrict to alerts currently in this status."),
   filter_campaign_id: z
-    .string()
-    .uuid()
+    .guid()
     .optional()
     .describe("Only with `all_matching`: restrict to one campaign."),
   filter_policy_set_ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .min(1)
     .optional()
     .describe("Only with `all_matching`: restrict to alerts raised by any of these policy sets."),

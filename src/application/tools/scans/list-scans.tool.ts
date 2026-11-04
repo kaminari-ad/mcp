@@ -44,12 +44,11 @@ const ListScansInputShape = {
     .describe(
       "IANA timezone (e.g. 'Europe/Berlin') applied to date_from / date_to. Defaults to UTC."
     ),
-  run_id: z.string().uuid().optional().describe("Filter to scans of one run."),
-  campaign_id: z.string().uuid().optional().describe("Filter to scans of one campaign."),
-  group_id: z.string().uuid().optional().describe("Filter to scans of one campaign group."),
+  run_id: z.guid().optional().describe("Filter to scans of one run."),
+  campaign_id: z.guid().optional().describe("Filter to scans of one campaign."),
+  group_id: z.guid().optional().describe("Filter to scans of one campaign group."),
   parent_scan_id: z
-    .string()
-    .uuid()
+    .guid()
     .optional()
     .describe(
       "Filter to the ad-discovery child scans of one parent scan. Setting this lifts the default 7-day window, so old children stay reachable. `list_scan_children` is the paginated equivalent."

@@ -18,7 +18,7 @@ export const alertRoutingFields = {
     "Routing mode: `inherit` (fall back to the org-wide destinations), `override` (route ONLY to `destination_ids`), `silence` (send nothing for this campaign)."
   ),
   destination_ids: z
-    .array(z.string().uuid())
+    .array(z.guid())
     .max(50)
     .default([])
     .describe(

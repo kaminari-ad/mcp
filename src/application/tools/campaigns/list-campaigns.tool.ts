@@ -17,7 +17,7 @@ import type { Tool } from "../_shared/tool.js";
 import type { ToolError } from "../_shared/tool-result.js";
 
 const ListCampaignsInputShape = {
-  group_id: z.string().uuid().optional().describe("Optional campaign-group UUID to filter by."),
+  group_id: z.guid().optional().describe("Optional campaign-group UUID to filter by."),
   archived: z
     .boolean()
     .optional()

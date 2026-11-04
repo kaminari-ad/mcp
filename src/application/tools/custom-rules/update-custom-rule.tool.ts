@@ -17,7 +17,7 @@ import { PATTERN_RULE_CONFIG_DOC } from "./_pattern-rule-input.js";
 import { COMBO_MATCH_SCOPE_DOC, patternAwareRuleConfigField } from "./_rule-config-input.js";
 
 const UpdateCustomRuleInputShape = {
-  rule_id: z.string().uuid().describe("Rule UUID to update."),
+  rule_id: z.guid().describe("Rule UUID to update."),
   name: z
     .string()
     .min(1)

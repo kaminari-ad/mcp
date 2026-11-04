@@ -166,7 +166,7 @@ const CreateScanRequest = z
     ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     campaign_id: z.union([z.string(), z.null()]).optional(),
     run_id: z.union([z.string(), z.null()]).optional(),
     ad_discovery: z.boolean().optional().default(false),
@@ -323,7 +323,7 @@ const ScanResponse = z
     page_title: z.string(),
     elapsed_ms: z.number().int(),
     error: z.string(),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     classification: z.union([ScanClassificationResponse, z.null()]).optional(),
     campaign_id: z.union([z.string(), z.null()]).optional(),
     campaign_name: z.union([z.string(), z.null()]).optional(),
@@ -352,7 +352,7 @@ const ScanBriefResponse = z
     screenshot_url: z.string().optional().default(""),
     report_url: z.string().optional().default(""),
     public_report_url: z.string().optional().default(""),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     classification: z.union([ScanClassificationResponse, z.null()]).optional(),
     elapsed_ms: z.number().int(),
     created_at: z.string().datetime({ offset: true }),
@@ -393,7 +393,7 @@ const BulkScanRequest = z
     ignore_first_n_domains: z.number().int().gte(0).lte(5).optional().default(0),
     emulator_id: z.string().min(1).max(100),
     proxy: ProxyTargetRequest.optional(),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     campaign_id: z.union([z.string(), z.null()]).optional(),
     run_id: z.union([z.string(), z.null()]).optional(),
     ad_discovery: z.boolean().optional().default(false),
@@ -506,10 +506,12 @@ const CreateCampaignRequest = z
     repeat_count: z.number().int().gte(1).optional().default(1),
     repeat_mode: RepeatMode.optional(),
     retry_max_attempts: z.number().int().gte(0).optional().default(0),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     policy_set_id: z.union([z.string(), z.null()]).optional(),
     schedule_type: z.union([z.string(), z.null()]).optional(),
-    schedule_weekly: z.union([z.record(z.array(z.number().int())), z.null()]).optional(),
+    schedule_weekly: z
+      .union([z.record(z.string(), z.array(z.number().int())), z.null()])
+      .optional(),
     schedule_interval_seconds: z.union([z.number(), z.null()]).optional(),
     schedule_enabled: z.union([z.boolean(), z.null()]).optional(),
     schedule_timezone: z.union([z.string(), z.null()]).optional(),
@@ -546,10 +548,12 @@ const CampaignResponse = z
     repeat_mode: RepeatMode.optional(),
     retry_max_attempts: z.number().int().optional().default(0),
     schedule_type: z.union([z.string(), z.null()]).optional(),
-    schedule_weekly: z.union([z.record(z.array(z.number().int())), z.null()]).optional(),
+    schedule_weekly: z
+      .union([z.record(z.string(), z.array(z.number().int())), z.null()])
+      .optional(),
     schedule_interval_seconds: z.union([z.number(), z.null()]).optional(),
     schedule_timezone: z.union([z.string(), z.null()]).optional(),
-    labels: z.record(z.string()).optional(),
+    labels: z.record(z.string(), z.string()).optional(),
     policy_set_id: z.union([z.string(), z.null()]).optional(),
     schedule_enabled: z.boolean(),
     is_archived: z.boolean(),
@@ -597,10 +601,10 @@ const UpdateCampaignRequest = z
     repeat_count: z.union([z.number(), z.null()]),
     repeat_mode: z.union([RepeatMode, z.null()]),
     retry_max_attempts: z.union([z.number(), z.null()]),
-    labels: z.union([z.record(z.string()), z.null()]),
+    labels: z.union([z.record(z.string(), z.string()), z.null()]),
     policy_set_id: z.union([z.string(), z.null()]),
     schedule_type: z.union([z.string(), z.null()]),
-    schedule_weekly: z.union([z.record(z.array(z.number().int())), z.null()]),
+    schedule_weekly: z.union([z.record(z.string(), z.array(z.number().int())), z.null()]),
     schedule_interval_seconds: z.union([z.number(), z.null()]),
     schedule_enabled: z.union([z.boolean(), z.null()]),
     schedule_timezone: z.union([z.string(), z.null()]),
@@ -728,7 +732,7 @@ const CreateCustomRuleRequest = z
     rule_type: z.string().max(50),
     config: z.object({}).partial().passthrough(),
     target: z.string().max(30).optional().default("page"),
-    tag_visibility: z.union([z.record(TagVisibility), z.null()]).optional(),
+    tag_visibility: z.union([z.record(z.string(), TagVisibility), z.null()]).optional(),
   })
   .passthrough();
 const CustomRuleResponse = z
@@ -743,7 +747,7 @@ const CustomRuleResponse = z
     is_active: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
     scope: z.string().optional().default("personal"),
-    tag_visibility: z.record(z.string()).optional(),
+    tag_visibility: z.record(z.string(), z.string()).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -762,7 +766,7 @@ const UpdateCustomRuleRequest = z
     config: z.union([z.object({}).partial().passthrough(), z.null()]),
     target: z.union([z.string(), z.null()]),
     is_active: z.union([z.boolean(), z.null()]),
-    tag_visibility: z.union([z.record(TagVisibility), z.null()]),
+    tag_visibility: z.union([z.record(z.string(), TagVisibility), z.null()]),
   })
   .partial()
   .passthrough();

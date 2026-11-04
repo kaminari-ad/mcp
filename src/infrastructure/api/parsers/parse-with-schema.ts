@@ -89,7 +89,7 @@ export function parsePagedWithItemSchema<S extends z.ZodTypeAny>(
       page: z.number(),
       limit: z.number(),
     })
-    .passthrough();
+    .loose();
   return parseWithSchema(envelope, raw, `${label} page`);
 }
 

@@ -25,8 +25,7 @@ const CreateApiKeyInputShape = {
   // it forces awkward request-body construction on the caller side.
   // Either form maps to API-side `expires_at: null` (the only shape
   // the API accepts for "no expiry").
-  expires_at: z
-    .string()
+  expires_at: z.iso
     .datetime()
     .nullable()
     .optional()
