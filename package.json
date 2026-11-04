@@ -81,7 +81,7 @@
     "check:api-coverage": "tsx scripts/check-api-coverage.ts",
     "check:tool-enum-drift": "tsx scripts/check-tool-enum-drift.ts",
     "audit:deps": "npm audit --audit-level=moderate",
-    "audit:licenses": "license-checker --production --onlyAllow \"MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC-BY-4.0\" --excludePrivatePackages",
+    "audit:licenses": "license-checker-rseidelsohn --production --onlyAllow \"MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC-BY-4.0\" --excludePrivatePackages",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test:cov && npm run build"
   },
   "dependencies": {
@@ -106,8 +106,7 @@
     "dependency-cruiser": "16.9.0",
     "eslint": "10.8.0",
     "eslint-config-prettier": "10.0.1",
-    "eslint-import-resolver-typescript": "4.4.4",
-    "eslint-plugin-import-x": "4.17.1",
+    "eslint-plugin-import-lite": "0.6.0",
     "eslint-plugin-jsdoc": "63.3.2",
     "eslint-plugin-no-secrets": "2.3.3",
     "eslint-plugin-promise": "7.3.0",
@@ -115,7 +114,7 @@
     "eslint-plugin-simple-import-sort": "12.1.1",
     "eslint-plugin-unicorn": "56.0.1",
     "lefthook": "1.10.1",
-    "license-checker": "25.0.1",
+    "license-checker-rseidelsohn": "4.4.2",
     "openapi-typescript": "7.5.2",
     "openapi-zod-client": "1.18.3",
     "prettier": "3.4.2",
@@ -132,17 +131,15 @@
     "registry": "https://registry.npmjs.org"
   },
   "overrides": {
-    "@redocly/openapi-core": {
-      "minimatch": "10.2.6"
-    },
     "esbuild": "0.28.1",
-    "glob": {
-      "minimatch": "10.2.6"
-    },
     "hono": "^4.13.11",
     "js-yaml": "4.3.2",
     "minimatch": {
+      ".": "11.0.4",
       "brace-expansion": "^5.0.12"
+    },
+    "read-package-json": {
+      "glob": "14.0.3"
     },
     "zod": "$zod"
   }
