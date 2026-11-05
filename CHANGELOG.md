@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.2] - 2026-11-05
+
+### Security
+
+- Dependency updates for published advisories: `zod` 4.6.7 (memory
+  exhaustion on oversized constrained collections), `undici` 8.12.3,
+  `hono` 4.13.11+, plus patched transitive packages.
+
+### Changed
+
+- Internally migrated to zod 4. Tool input schemas are unchanged for
+  agents: ID fields still accept any hex UUID and are still advertised
+  as `format: "uuid"`.
+
 ## [0.27.1] - 2026-10-19
 
 > Requires the API v1.90.2 deploy first: the documented 409 / 422 codes
