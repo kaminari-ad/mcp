@@ -44,7 +44,7 @@ describe("createCustomRuleTool", () => {
     expect(createCustomRuleTool.description).toContain("changing its filename");
     expect(createCustomRuleTool.description).toContain("kept for one day");
     expect(rule_type.description).toContain("`regexp_request_body`");
-    expect(config.description).toContain("400 resources, 128 KB each and 8 MB per scan");
+    expect(config.description).toContain("400 resources, 256 KB each and 8 MB per scan");
     expect(config.description).toContain("kept for ONE DAY");
     expect(config.description).toContain("never images, video, fonts or stylesheets");
     expect(target.description).toContain("also accept `'creative'`");
