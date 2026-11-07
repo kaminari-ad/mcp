@@ -212,10 +212,18 @@ export type ScanResponse = Pick<
    * `create_scan` / `create_bulk_scans` call.
    */
   readonly creative_kind: string;
+  /**
+   * The landing tabs of an ad-tag scan, slimmed to what addresses one:
+   * `ord` is what `get_scan_landing_screenshot` and the `landing` surface
+   * of the captured-contents tools take. Absent when the scan has none.
+   */
+  readonly landings?: readonly ScanLandingSummary[];
 } & MaxDiscoveredAdsResponse &
   AdFormatsResponse &
   NetworkHostResponse &
   IgnoreFirstNDomains;
+
+export type ScanLandingSummary = Pick<S["LandingResponse"], "ord" | "final_url" | "page_title">;
 
 export type ScanTagResponse = Pick<
   S["ScanTagResponse"],
@@ -1304,6 +1312,33 @@ export interface BinaryDownload {
   readonly contentType: string;
 }
 
+/** One surface of a scan whose sub-resource contents the crawler kept. */
+export type ResourceSurface =
+  | { readonly kind: "page" }
+  | { readonly kind: "creative" }
+  | { readonly kind: "landing"; readonly ord: number };
+
+/**
+ * One captured script, fetch / XHR response or child-frame document, as
+ * listed in a surface's `resource-bodies` artifact. `index` is the row's
+ * position in that artifact, stable because the artifact never changes.
+ * `skipped` names why the body was not kept (`too_large`, `unavailable`,
+ * `budget`); `null` when it was.
+ */
+export interface CapturedResource {
+  readonly index: number;
+  readonly url: string;
+  readonly resource_type: string;
+  readonly content_type: string;
+  readonly size: number;
+  readonly skipped: string | null;
+}
+
+/** A {@link CapturedResource} with its body; `body` is `null` when skipped. */
+export interface CapturedResourceBody extends CapturedResource {
+  readonly body: string | null;
+}
+
 export interface PageFilters {
   readonly page: number;
   readonly limit: number;
@@ -1543,6 +1578,17 @@ export interface ApiGateway {
   getScanCreativeVideo(scanId: string): Promise<Result<BinaryDownload, ApiError>>;
   /** Resolved/unwrapped VAST XML (VAST scans). */
   getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>>;
+  /** Every row of a surface's captured contents, without the bodies. */
+  listScanResources(
+    scanId: string,
+    surface: ResourceSurface
+  ): Promise<Result<readonly CapturedResource[], ApiError>>;
+  /** One row of a surface's captured contents with its body; `null` past the last row. */
+  getScanResourceBody(
+    scanId: string,
+    surface: ResourceSurface,
+    index: number
+  ): Promise<Result<CapturedResourceBody | null, ApiError>>;
   getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>>;
 
   // Custom taxonomies

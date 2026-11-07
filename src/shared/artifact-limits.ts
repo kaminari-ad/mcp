@@ -21,6 +21,13 @@ export const MAX_TEXT_ARTIFACT_BYTES = 256 * 1024;
  */
 export const MAX_BINARY_ARTIFACT_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Largest decompressed `resource-bodies` artifact we will walk. The
+ * crawler keeps at most 24 MB of bodies per crawl; this leaves room for
+ * the JSON escaping and the skip rows around them.
+ */
+export const MAX_RESOURCE_BODIES_DECODED_BYTES = 64 * 1024 * 1024;
+
 /** Human-readable size for an over-limit error message. */
 export function formatBytes(bytes: number): string {
   const kib = 1024;

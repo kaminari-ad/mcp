@@ -115,10 +115,10 @@ which decides which credential type minted it.
 
 ## Tools
 
-109 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
+111 tools covering the public `/api/v1` surface of Kaminari Ad. Every tool carries MCP behaviour annotations (`title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so MCP clients can warn before destructive actions. The complete list, by domain:
 
 - **Account** (14) — `get_account`, `update_org`, `list_org_users`, `invite_user`, `update_user_role`, `remove_user`, `transfer_ownership`, `list_org_roles`, `create_custom_role`, `list_account_labels`, `update_account_labels`, `list_api_keys`, `create_api_key`, `revoke_api_key`
-- **Scans** (13) — `list_scans`, `get_scan`, `list_scan_children`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`, `get_scan_creative_html`, `get_scan_creative_video`, `get_scan_vast_xml`
+- **Scans** (15) — `list_scans`, `get_scan`, `list_scan_children`, `create_scan`, `create_bulk_scans`, `recheck_scans`, `cancel_scan`, `get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`, `get_scan_creative_html`, `get_scan_creative_video`, `get_scan_vast_xml`, `list_scan_resources`, `get_scan_resource_body`
 - **Campaigns** (10) — `list_campaigns`, `list_campaigns_picker`, `get_campaign`, `create_campaign`, `update_campaign`, `archive_campaign`, `unarchive_campaign`, `cancel_campaign`, `run_campaign`, `list_campaign_runs`
 - **Campaign groups** (10) — list/get/create/update/run/cancel/archive/unarchive + `pause_campaign_group_schedule`, `resume_campaign_group_schedule`
 - **Runs** (3) — `get_run`, `list_run_scans`, `cancel_run` (use `list_campaign_runs` to enumerate runs of a campaign — the API has no standalone `/runs` index)
@@ -133,7 +133,7 @@ which decides which credential type minted it.
 - **Alert notifications** (5) — `list_alert_destinations`, `delete_alert_destination`, `set_alert_destination_version`, `get_campaign_alert_overrides`, `set_campaign_alert_overrides`
 - **Reference data** (3) — `list_geos`, `list_emulators`, `get_proxy_targeting`
 
-Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. Every artifact download is size-capped in the gateway — 256 KiB for the text artifacts, 8 MiB for the binary ones — and refused while reading rather than buffered and then rejected.
+Screenshots (`get_scan_screenshot`, `get_scan_creative_screenshot`, `get_scan_landing_screenshot`) come back as inline MCP `image` blocks; `get_invoice_pdf` and `get_scan_creative_video` as inline resource blocks — no second fetch, no presigned URL. The two text artifacts (`get_scan_creative_html`, `get_scan_vast_xml`) come back as strings the model can read directly. Every artifact download is size-capped in the gateway — 256 KiB for the text artifacts, 8 MiB for the binary ones — and refused while reading rather than buffered and then rejected. The captured contents of a scan — its scripts, fetch/XHR responses and iframe documents, kept for one day — are read with `list_scan_resources` and `get_scan_resource_body`: the server downloads the surface's gzip archive (8 MiB cap), decompresses it (64 MiB cap) and returns the listing, or one body in chunks with `next_offset`.
 
 Not exposed (intentionally): the public marketing forms, which are anonymous intake for kaminari.ad itself rather than an agent capability.
 

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Requires the API release that ships adverif/api!437 (`GET /api/v1/scans/{id}/resource-bodies`
+> and its creative / landing siblings).
+
+### Added
+
+- `list_scan_resources` — the scripts, fetch/XHR responses and iframe
+  documents a scan kept for one surface (`page`, `creative`, or a
+  `landing` tab by `landing_ord`), with URL, type, size and the skip
+  reason, filterable by type and URL text, paginated.
+- `get_scan_resource_body` — one of those resources by `index`, in
+  chunks of up to 100,000 characters with `next_offset`, so a large
+  bundle is read in a few calls instead of through `test_custom_rule`.
+
+### Changed
+
+- `get_scan` now returns `landings` as `ord`, `final_url` and
+  `page_title`, so the landing `ord` that `get_scan_landing_screenshot`
+  and the landing surface take can be discovered.
+
 ## [0.27.2] - 2026-11-05
 
 ### Security

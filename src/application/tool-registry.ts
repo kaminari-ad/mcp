@@ -101,9 +101,11 @@ import { getScanCreativeHtmlTool } from "./tools/scans/get-scan-creative-html.to
 import { getScanCreativeScreenshotTool } from "./tools/scans/get-scan-creative-screenshot.tool.js";
 import { getScanCreativeVideoTool } from "./tools/scans/get-scan-creative-video.tool.js";
 import { getScanLandingScreenshotTool } from "./tools/scans/get-scan-landing-screenshot.tool.js";
+import { getScanResourceBodyTool } from "./tools/scans/get-scan-resource-body.tool.js";
 import { getScanScreenshotTool } from "./tools/scans/get-scan-screenshot.tool.js";
 import { getScanVastXmlTool } from "./tools/scans/get-scan-vast-xml.tool.js";
 import { listScanChildrenTool } from "./tools/scans/list-scan-children.tool.js";
+import { listScanResourcesTool } from "./tools/scans/list-scan-resources.tool.js";
 import { listScansTool } from "./tools/scans/list-scans.tool.js";
 import { recheckScansTool } from "./tools/scans/recheck-scans.tool.js";
 import { deleteTagDefinitionTool } from "./tools/tags/delete-tag-definition.tool.js";
@@ -161,6 +163,8 @@ export function registerAllTools(register: RegisterTool): void {
   register(getScanCreativeHtmlTool);
   register(getScanCreativeVideoTool);
   register(getScanVastXmlTool);
+  register(listScanResourcesTool);
+  register(getScanResourceBodyTool);
   // campaigns
   register(getCampaignTool);
   register(listCampaignsTool);

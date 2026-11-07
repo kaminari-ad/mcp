@@ -30,6 +30,8 @@ import type {
   CampaignPickerItem,
   CampaignResponse,
   CancelPendingResponse,
+  CapturedResource,
+  CapturedResourceBody,
   CreateApiKeyRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
@@ -75,6 +77,7 @@ import type {
   ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
+  ResourceSurface,
   RoleResponse,
   RuleTestBatchRequest,
   RuleTestBatchResponse,
@@ -145,6 +148,17 @@ type Call =
   | { readonly method: "getScanCreativeHtml"; readonly scanId: string }
   | { readonly method: "getScanCreativeVideo"; readonly scanId: string }
   | { readonly method: "getScanVastXml"; readonly scanId: string }
+  | {
+      readonly method: "listScanResources";
+      readonly scanId: string;
+      readonly surface: ResourceSurface;
+    }
+  | {
+      readonly method: "getScanResourceBody";
+      readonly scanId: string;
+      readonly surface: ResourceSurface;
+      readonly index: number;
+    }
   | { readonly method: "getInvoicePdf"; readonly invoiceId: string }
   | { readonly method: "listApiKeys" }
   | { readonly method: "createApiKey"; readonly body: CreateApiKeyRequest }
@@ -340,6 +354,8 @@ export interface FakeApiGatewayState {
     getScanCreativeHtml?: Result<BinaryDownload, ApiError>;
     getScanCreativeVideo?: Result<BinaryDownload, ApiError>;
     getScanVastXml?: Result<BinaryDownload, ApiError>;
+    listScanResources?: Result<readonly CapturedResource[], ApiError>;
+    getScanResourceBody?: Result<CapturedResourceBody | null, ApiError>;
     getInvoicePdf?: Result<BinaryDownload, ApiError>;
     listApiKeys?: Result<readonly ApiKeyResponse[], ApiError>;
     createApiKey?: Result<ApiKeyCreatedResponse, ApiError>;
@@ -852,6 +868,39 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
         ok<BinaryDownload, ApiError>({
           bytes: new TextEncoder().encode("<div>creative</div>"),
           contentType: "text/plain; charset=utf-8",
+        })
+      );
+    },
+    async listScanResources(scanId, surface) {
+      push({ method: "listScanResources", scanId, surface });
+      await Promise.resolve();
+      return (
+        state.responses.listScanResources ??
+        ok<readonly CapturedResource[], ApiError>([
+          {
+            index: 0,
+            url: "https://cdn.example/tag.js",
+            resource_type: "script",
+            content_type: "application/javascript",
+            size: 10,
+            skipped: null,
+          },
+        ])
+      );
+    },
+    async getScanResourceBody(scanId, surface, index) {
+      push({ method: "getScanResourceBody", scanId, surface, index });
+      await Promise.resolve();
+      return (
+        state.responses.getScanResourceBody ??
+        ok<CapturedResourceBody | null, ApiError>({
+          index: 0,
+          url: "https://cdn.example/tag.js",
+          resource_type: "script",
+          content_type: "application/javascript",
+          size: 10,
+          skipped: null,
+          body: "var a = 1;",
         })
       );
     },

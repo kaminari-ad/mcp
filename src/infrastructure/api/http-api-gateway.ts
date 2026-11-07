@@ -53,6 +53,8 @@ import type {
   CampaignPickerItem,
   CampaignResponse,
   CancelPendingResponse,
+  CapturedResource,
+  CapturedResourceBody,
   CreateApiKeyRequest,
   CreateCampaignGroupRequest,
   CreateCampaignRequest,
@@ -99,6 +101,7 @@ import type {
   ProxyTargetingResponse,
   RecheckRequest,
   RecheckResponse,
+  ResourceSurface,
   RoleResponse,
   RuleTestBatchRequest,
   RuleTestBatchResponse,
@@ -139,6 +142,7 @@ import type { paths } from "../../shared/api/openapi.js";
 import {
   formatBytes,
   MAX_BINARY_ARTIFACT_BYTES,
+  MAX_RESOURCE_BODIES_DECODED_BYTES,
   MAX_TEXT_ARTIFACT_BYTES,
 } from "../../shared/artifact-limits.js";
 import { err, ok, type Result } from "../../shared/result.js";
@@ -188,6 +192,7 @@ import { parseLinkedCampaignPage } from "./parsers/parse-linked-campaign-page.js
 import { parsePolicySet } from "./parsers/parse-policy-set.js";
 import { parsePolicySetPage } from "./parsers/parse-policy-set-page.js";
 import { parseProxyTargeting } from "./parsers/parse-proxy-targeting.js";
+import { walkResourceBodies } from "./parsers/parse-resource-bodies.js";
 import { parseRun } from "./parsers/parse-run.js";
 import { parseRunScanPage } from "./parsers/parse-run-scan-page.js";
 import { parseScan, parseScanArray } from "./parsers/parse-scan.js";
@@ -503,7 +508,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         headers: {
           authorization: bearer.toAuthorizationHeader(),
           accept:
-            "image/*, application/pdf, video/mp4, text/plain, application/xml, text/xml, application/octet-stream",
+            "image/*, application/pdf, video/mp4, text/plain, application/xml, text/xml, application/gzip, application/octet-stream",
           "user-agent": "kaminari-ad-mcp",
           "x-request-id": requestId,
         },
@@ -549,6 +554,29 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     }
     /* c8 ignore stop */
     return err(toApiError(status, errBody, response.headers.get("retry-after") ?? undefined));
+  }
+
+  /** API path of a surface's captured-contents artifact. */
+  function resourceBodiesPath(scanId: string, surface: ResourceSurface): string {
+    if (surface.kind === "creative") return `/api/v1/scans/${scanId}/creative-resource-bodies`;
+    if (surface.kind === "landing") {
+      return `/api/v1/scans/${scanId}/landings/${String(surface.ord)}/resource-bodies`;
+    }
+    return `/api/v1/scans/${scanId}/resource-bodies`;
+  }
+
+  /** Download one surface's gzip artifact and hand its rows to *visit*. */
+  async function walkSurface(
+    scanId: string,
+    surface: ResourceSurface,
+    visit: (row: CapturedResourceBody) => void
+  ): Promise<Result<null, ApiError>> {
+    const download = await binaryGet(
+      resourceBodiesPath(scanId, surface),
+      MAX_BINARY_ARTIFACT_BYTES
+    );
+    if (download.isErr()) return err(download.error);
+    return walkResourceBodies(download.value.bytes, MAX_RESOURCE_BODIES_DECODED_BYTES, visit);
   }
 
   return {
@@ -642,6 +670,36 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     },
     async getScanVastXml(scanId: string): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(`/api/v1/scans/${scanId}/vast-xml`, MAX_TEXT_ARTIFACT_BYTES);
+    },
+    async listScanResources(
+      scanId: string,
+      surface: ResourceSurface
+    ): Promise<Result<readonly CapturedResource[], ApiError>> {
+      const rows: CapturedResource[] = [];
+      const walked = await walkSurface(scanId, surface, (row) => {
+        rows.push({
+          index: row.index,
+          url: row.url,
+          resource_type: row.resource_type,
+          content_type: row.content_type,
+          size: row.size,
+          skipped: row.skipped,
+        });
+      });
+      if (walked.isErr()) return err(walked.error);
+      return ok(rows);
+    },
+    async getScanResourceBody(
+      scanId: string,
+      surface: ResourceSurface,
+      index: number
+    ): Promise<Result<CapturedResourceBody | null, ApiError>> {
+      let found: CapturedResourceBody | null = null;
+      const walked = await walkSurface(scanId, surface, (row) => {
+        if (row.index === index) found = row;
+      });
+      if (walked.isErr()) return err(walked.error);
+      return ok(found);
     },
     async getInvoicePdf(invoiceId: string): Promise<Result<BinaryDownload, ApiError>> {
       return binaryGet(`/api/v1/invoices/${invoiceId}/pdf`, MAX_BINARY_ARTIFACT_BYTES);
