@@ -53,6 +53,24 @@ describe("parseScan", () => {
     });
     expect(r._unsafeUnwrap().campaign_id).toBeNull();
   });
+  it("keeps only ord, final_url and page_title of each landing", () => {
+    const v = parseScan({
+      ...VALID,
+      landings: [
+        {
+          ord: 1,
+          final_url: "https://offer.example/",
+          page_title: "Offer",
+          screenshot_url: "/api/v1/scans/x/landings/1/screenshot",
+          redirect_chain: [],
+          created_at: "2026-05-17T00:00:03Z",
+        },
+      ],
+    })._unsafeUnwrap();
+    expect(v.landings).toEqual([
+      { ord: 1, final_url: "https://offer.example/", page_title: "Offer" },
+    ]);
+  });
   it("rejects on missing required (id)", () => {
     const { id: _omit, ...withoutId } = VALID;
     expect(parseScan(withoutId).isErr()).toBe(true);

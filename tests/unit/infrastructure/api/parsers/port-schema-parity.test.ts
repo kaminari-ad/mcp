@@ -31,6 +31,7 @@ const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
  * being skipped, so a new parser cannot slip past this gate.
  */
 const PORT_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  LandingResponse: "ScanLandingSummary",
   LinkedRuleResponse: "LinkedRule",
   PolicySetListItem: "PolicySetListItemResponse",
   TagDefinitionWithStatsResponse: "TagDefinitionResponse",

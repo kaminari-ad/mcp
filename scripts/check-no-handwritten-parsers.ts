@@ -21,6 +21,8 @@
  *   - `parse-with-schema.ts`   — the schema-based parser helper
  *   - `parse-generic.ts`       — defines `parsePageOf` / `parseArrayOf`
  *     combinator helpers (item-parser is itself schema-based)
+ *   - `parse-resource-bodies.ts` — JSON Lines inside a gzip artifact
+ *     the spec types as bytes
  *
  * Heuristic: any other parser file must either (a) `import { schemas }
  * from "../../shared/api/zod-schemas"`, or (b) re-export from one that
@@ -46,6 +48,9 @@ const EXEMPT = new Set([
   // parser that does not project a DTO and therefore can't use a
   // generated schema). Both files are exempt as a pair.
   "shared.ts",
+  // Rows of the gzip `resource-bodies` artifact: the spec types that
+  // body as bytes, so no generated schema describes a row.
+  "parse-resource-bodies.ts",
 ]);
 
 interface Violation {

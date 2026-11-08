@@ -61,6 +61,10 @@ const EXEMPT_VALUE_SETS: Readonly<Record<string, string>> = {
   "|i": "regexp flags — validated inside the free-form config dict",
   // AdKind / DiscoveryAdFormat postdate the deployed spec; use `schemas.*` after the next regen.
   "banner|pop|video": "ad_formats — AdKind / DiscoveryAdFormat ship with the tool",
+  // The resource-bodies surface is a path choice, and resource_type comes
+  // from rows inside the gzip artifact — neither is a field the spec types.
+  "creative|landing|page": "resource-bodies surface — one v1 route per surface",
+  "document|fetch|script|xhr": "captured resource_type — rows of the gzip artifact",
 };
 
 interface Violation {

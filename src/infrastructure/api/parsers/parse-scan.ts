@@ -10,6 +10,12 @@ import { schemas } from "../../../shared/api/zod-schemas.js";
 import type { Result } from "../../../shared/result.js";
 import { parseWithSchema } from "./parse-with-schema.js";
 
+const LandingSummarySchema = schemas.LandingResponse.pick({
+  ord: true,
+  final_url: true,
+  page_title: true,
+}).strip();
+
 const ScanSchema = schemas.ScanResponse.pick({
   id: true,
   url: true,
@@ -64,6 +70,7 @@ const ScanSchema = schemas.ScanResponse.pick({
   // skip can be read back: it is the only way to tell how much of a finished
   // scan's chain was excluded once the campaign behind it has been edited.
   .extend({ ignore_first_n_domains: z.number().int().optional() })
+  .extend({ landings: z.array(LandingSummarySchema).optional() })
   .strip();
 
 const ScanArraySchema = z.array(ScanSchema);

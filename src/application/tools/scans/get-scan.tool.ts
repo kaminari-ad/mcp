@@ -1,10 +1,10 @@
 /**
  * Tool: `get_scan` — full detail for one scan by UUID.
  *
- * Wraps `GET /api/v1/scans/{id}`. Returns the most-used fields; nested
- * arrays (`redirect_chain`, `landings`) are omitted on purpose — they
- * are large and usually overkill for an agent answer. Add follow-up
- * tools later if needed.
+ * Wraps `GET /api/v1/scans/{id}`. Returns the most-used fields; the
+ * redirect chain is omitted on purpose — it is large and usually overkill
+ * for an agent answer. `landings` is kept only as `ord` + URL + title,
+ * the handle the landing screenshot and captured-contents tools take.
  */
 
 import { z } from "zod";
@@ -25,7 +25,7 @@ export type GetScanOutput = ScanResponse;
 export const getScanTool: Tool<GetScanInputShape, GetScanOutput> = {
   name: "get_scan",
   description:
-    "Get full detail for one scan by UUID: status, offer URL, absolute screenshot URL, report_url + public_report_url deep-links, timing, labels, and the parent campaign if any. VAST video scans also carry `vast_tag`, `creative_kind` (`banner` or `video` today; treat it as an open string), and a `video` block (duration, media-file URL, the creative's `click_through` destination, VAST version, ad system, VPAID flag, wrapper depth). Repeats and retries: `repeat_index` / `repeat_total` place this scan inside its repeat group (0-based, so 2 of 5 reads as repeat_index 1), a non-null `repeat_session_id` means the group ran in `shared` mode (same browser, same IP, cookies carried over) and is the key to correlate its members — a shared group of one has nothing to carry over, so it stays null — `repeat_scan_ids` is filled only on the create response, and `retry_attempt` / `retry_max_attempts` show how many technical re-crawls this scan already consumed. Link users with the returned `report_url` / `public_report_url` — never construct URLs yourself.",
+    "Get full detail for one scan by UUID: status, offer URL, absolute screenshot URL, report_url + public_report_url deep-links, timing, labels, and the parent campaign if any. VAST video scans also carry `vast_tag`, `creative_kind` (`banner` or `video` today; treat it as an open string), and a `video` block (duration, media-file URL, the creative's `click_through` destination, VAST version, ad system, VPAID flag, wrapper depth). Repeats and retries: `repeat_index` / `repeat_total` place this scan inside its repeat group (0-based, so 2 of 5 reads as repeat_index 1), a non-null `repeat_session_id` means the group ran in `shared` mode (same browser, same IP, cookies carried over) and is the key to correlate its members — a shared group of one has nothing to carry over, so it stays null — `repeat_scan_ids` is filled only on the create response, and `retry_attempt` / `retry_max_attempts` show how many technical re-crawls this scan already consumed. Ad-tag scans list their landing tabs in `landings` (`ord`, `final_url`, `page_title`); `ord` is what `get_scan_landing_screenshot` and `surface: 'landing'` of `list_scan_resources` take. Link users with the returned `report_url` / `public_report_url` — never construct URLs yourself.",
   annotations: {
     title: "Get Scan",
     readOnlyHint: true,
