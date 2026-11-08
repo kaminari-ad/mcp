@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Requires the API release that ships adverif/api!437 (`GET /api/v1/scans/{id}/resource-bodies`
+## [0.28.0] - 2026-11-08
+
+> Requires API v1.94.0 (adverif/api!437: `GET /api/v1/scans/{id}/resource-bodies`
 > and its creative / landing siblings).
 
 ### Added
