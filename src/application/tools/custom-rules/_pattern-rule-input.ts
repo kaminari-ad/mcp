@@ -40,7 +40,7 @@ export const patternRuleConfigSchema = z
 export const PATTERN_RULE_CONFIG_DOC =
   "For `rule_type='regexp_request_url'` and `rule_type='regexp_request_body'`, `config` must be exactly `{ pattern: string, flags?: '' | 'i' }`: pattern is non-empty and at most 4,096 characters; omit flags or use `''` for case-sensitive matching, or `'i'` for case-insensitive matching. `target` may be `'page'` (the landing tab), `'creative'` (the ad-tag creative's own traffic) or `'creative_and_page'` (both, reported separately) — a script inside a banner's iframe is on no landing's request list, so a page-only rule cannot see it. Default `page`. " +
   "`regexp_request_url` inspects up to 5,000 captured request URLs on a fresh scan; tests and rechecks of stored scans reconstruct main-frame hops plus up to 200 persisted subrequests with selected resource types omitted, so historical matching is best-effort. " +
-  "`regexp_request_body` inspects the CONTENTS of the page's scripts, fetch/XHR responses and iframe documents — never images, video, fonts or stylesheets — capped at 400 resources, 256 KB each and 8 MB per scan. Those contents are kept for ONE DAY, so a test or recheck against an older scan reports no match because there is nothing left to read.";
+  "`regexp_request_body` inspects the CONTENTS of the page's scripts, fetch/XHR responses and iframe documents — never images, video, fonts or stylesheets — capped at 400 resources, 1 MB each and 8 MB per scan. Those contents are kept for ONE DAY, so a test or recheck against an older scan reports no match because there is nothing left to read.";
 
 interface PatternRuleInput {
   readonly rule_type: string;
