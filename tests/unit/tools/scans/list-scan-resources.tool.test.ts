@@ -67,6 +67,17 @@ describe("listScanResourcesTool", () => {
     expect(out.items.map((i) => i.index)).toEqual([3]);
   });
 
+  it("returns an empty page past the last one, keeping the total", async () => {
+    const api = createFakeApiGateway();
+
+    const r = await listScanResourcesTool.handler(
+      parse({ scan_id: SID, surface: "page", page: 3 }),
+      makeToolContext({ api })
+    );
+
+    expect(r._unsafeUnwrap()).toMatchObject({ items: [], total: 1, page: 3 });
+  });
+
   it("needs landing_ord for a landing", async () => {
     const api = createFakeApiGateway();
 

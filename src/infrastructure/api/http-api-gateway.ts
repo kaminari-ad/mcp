@@ -143,6 +143,7 @@ import {
   formatBytes,
   MAX_BINARY_ARTIFACT_BYTES,
   MAX_RESOURCE_BODIES_DECODED_BYTES,
+  MAX_RESOURCE_BODIES_GZIP_BYTES,
   MAX_TEXT_ARTIFACT_BYTES,
 } from "../../shared/artifact-limits.js";
 import { err, ok, type Result } from "../../shared/result.js";
@@ -384,16 +385,18 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    * `arrayBuffer()` would materialise the whole body first, which on
    * an uncapped artifact endpoint means one oversized MediaFile
    * decides the server's memory ceiling.
+   *
+   * `recovery` is what the refusal tells the agent to do instead; the
+   * default fits artifacts the report page shows.
    */
   async function readCapped(
     response: Response,
-    maxBytes: number
+    maxBytes: number,
+    recovery = "Open the report URL from `get_scan` to view it instead."
   ): Promise<Result<Uint8Array, ApiError>> {
     const tooLarge = err<Uint8Array, ApiError>({
       kind: "upstream",
-      detail:
-        `Artifact is larger than the ${formatBytes(maxBytes)} this tool will transfer. ` +
-        `Open the report URL from \`get_scan\` to view it instead.`,
+      detail: `Artifact is larger than the ${formatBytes(maxBytes)} this tool will transfer. ${recovery}`,
     });
 
     // `response` is the undici body cast to the DOM `Response` shape,
@@ -478,8 +481,8 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
    *   - **no** `content-type` — there is no request body, so the
    *     header would be a misleading no-op.
    *   - `accept` widened to the artifact media types the API serves
-   *     (images, PDF, MP4, and the `text/plain` creative source +
-   *     VAST XML) — never JSON.
+   *     (images, PDF, MP4, the `text/plain` creative source, VAST XML
+   *     and the gzip resource-bodies archive) — never JSON.
    *
    * The remaining three keys (auth, user-agent, x-request-id) match
    * the JSON path exactly. The Bearer is pulled from the same
@@ -488,7 +491,8 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
   async function binaryGet(
     path: string,
     maxBytes: number,
-    query?: Readonly<Record<string, string | number>>
+    query?: Readonly<Record<string, string | number>>,
+    recovery?: string
   ): Promise<Result<BinaryDownload, ApiError>> {
     const startedAtMs = Date.now();
     const qs =
@@ -535,7 +539,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
       "api.done"
     );
     if (status >= 200 && status < 300) {
-      const read = await readCapped(response, maxBytes);
+      const read = await readCapped(response, maxBytes, recovery);
       if (read.isErr()) return err(read.error);
       return ok<BinaryDownload, ApiError>({
         bytes: read.value,
@@ -556,25 +560,46 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     return err(toApiError(status, errBody, response.headers.get("retry-after") ?? undefined));
   }
 
-  /** API path of a surface's captured-contents artifact. */
-  function resourceBodiesPath(scanId: string, surface: ResourceSurface): string {
-    if (surface.kind === "creative") return `/api/v1/scans/${scanId}/creative-resource-bodies`;
-    if (surface.kind === "landing") {
-      return `/api/v1/scans/${scanId}/landings/${String(surface.ord)}/resource-bodies`;
+  const RESOURCE_BODIES_RECOVERY =
+    "Narrow the investigation to another surface, or download the archive from the API directly.";
+
+  /** Download one surface's gzip archive; each path is a literal for `check-api-coverage`. */
+  async function downloadSurface(
+    scanId: string,
+    surface: ResourceSurface
+  ): Promise<Result<BinaryDownload, ApiError>> {
+    const cap = MAX_RESOURCE_BODIES_GZIP_BYTES;
+    if (surface.kind === "creative") {
+      return binaryGet(
+        `/api/v1/scans/${scanId}/creative-resource-bodies`,
+        cap,
+        undefined,
+        RESOURCE_BODIES_RECOVERY
+      );
     }
-    return `/api/v1/scans/${scanId}/resource-bodies`;
+    if (surface.kind === "landing") {
+      return binaryGet(
+        `/api/v1/scans/${scanId}/landings/${String(surface.ord)}/resource-bodies`,
+        cap,
+        undefined,
+        RESOURCE_BODIES_RECOVERY
+      );
+    }
+    return binaryGet(
+      `/api/v1/scans/${scanId}/resource-bodies`,
+      cap,
+      undefined,
+      RESOURCE_BODIES_RECOVERY
+    );
   }
 
-  /** Download one surface's gzip artifact and hand its rows to *visit*. */
+  /** Stream one surface's rows to *visit* until it returns `false`. */
   async function walkSurface(
     scanId: string,
     surface: ResourceSurface,
-    visit: (row: CapturedResourceBody) => void
+    visit: (row: CapturedResourceBody) => boolean
   ): Promise<Result<null, ApiError>> {
-    const download = await binaryGet(
-      resourceBodiesPath(scanId, surface),
-      MAX_BINARY_ARTIFACT_BYTES
-    );
+    const download = await downloadSurface(scanId, surface);
     if (download.isErr()) return err(download.error);
     return walkResourceBodies(download.value.bytes, MAX_RESOURCE_BODIES_DECODED_BYTES, visit);
   }
@@ -685,6 +710,7 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
           size: row.size,
           skipped: row.skipped,
         });
+        return true;
       });
       if (walked.isErr()) return err(walked.error);
       return ok(rows);
@@ -696,7 +722,9 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
     ): Promise<Result<CapturedResourceBody | null, ApiError>> {
       let found: CapturedResourceBody | null = null;
       const walked = await walkSurface(scanId, surface, (row) => {
-        if (row.index === index) found = row;
+        if (row.index !== index) return true;
+        found = row;
+        return false;
       });
       if (walked.isErr()) return err(walked.error);
       return ok(found);

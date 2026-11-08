@@ -24,7 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `get_scan` now returns `landings` as `ord`, `final_url` and
   `page_title`, so the landing `ord` that `get_scan_landing_screenshot`
-  and the landing surface take can be discovered.
+  and the landing surface take can be discovered. `create_scan` and
+  `create_bulk_scans` read the same scan shape and carry the field too
+  (empty until the scan has landed).
 
 ## [0.27.2] - 2026-11-05
 

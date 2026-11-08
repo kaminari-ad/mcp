@@ -22,11 +22,18 @@ export const MAX_TEXT_ARTIFACT_BYTES = 256 * 1024;
 export const MAX_BINARY_ARTIFACT_BYTES = 8 * 1024 * 1024;
 
 /**
- * Largest decompressed `resource-bodies` artifact we will walk. The
- * crawler keeps at most 24 MB of bodies per crawl; this leaves room for
- * the JSON escaping and the skip rows around them.
+ * Largest gzip `resource-bodies` archive we will download. The crawler
+ * keeps at most 24 MB of bodies per crawl; scripts compress 3-5x, so a
+ * full surface lands well inside this.
  */
-export const MAX_RESOURCE_BODIES_DECODED_BYTES = 64 * 1024 * 1024;
+export const MAX_RESOURCE_BODIES_GZIP_BYTES = 16 * 1024 * 1024;
+
+/**
+ * Most decompressed bytes we will walk in one archive: the 24 MB body
+ * budget plus room for JSON escaping and the skip rows. The walk streams
+ * line by line, so this bounds CPU, not memory.
+ */
+export const MAX_RESOURCE_BODIES_DECODED_BYTES = 32 * 1024 * 1024;
 
 /** Human-readable size for an over-limit error message. */
 export function formatBytes(bytes: number): string {

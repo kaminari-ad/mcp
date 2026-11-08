@@ -156,9 +156,9 @@ export type ScanTileResponse = Pick<
 >;
 
 /**
- * Narrow scan view: omits heavy nested arrays
- * (redirect_chain, landings, classification). Agents that need them
- * can request them through dedicated tools (future work).
+ * Narrow scan view: omits heavy nested arrays (redirect_chain,
+ * classification) and keeps `landings` only as `ord` + URL + title.
+ * Agents that need the rest can request it through dedicated tools.
  *
  * `repeat_scan_ids` is populated only by the create endpoints (the
  * siblings that same call produced); list and detail responses leave it

@@ -66,6 +66,23 @@ describe("getScanResourceBodyTool", () => {
     expect(last._unsafeUnwrap()).toMatchObject({ body: "ij", length: 2, next_offset: null });
   });
 
+  it("returns an empty, final chunk for an offset past the end", async () => {
+    const api = createFakeApiGateway();
+    api.state.responses.getScanResourceBody = bundle("abc");
+
+    const r = await getScanResourceBodyTool.handler(
+      parse({ scan_id: SID, surface: "page", index: 4, offset: 10 }),
+      makeToolContext({ api })
+    );
+
+    expect(r._unsafeUnwrap()).toMatchObject({
+      body: "",
+      length: 0,
+      total_length: 3,
+      next_offset: null,
+    });
+  });
+
   it("returns an empty body with the reason for a skipped row", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanResourceBody = bundle(null, "too_large");

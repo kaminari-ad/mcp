@@ -130,6 +130,29 @@ describe("HttpApiGateway resource bodies", () => {
     });
   });
 
+  it("stops at the requested row, so a broken row after it does not matter", async () => {
+    serve(
+      `/api/v1/scans/${SID}/resource-bodies`,
+      200,
+      gzipSync(`${JSON.stringify(ROWS[0])}\n{oops`)
+    );
+
+    const read = await buildGateway(agent).getScanResourceBody(SID, { kind: "page" }, 0);
+
+    expect(read._unsafeUnwrap()).toMatchObject({ index: 0, body: "var a = 1;" });
+  });
+
+  it("refuses an oversized archive without pointing at the report page", async () => {
+    serve(`/api/v1/scans/${SID}/resource-bodies`, 200, Buffer.alloc(16 * 1024 * 1024 + 1));
+
+    const listed = await buildGateway(agent).listScanResources(SID, { kind: "page" });
+
+    const error = listed._unsafeUnwrapErr();
+    expect(error.kind).toBe("upstream");
+    expect(error.detail).toContain("16.0 MiB");
+    expect(error.detail).not.toContain("report URL");
+  });
+
   it("reports a malformed row from the body read as upstream", async () => {
     serve(`/api/v1/scans/${SID}/resource-bodies`, 200, gzipSync('{"url": 1}'));
 
