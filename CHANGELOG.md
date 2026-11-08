@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Requires the API release that ships adverif/api!437 (`GET /api/v1/scans/{id}/resource-bodies`
+## [0.28.0] - 2026-11-08
+
+> Requires API v1.94.0 (adverif/api!437: `GET /api/v1/scans/{id}/resource-bodies`
 > and its creative / landing siblings).
 
 ### Added
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `create_custom_rule` / `update_custom_rule` describe `regexp_request_body`
+  as searching sub-resources up to 1 MB each (crawler v1.42.0).
 - `get_scan` now returns `landings` as `ord`, `final_url` and
   `page_title`, so the landing `ord` that `get_scan_landing_screenshot`
   and the landing surface take can be discovered. `create_scan` and
