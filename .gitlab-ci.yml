@@ -1,44 +1,25 @@
-# GitLab CI for @kaminari-ad/mcp.
-#
-# Stages:
-#   1. setup           install deps, cache node_modules
-#   2. quality         lint / format-check / typecheck   (parallel)
-#   3. arch_gates      file-sizes / imports / shared-state / tool-naming (parallel)
-#   4. security        npm audit / license-checker        (parallel)
-#   5. test            unit / integration / isolation     (sequential, fail-fast)
-#   6. build           tsup dist
-#   7. publish         npm publish (TAG only)
-#
-# The `test:isolation` job is a non-negotiable merge gate.
-# `setup` produces a `node_modules` artifact that downstream jobs reuse.
+# Trial of adverif/ci node-services at main.
+# Lint runs eslint. Check runs format, typecheck, tests, architecture
+# gates, audits, and the bundle-size gate, and stops on the first failure.
+# Security skips only the image scan: node:22.23.4 ships npm 10.9.9, and
+# no current Node image has those HIGH fixes yet.
+# Arranger CodeBuild still builds the deploy image from the ECR defaults
+# in .arranger/Dockerfile.
+include:
+  - project: adverif/ci
+    ref: main
+    file: node-services/entrypoint.yaml
 
-default:
-  # Run on the mcp builder base (node 22 + build tooling) for local/CI/prod parity.
-  # Pulled from the infra GitLab Container Registry (runner auto-auths via
-  # CI_JOB_TOKEN; infra allowlists this repo). The deploy image is built by
-  # arranger CodeBuild off the ECR base.
-  image: gitlab.sdev.pw:5050/adverif/infra/kaminariad-mcp-base-builder:v1.1.0
-  before_script:
-    # Pulled image is alpine (no git); shell-executor runners are
-    # debian/ubuntu (git already installed). Try `apk` then fall back
-    # silently so both executor types work.
-    - command -v apk >/dev/null 2>&1 && apk add --no-cache git || true
-    - corepack disable 2>/dev/null || true
-
+# GitLab replaces this list instead of merging it with the entrypoint.
 stages:
-  - setup
-  - quality
-  - arch_gates
+  - lint
+  - check
+  - build
   - security
-  - test
-  - package
-  - publish
 
-# One pipeline per commit: MR-event pipeline when an MR is open, branch
-# pipeline otherwise, main/tags always. MR-event is REQUIRED (not suppressed)
-# because the injected policy jobs (build:arranger/deploy, blocking manual) are
-# excluded only on MR-event pipelines — a push pipeline sits in "manual"
-# forever and only_allow_merge_if_pipeline_succeeds would deadlock the MR.
+# One pipeline per commit. An open MR runs the merge-request pipeline only.
+# Policy jobs are injected into the branch pipeline and keep it from reaching
+# success, which would fail only_allow_merge_if_pipeline_succeeds.
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -47,231 +28,90 @@ workflow:
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == ""
 
 variables:
+  DOCKER_TLS_CERTDIR: ""
   NPM_CONFIG_FUND: "false"
   NPM_CONFIG_UPDATE_NOTIFIER: "false"
   NPM_CONFIG_AUDIT: "false"
+  NPM_CONFIG_CACHE: .npm-cache
+  BUILDER_IMAGE: gitlab.sdev.pw:5050/adverif/infra/kaminariad-mcp-base-builder:v1.3.0
 
-# ─────────────────────────────────────────────────────────────────────
-# 1. SETUP — npm ci, cache node_modules, emit lockfile-pinned artefact
-# ─────────────────────────────────────────────────────────────────────
-
-setup:
-  stage: setup
-  script:
-    # `--legacy-peer-deps` is belt-and-suspenders since the eslint 10
-    # bump: the mismatch it papered over (eslint-plugin-vitest vendoring
-    # @typescript-eslint/utils 7.x) is gone with @vitest/eslint-plugin,
-    # and `npm ci` now resolves cleanly without the flag.
-    - npm ci --ignore-scripts --legacy-peer-deps
+.node_setup: &node_setup
+  image: $BUILDER_IMAGE
   cache:
     key:
-      files:
-        - package-lock.json
-    paths:
-      - .npm-cache/
-    policy: pull-push
-  artifacts:
-    expire_in: 1 hour
-    paths:
-      - node_modules/
+      files: [package-lock.json]
+      prefix: builder
+    paths: [$NPM_CONFIG_CACHE]
+  before_script:
+    - command -v apk >/dev/null 2>&1 && apk add --no-cache git || true
+    - corepack disable 2>/dev/null || true
+    - npm ci --ignore-scripts --legacy-peer-deps
 
-# ─────────────────────────────────────────────────────────────────────
-# 2. QUALITY (parallel)
-# ─────────────────────────────────────────────────────────────────────
-
-lint:
-  stage: quality
-  needs: [setup]
-  script: npm run lint
-
-format-check:
-  stage: quality
-  needs: [setup]
-  script: npm run format:check
-
-typecheck:
-  stage: quality
-  needs: [setup]
-  script: npm run typecheck
-
-# ─────────────────────────────────────────────────────────────────────
-# 3. ARCH GATES (parallel) — all are merge blockers
-# ─────────────────────────────────────────────────────────────────────
-
-check:file-sizes:
-  stage: arch_gates
-  needs: [setup]
-  script: npm run check:file-sizes
-
-check:imports:
-  stage: arch_gates
-  needs: [setup]
-  script: npm run check:imports
-
-check:shared-state:
-  stage: arch_gates
-  needs: [setup]
-  script: npm run check:shared-state
-
-check:tool-naming:
-  stage: arch_gates
-  needs: [setup]
-  script: npm run check:tool-naming
-
-check:no-handwritten-parsers:
-  stage: arch_gates
-  needs: [setup]
-  # Belt-and-suspenders gate against hand-written parser drift (see
-  # CHANGELOG Phase 1 — 8 prod tool failures caused by parsers that
-  # diverged from the API's actual response shapes). Forces every
-  # `src/infrastructure/api/parsers/*.ts` to be backed by a generated
-  # zod schema from `src/shared/api/zod-schemas.ts`.
-  script: npm run check:no-handwritten-parsers
-
-check:api-coverage:
-  stage: arch_gates
-  needs: [setup]
-  # KAMIAD-158: the generated types were current while four endpoints
-  # had no gateway method and six tools were missing filters the API
-  # had grown. Asserts every `/api/v1` path + method in the generated
-  # `openapi.ts` is reachable from the gateway, AND that each of their
-  # query parameters is representable by the gateway method.
-  script: npm run check:api-coverage
-
-check:tool-enum-drift:
-  stage: arch_gates
-  needs: [setup]
-  # KAMIAD-158's actual symptom: a hand-written `z.enum` that offered
-  # values the API rejects. Requires every tool enum to be a subset of
-  # a generated one, or to carry a justified exemption.
-  script: npm run check:tool-enum-drift
-
-# ─────────────────────────────────────────────────────────────────────
-# 4. SECURITY (parallel)
-# ─────────────────────────────────────────────────────────────────────
-
-audit:deps:
-  stage: security
-  needs: [setup]
-  script: npm run audit:deps
-  allow_failure: false
-
-audit:licenses:
-  stage: security
-  needs: [setup]
-  script: npm run audit:licenses
-
-# ─────────────────────────────────────────────────────────────────────
-# 5. TESTS
-# ─────────────────────────────────────────────────────────────────────
-
-test:unit:
-  stage: test
-  # `needs: setup` inherits the node_modules/ artifact; lint+typecheck
-  # are gates we want green BEFORE tests run but don't re-export deps.
-  needs: [setup, lint, typecheck]
-  script: npm run test:unit -- --coverage
-
-test:integration:
-  stage: test
-  needs: [setup, test:unit]
-  script: npm run test:integration
-
-# Tenant isolation suite — NON-NEGOTIABLE merge gate.
-# Runs as a separate, named job so its failure is immediately
-# attributable in the MR UI.
-test:isolation:
-  stage: test
-  needs: [setup, test:unit]
-  script: npm run test:isolation
-  artifacts:
-    when: always
-    paths:
-      - coverage/
-    reports:
-      junit: coverage/junit.xml
-
-# ─────────────────────────────────────────────────────────────────────
-# 6. BUILD
-# ─────────────────────────────────────────────────────────────────────
-
-build:
-  stage: package
-  needs:
-    - setup
-    - lint
-    - format-check
-    - typecheck
-    - check:file-sizes
-    - check:imports
-    - check:shared-state
-    - check:tool-naming
-    - check:no-handwritten-parsers
-    - check:api-coverage
-    - check:tool-enum-drift
-    - audit:deps
-    - audit:licenses
-    - test:unit
-    - test:integration
-    - test:isolation
+# One package, so this is the eslint script. Check waits for this stage.
+Lint:
+  <<: *node_setup
   script:
+    - npm run lint
+
+# format and typecheck are not part of the test scripts. Architecture
+# gates, audits, and the bundle-size check used to be separate jobs.
+# CI=true makes vitest write coverage/junit.xml; isolation runs last.
+Check:
+  <<: *node_setup
+  script:
+    - npm run format:check
+    - npm run typecheck
+    - npm run test:unit -- --coverage
+    - npm run test:integration
+    - npm run test:isolation
+    - npm run check:file-sizes
+    - npm run check:imports
+    - npm run check:shared-state
+    - npm run check:tool-naming
+    - npm run check:no-handwritten-parsers
+    - npm run check:api-coverage
+    - npm run check:tool-enum-drift
+    - npm run audit:deps
+    - npm run audit:licenses
     - npm run build
     - npm run check:bundle-size
   artifacts:
-    expire_in: 7 days
     paths:
-      - dist/
+      - coverage/junit.xml
+    reports:
+      junit: coverage/junit.xml
 
-# Prod smoke — fires a read-only subset of MCP tools at the deployed
-# endpoint using a long-lived sandbox-org bearer.
-#
-# Catches drifts that escape compile-time gates: API shape changes
-# between releases, feature-flag-gated routes flipping on/off,
-# parser regressions invisible to fakes.
-#
-# Manual trigger by default (`when: manual`) so the job appears in
-# the pipeline UI but doesn't burn CI minutes on every push. Flip
-# to a daily schedule via GitLab CI/CD → Schedules once the sandbox
-# org + token are provisioned (see the operations runbook).
-#
-# Required CI variables (both Masked + Protected):
-#   KAMINARI_AD_MCP_PROD_TOKEN — long-lived bearer for a dedicated
-#                                sandbox org. Rotated quarterly.
-#   KAMINARI_AD_MCP_PROD_URL   — optional override; defaults to
-#                                https://mcp.kaminari.ad/mcp.
+# Manual read-only smoke against the deployed MCP. Kept from the previous
+# pipeline. Needs KAMINARI_AD_MCP_PROD_TOKEN; KAMINARI_AD_MCP_PROD_URL is
+# optional. Does not block the merge.
 prod:smoke:
-  stage: test
-  needs:
-    - setup
+  <<: *node_setup
+  stage: check
+  needs: []
   rules:
     - when: manual
       allow_failure: true
-  variables:
-    NPM_CONFIG_AUDIT: "false"
   script:
     - npm run prod:smoke
 
-# ─────────────────────────────────────────────────────────────────────
-# 7. PUBLISH — only on git tag matching vX.Y.Z
-# ─────────────────────────────────────────────────────────────────────
-
-publish:npm:
-  stage: publish
-  needs: [build]
-  rules:
-    # DISABLED — npm publish moved to GitHub Actions (.github/workflows/
-    # release.yml) for OIDC provenance support. GitLab CI cannot produce
-    # npm provenance attestations: only GitHub Actions, GitLab.com SaaS,
-    # and CircleCI are in npm's OIDC trust list. Our self-hosted GitLab
-    # is not, so a `--provenance` publish from here would either silently
-    # ship an unsigned package or fail outright.
-    #
-    # The job stub stays for traceability (so a future maintainer searching
-    # for "publish:npm" in this file lands on the explicit "we moved it"
-    # explanation instead of finding nothing). To re-enable: pick a tag
-    # build manually, but understand the loss of provenance.
-    - when: never
+# The CI image supplies the Docker CLI. services: [] replaces the template
+# dind service. These runners mount the host socket, and dind fails to start
+# while that socket is mounted.
+Build:
+  image: gitlab.sdev.pw:5050/adverif/ci:latest
+  services: []
   script:
-    - echo "Publishing moved to GitHub Actions (.github/workflows/release.yml)."
-    - echo "This stub is intentional and should not run."
-    - exit 0
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - >-
+      docker build
+      --build-arg BUILDER_BASE=gitlab.sdev.pw:5050/adverif/infra/kaminariad-mcp-base-builder:v1.3.0
+      --build-arg RUNTIME_BASE=gitlab.sdev.pw:5050/adverif/infra/kaminariad-mcp-base-runtime:v1.3.0
+      -f .arranger/Dockerfile
+      -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+      .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+
+# Template on main keeps Semgrep and trivy fs. The image scan stays off.
+Security:
+  variables:
+    SKIP_TRIVY_IMAGE: true

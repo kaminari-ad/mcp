@@ -1,7 +1,11 @@
 # Three-stage assemble (no apk here — everything is in the bases):
 #   deps/builder : kaminariad-mcp-base-builder (node + build tooling) install + tsup.
 #   runtime      : kaminariad-mcp-base-runtime (lean node + tini) COPYs prod node_modules + dist.
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.1.0 AS deps
+# ARG defaults are the ECR images CodeBuild pulls. GitLab CI passes the same
+# bases from the GitLab registry with --build-arg: that job has no AWS credentials.
+ARG BUILDER_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.3.0
+ARG RUNTIME_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-runtime:v1.3.0
+FROM ${BUILDER_BASE} AS deps
 
 COPY --chown=kaminariad:kaminariad package.json package-lock.json .npmrc ./
 
@@ -10,7 +14,7 @@ RUN npm ci \
     --ignore-scripts \
     --legacy-peer-deps
 
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.1.0 AS builder
+FROM ${BUILDER_BASE} AS builder
 
 COPY --chown=kaminariad:kaminariad package.json package-lock.json .npmrc ./
 
@@ -23,7 +27,7 @@ COPY --chown=kaminariad:kaminariad src ./src
 
 RUN npx tsup --config tsup.config.ts
 
-FROM 676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-runtime:v1.1.0 AS runtime
+FROM ${RUNTIME_BASE} AS runtime
 
 COPY --chown=kaminariad:kaminariad --from=deps /var/www/kaminariad-mcp/node_modules ./node_modules
 COPY --chown=kaminariad:kaminariad --from=builder /var/www/kaminariad-mcp/dist ./dist
