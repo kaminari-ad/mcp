@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Requires adverif/api!443 (stored VAST videos expire 90 days after the scan completes).
+
+### Changed
+
+- `get_scan_creative_video` says the stored copy is kept for 90 days after
+  `completed_at`; an older scan answers not-found.
+
 ## [0.28.0] - 2026-11-08
 
 > Requires API v1.94.0 (adverif/api!437: `GET /api/v1/scans/{id}/resource-bodies`
