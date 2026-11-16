@@ -48,6 +48,9 @@ describe("getScanCreativeVideoTool", () => {
   it("points at the cheaper alternatives so the agent can recover", () => {
     expect(getScanCreativeVideoTool.description).toContain("get_scan_creative_screenshot");
   });
+  it("tells the agent the stored copy expires after 90 days", () => {
+    expect(getScanCreativeVideoTool.description).toContain("90 days");
+  });
   it("maps a not-found from a non-VAST scan", async () => {
     const api = createFakeApiGateway();
     api.state.responses.getScanCreativeVideo = err(makeApiError("not-found", "x"));
