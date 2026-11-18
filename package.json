@@ -80,7 +80,7 @@
     "check:no-handwritten-parsers": "tsx scripts/check-no-handwritten-parsers.ts",
     "check:api-coverage": "tsx scripts/check-api-coverage.ts",
     "check:tool-enum-drift": "tsx scripts/check-tool-enum-drift.ts",
-    "audit:deps": "npm audit --audit-level=moderate",
+    "audit:deps": "npm audit --omit=dev --audit-level=moderate",
     "audit:licenses": "license-checker-rseidelsohn --production --onlyAllow \"MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC-BY-4.0\" --excludePrivatePackages",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test:cov && npm run build"
   },

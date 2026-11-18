@@ -52,7 +52,7 @@ help:
 	@echo "    check-tool-enum-drift  tool enums match the generated ones"
 	@echo ""
 	@echo "  Security"
-	@echo "    audit            npm audit --audit-level=moderate"
+	@echo "    audit            npm audit --omit=dev --audit-level=moderate"
 	@echo "    license-check    MIT/Apache/BSD/ISC whitelist"
 	@echo ""
 	@echo "  Composite"

@@ -32,7 +32,7 @@ make check-shared-state
 make check-tool-naming
 
 # Security
-make audit             # npm audit --audit-level=moderate
+make audit             # npm audit --omit=dev --audit-level=moderate
 make license-check     # license-checker, MIT/Apache/BSD/ISC whitelist
 ```
 
