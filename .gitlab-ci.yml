@@ -1,8 +1,8 @@
 # Trial of adverif/ci node-services at main.
 # Lint runs eslint. Check runs format, typecheck, tests, architecture
 # gates, audits, and the bundle-size gate, and stops on the first failure.
-# Security skips only the image scan: node:22.23.4 ships npm 10.9.9, and
-# no current Node image has those HIGH fixes yet.
+# Security scans the image with .trivyignore.yaml: node:22.23.4 ships npm
+# 10.9.9, and no current Node image has those HIGH fixes yet.
 # Arranger CodeBuild still builds the deploy image from the ECR defaults
 # in .arranger/Dockerfile.
 include:
@@ -111,7 +111,7 @@ Build:
       .
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
 
-# Template on main keeps Semgrep and trivy fs. The image scan stays off.
+# The image scan accepts only the npm findings listed in .trivyignore.yaml.
 Security:
   variables:
-    SKIP_TRIVY_IMAGE: true
+    TRIVY_IGNOREFILE: .trivyignore.yaml
