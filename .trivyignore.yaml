@@ -1,0 +1,50 @@
+# Image-scan allowlist for Security (TRIVY_IGNOREFILE in .gitlab-ci.yml).
+# Every entry is a HIGH in the npm 10.9.9 that node:22.23.4 ships inside the
+# kaminariad-mcp-base-*:v1.3.0 images. The service runs node only and never
+# calls npm at runtime. No current Node image ships a fixed npm (KAMIAD-255).
+# Paths keep the ids scoped to that npm, so the same id in the service's own
+# dependencies still fails trivy fs and trivy image.
+# Taken from trivy 0.76.2 on adverif/mcp:1012ccc3 (alpine 3.24.4).
+# Remove an entry when the base image upgrade drops it.
+vulnerabilities:
+  - id: CVE-2026-102276
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json
+    statement: brace-expansion 2.0.2 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-102278
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json
+    statement: brace-expansion 2.0.2 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-13149
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json
+    statement: brace-expansion 2.0.2 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-14257
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json
+    statement: brace-expansion 2.0.2 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-69152
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json
+    statement: brace-expansion 2.0.2 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-69192
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/ip-address/package.json
+    statement: ip-address 10.1.0 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-9496
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/pacote/package.json
+      - usr/local/lib/node_modules/npm/node_modules/@npmcli/metavuln-calculator/node_modules/pacote/package.json
+    statement: pacote 19.0.2 and 20.0.1 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-112366
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/picomatch/package.json
+    statement: picomatch 4.0.3 bundled with npm 10.9.9, no fix released; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-33671
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/picomatch/package.json
+    statement: picomatch 4.0.3 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
+  - id: CVE-2026-48815
+    paths:
+      - usr/local/lib/node_modules/npm/node_modules/sigstore/package.json
+    statement: sigstore 3.1.0 bundled with npm 10.9.9; npm is not used at runtime (KAMIAD-255).
