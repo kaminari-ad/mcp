@@ -1242,8 +1242,7 @@ export interface paths {
      * @description Switch a SYSTEM or shared rule off for your organization only.
      *
      *     New scans of your organization no longer get the rule's tags; tags set
-     *     before stay, and other organizations keep the rule. Repeating the call
-     *     changes nothing. Your own rule answers 422
+     *     before stay. Repeating the call changes nothing. Your own rule answers 422
      *     ``checking.rule_owned_by_caller``: switch it with ``is_active``.
      *     The response is the rule as it now stands: ``is_active`` false and
      *     ``disable_impact`` null. Read ``disable_impact`` from the list or get
