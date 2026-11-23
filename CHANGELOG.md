@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Requires adverif/api!<id> (organizations switch System and shared rules off for themselves).
 > Requires adverif/api!443 (stored VAST videos expire 90 days after the scan completes).
+
+### Added
+
+- `disable_custom_rule` and `enable_custom_rule` switch a System or shared
+  rule off or on for your organization. `list_custom_rules` and
+  `get_custom_rule` return `scope`, `editable` and `disable_impact`.
 
 ### Changed
 

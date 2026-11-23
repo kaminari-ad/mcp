@@ -237,6 +237,8 @@ type Call =
       readonly body: UpdateCustomRuleRequest;
     }
   | { readonly method: "deleteCustomRule"; readonly id: string }
+  | { readonly method: "disableCustomRule"; readonly id: string }
+  | { readonly method: "enableCustomRule"; readonly id: string }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
   | { readonly method: "testCustomRulesBatch"; readonly body: RuleTestBatchRequest }
   | { readonly method: "listPolicySets"; readonly filters: ListPolicySetsFilters }
@@ -403,6 +405,8 @@ export interface FakeApiGatewayState {
     createCustomRule?: Result<CustomRuleResponse, ApiError>;
     updateCustomRule?: Result<CustomRuleResponse, ApiError>;
     deleteCustomRule?: Result<null, ApiError>;
+    disableCustomRule?: Result<CustomRuleResponse, ApiError>;
+    enableCustomRule?: Result<CustomRuleResponse, ApiError>;
     testCustomRule?: Result<RuleTestResponse, ApiError>;
     testCustomRulesBatch?: Result<RuleTestBatchResponse, ApiError>;
     listPolicySets?: Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>;
@@ -689,6 +693,8 @@ const DEFAULT_CUSTOM_RULE: CustomRuleResponse = {
   target: "page",
   is_active: true,
   created_at: "2026-05-16T00:00:00Z",
+  scope: "personal",
+  editable: true,
 };
 
 const DEFAULT_POLICY_SET: PolicySetResponse = {
@@ -1285,6 +1291,20 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       push({ method: "deleteCustomRule", id });
       await Promise.resolve();
       return state.responses.deleteCustomRule ?? ok<null, ApiError>(null);
+    },
+    async disableCustomRule(id) {
+      push({ method: "disableCustomRule", id });
+      await Promise.resolve();
+      return (
+        state.responses.disableCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
+      );
+    },
+    async enableCustomRule(id) {
+      push({ method: "enableCustomRule", id });
+      await Promise.resolve();
+      return (
+        state.responses.enableCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
+      );
     },
     async testCustomRule(body) {
       push({ method: "testCustomRule", body });

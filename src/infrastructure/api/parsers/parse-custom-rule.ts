@@ -23,6 +23,9 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
   target: true,
   is_active: true,
   created_at: true,
+  scope: true,
+  editable: true,
+  disable_impact: true,
 }).strip();
 
 export const parseCustomRule = (raw: unknown): Result<CustomRuleResponse, ApiError> =>

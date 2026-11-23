@@ -621,6 +621,11 @@ export type UpdateTagDefinitionRequest = Pick<
 
 // ── Custom rules ──────────────────────────────────────────────────
 
+export interface DisableImpact {
+  readonly combo_rules?: readonly { readonly id: string; readonly name: string }[] | undefined;
+  readonly security?: boolean | undefined;
+}
+
 export type CustomRuleResponse = Pick<
   S["CustomRuleResponse"],
   | "id"
@@ -632,7 +637,9 @@ export type CustomRuleResponse = Pick<
   | "target"
   | "is_active"
   | "created_at"
->;
+  | "scope"
+  | "editable"
+> & { readonly disable_impact?: DisableImpact | null | undefined };
 
 export type RuleTestRequest = Pick<
   S["RuleTestRequest"],
@@ -1519,6 +1526,8 @@ export interface ApiGateway {
     body: UpdateCustomRuleRequest
   ): Promise<Result<CustomRuleResponse, ApiError>>;
   deleteCustomRule(id: string): Promise<Result<null, ApiError>>;
+  disableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>>;
+  enableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>>;
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
   testCustomRulesBatch(
     body: RuleTestBatchRequest

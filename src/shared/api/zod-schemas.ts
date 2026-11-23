@@ -735,6 +735,14 @@ const CreateCustomRuleRequest = z
     tag_visibility: z.union([z.record(z.string(), TagVisibility), z.null()]).optional(),
   })
   .passthrough();
+const ImpactedComboRule = z.object({ id: z.guid(), name: z.string() }).passthrough();
+const DisableImpact = z
+  .object({
+    combo_rules: z.array(ImpactedComboRule),
+    security: z.boolean().default(false),
+  })
+  .partial()
+  .passthrough();
 const CustomRuleResponse = z
   .object({
     id: z.guid(),
@@ -748,6 +756,8 @@ const CustomRuleResponse = z
     created_at: z.string().datetime({ offset: true }),
     scope: z.string().optional().default("personal"),
     tag_visibility: z.record(z.string(), z.string()).optional(),
+    editable: z.boolean().optional().default(true),
+    disable_impact: z.union([DisableImpact, z.null()]).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -1467,6 +1477,8 @@ export const schemas = {
   TagSeverity,
   UpdateTagDefinitionRequest,
   CreateCustomRuleRequest,
+  ImpactedComboRule,
+  DisableImpact,
   CustomRuleResponse,
   PaginatedResponse_CustomRuleResponse_,
   UpdateCustomRuleRequest,
