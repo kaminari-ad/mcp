@@ -33,6 +33,8 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
   scope: true,
   editable: true,
   disable_impact: true,
+  disabled_tags: true,
+  tag_disable_impact: true,
 }).strip();
 
 export const parseCustomRulePage = (

@@ -239,6 +239,11 @@ type Call =
   | { readonly method: "deleteCustomRule"; readonly id: string }
   | { readonly method: "disableCustomRule"; readonly id: string }
   | { readonly method: "enableCustomRule"; readonly id: string }
+  | {
+      readonly method: "setCustomRuleDisabledTags";
+      readonly id: string;
+      readonly slugs: readonly string[];
+    }
   | { readonly method: "testCustomRule"; readonly body: RuleTestRequest }
   | { readonly method: "testCustomRulesBatch"; readonly body: RuleTestBatchRequest }
   | { readonly method: "listPolicySets"; readonly filters: ListPolicySetsFilters }
@@ -407,6 +412,7 @@ export interface FakeApiGatewayState {
     deleteCustomRule?: Result<null, ApiError>;
     disableCustomRule?: Result<CustomRuleResponse, ApiError>;
     enableCustomRule?: Result<CustomRuleResponse, ApiError>;
+    setCustomRuleDisabledTags?: Result<CustomRuleResponse, ApiError>;
     testCustomRule?: Result<RuleTestResponse, ApiError>;
     testCustomRulesBatch?: Result<RuleTestBatchResponse, ApiError>;
     listPolicySets?: Result<PaginatedResponse<PolicySetListItemResponse>, ApiError>;
@@ -1304,6 +1310,14 @@ export function createFakeApiGateway(): ApiGateway & { readonly state: FakeApiGa
       await Promise.resolve();
       return (
         state.responses.enableCustomRule ?? ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
+      );
+    },
+    async setCustomRuleDisabledTags(id, slugs) {
+      push({ method: "setCustomRuleDisabledTags", id, slugs });
+      await Promise.resolve();
+      return (
+        state.responses.setCustomRuleDisabledTags ??
+        ok<CustomRuleResponse, ApiError>(DEFAULT_CUSTOM_RULE)
       );
     },
     async testCustomRule(body) {

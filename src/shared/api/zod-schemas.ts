@@ -758,6 +758,8 @@ const CustomRuleResponse = z
     tag_visibility: z.record(z.string(), z.string()).optional(),
     editable: z.boolean().optional().default(true),
     disable_impact: z.union([DisableImpact, z.null()]).optional(),
+    disabled_tags: z.array(z.string()).optional(),
+    tag_disable_impact: z.record(z.string(), z.array(ImpactedComboRule)).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -845,6 +847,9 @@ const RuleTestBatchResponse = z
     results: z.array(RuleTestBatchCell),
     summary: RuleTestBatchSummary,
   })
+  .passthrough();
+const SetDisabledTagsRequest = z
+  .object({ slugs: z.array(z.string().max(100)).max(200) })
   .passthrough();
 const IabV3PolicyCategoryRequest = z
   .object({
@@ -1490,6 +1495,7 @@ export const schemas = {
   RuleTestBatchCell,
   RuleTestBatchSummary,
   RuleTestBatchResponse,
+  SetDisabledTagsRequest,
   IabV3PolicyCategoryRequest,
   AiCategoryRequest,
   CustomTaxonomyRefRequest,

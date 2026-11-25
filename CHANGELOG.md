@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `disable_custom_rule` and `enable_custom_rule` switch a System or shared
   rule off or on for your organization. `list_custom_rules` and
   `get_custom_rule` return `scope`, `editable` and `disable_impact`.
+- `set_custom_rule_disabled_tags` switches single tags of an AI rule off
+  for your organization (your own, System or shared rule); the other tags
+  keep working and an off tag keeps its description. `list_custom_rules` and
+  `get_custom_rule` also return `disabled_tags` and `tag_disable_impact`
+  (your combo rules that read each tag that is on).
 
 ### Changed
 

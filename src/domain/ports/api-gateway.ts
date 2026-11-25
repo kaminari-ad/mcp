@@ -639,7 +639,13 @@ export type CustomRuleResponse = Pick<
   | "created_at"
   | "scope"
   | "editable"
-> & { readonly disable_impact?: DisableImpact | null | undefined };
+> & {
+  readonly disable_impact?: DisableImpact | null | undefined;
+  readonly disabled_tags?: readonly string[] | undefined;
+  readonly tag_disable_impact?:
+    | Readonly<Record<string, readonly { readonly id: string; readonly name: string }[]>>
+    | undefined;
+};
 
 export type RuleTestRequest = Pick<
   S["RuleTestRequest"],
@@ -1528,6 +1534,10 @@ export interface ApiGateway {
   deleteCustomRule(id: string): Promise<Result<null, ApiError>>;
   disableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>>;
   enableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>>;
+  setCustomRuleDisabledTags(
+    id: string,
+    slugs: readonly string[]
+  ): Promise<Result<CustomRuleResponse, ApiError>>;
   testCustomRule(body: RuleTestRequest): Promise<Result<RuleTestResponse, ApiError>>;
   testCustomRulesBatch(
     body: RuleTestBatchRequest

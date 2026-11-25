@@ -66,6 +66,7 @@ import { disableCustomRuleTool } from "./tools/custom-rules/disable-custom-rule.
 import { enableCustomRuleTool } from "./tools/custom-rules/enable-custom-rule.tool.js";
 import { getCustomRuleTool } from "./tools/custom-rules/get-custom-rule.tool.js";
 import { listCustomRulesTool } from "./tools/custom-rules/list-custom-rules.tool.js";
+import { setCustomRuleDisabledTagsTool } from "./tools/custom-rules/set-custom-rule-disabled-tags.tool.js";
 import { testCustomRuleTool } from "./tools/custom-rules/test-custom-rule.tool.js";
 import { testCustomRulesBatchTool } from "./tools/custom-rules/test-custom-rules-batch.tool.js";
 import { updateCustomRuleTool } from "./tools/custom-rules/update-custom-rule.tool.js";
@@ -207,6 +208,7 @@ export function registerAllTools(register: RegisterTool): void {
   register(deleteCustomRuleTool);
   register(disableCustomRuleTool);
   register(enableCustomRuleTool);
+  register(setCustomRuleDisabledTagsTool);
   register(testCustomRuleTool);
   register(testCustomRulesBatchTool);
   // custom taxonomies (per-org classification trees)

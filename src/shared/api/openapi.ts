@@ -1278,6 +1278,37 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/custom-rules/{rule_id}/disabled-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set Custom Rule Disabled Tags
+     * @description Turn single tags of an AI rule off for your organization only.
+     *
+     *     Send every tag of the rule you want off; the others are on, and ``[]``
+     *     turns them all on. Works on your own rules and on System and shared
+     *     rules. A tag that is off is no longer sent to the scan check for your
+     *     organization, its description stays in ``config``, and other organizations
+     *     and other rules naming the same tag are unaffected. With every tag off
+     *     the rule reads ``is_active`` false. Tags already set on scans stay until the scan is rechecked.
+     *     A slug that is not a tag of the rule answers 422
+     *     ``checking.unknown_rule_tag``. The response lists ``disabled_tags``;
+     *     read ``tag_disable_impact`` (your own active combo rules that read a tag)
+     *     from the list or get call before switching a tag off.
+     */
+    put: operations["set_custom_rule_disabled_tags_api_v1_custom_rules__rule_id__disabled_tags_put"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/policy-sets": {
     parameters: {
       query?: never;
@@ -3168,6 +3199,12 @@ export interface components {
        */
       editable: boolean;
       disable_impact?: components["schemas"]["DisableImpact"] | null;
+      /** Disabled Tags */
+      disabled_tags?: string[];
+      /** Tag Disable Impact */
+      tag_disable_impact?: {
+        [key: string]: components["schemas"]["ImpactedComboRule"][];
+      };
     };
     /**
      * CustomTaxonomyListItem
@@ -5121,6 +5158,14 @@ export interface components {
      */
     SetDestinationVersionRequest: {
       version: components["schemas"]["AlertNotificationVersion"];
+    };
+    /**
+     * SetDisabledTagsRequest
+     * @description Request body for PUT /custom-rules/{id}/disabled-tags.
+     */
+    SetDisabledTagsRequest: {
+      /** Slugs */
+      slugs: string[];
     };
     /**
      * SubRequestResponse
@@ -7976,6 +8021,41 @@ export interface operations {
       cookie?: never;
     };
     requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomRuleResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  set_custom_rule_disabled_tags_api_v1_custom_rules__rule_id__disabled_tags_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetDisabledTagsRequest"];
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {
