@@ -54,6 +54,14 @@ describe("parseCustomRulePage", () => {
     expect(item?.tag_disable_impact).toEqual(impact);
   });
 
+  it("r12: keeps security_tags of each item", () => {
+    const r = parseCustomRulePage(
+      ENVELOPE([{ ...VALID_RULE, security_tags: ["casino"] }, VALID_RULE])
+    );
+    const items = r._unsafeUnwrap().items;
+    expect(items.map((i) => i.security_tags)).toEqual([["casino"], undefined]);
+  });
+
   it("Ok on empty envelope", () => {
     expect(parseCustomRulePage(ENVELOPE([], 0)).isOk()).toBe(true);
   });

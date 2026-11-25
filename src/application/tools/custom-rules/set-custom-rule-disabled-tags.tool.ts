@@ -42,7 +42,7 @@ export const setCustomRuleDisabledTagsTool: Tool<
     "Works on your own, System and shared rules. New scans stop getting the off tags; tags already on past scans stay " +
     "until the scan is rechecked. " +
     "`slugs` replaces the whole off-set (read the current one from `disabled_tags` of `get_custom_rule`). " +
-    "Before switching a tag off, read `tag_disable_impact` from `get_custom_rule`: it lists your combo rules that read that tag. " +
+    "Before switching a tag off, read `tag_disable_impact` and `security_tags` from `get_custom_rule`: the first lists the combo rules in effect for you (yours, System and shared) that read that tag, the second the HIGH severity tags whose removal may let malicious ads go undetected. " +
     "When every tag is off the rule reads `is_active: false`. Repeating the call is harmless.",
   annotations: {
     title: "Set Custom Rule Disabled Tags",

@@ -645,6 +645,7 @@ export type CustomRuleResponse = Pick<
   readonly tag_disable_impact?:
     | Readonly<Record<string, readonly { readonly id: string; readonly name: string }[]>>
     | undefined;
+  readonly security_tags?: readonly string[] | undefined;
 };
 
 export type RuleTestRequest = Pick<

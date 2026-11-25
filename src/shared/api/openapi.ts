@@ -1298,8 +1298,9 @@ export interface paths {
      *     the rule reads ``is_active`` false. Tags already set on scans stay until the scan is rechecked.
      *     A slug that is not a tag of the rule answers 422
      *     ``checking.unknown_rule_tag``. The response lists ``disabled_tags``;
-     *     read ``tag_disable_impact`` (your own active combo rules that read a tag)
-     *     from the list or get call before switching a tag off.
+     *     read ``tag_disable_impact`` (the active combo rules in effect for you that read a tag)
+     *     and ``security_tags`` (HIGH severity tags that are on) from the list or get call
+     *     before switching a tag off.
      */
     put: operations["set_custom_rule_disabled_tags_api_v1_custom_rules__rule_id__disabled_tags_put"];
     post?: never;
@@ -3205,6 +3206,8 @@ export interface components {
       tag_disable_impact?: {
         [key: string]: components["schemas"]["ImpactedComboRule"][];
       };
+      /** Security Tags */
+      security_tags?: string[];
     };
     /**
      * CustomTaxonomyListItem

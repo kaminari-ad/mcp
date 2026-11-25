@@ -18,11 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `set_custom_rule_disabled_tags` switches single tags of an AI rule off
   for your organization (your own, System or shared rule); the other tags
   keep working and an off tag keeps its description. `list_custom_rules` and
-  `get_custom_rule` also return `disabled_tags` and `tag_disable_impact`
-  (your combo rules that read each tag that is on).
+  `get_custom_rule` also return `disabled_tags`, `tag_disable_impact`
+  (the combo rules in effect for you that read each tag that is on) and
+  `security_tags` (HIGH severity tags that are on).
 
 ### Changed
 
+- `recheck_scans` says that tags of rules and tags you switched off are
+  removed from re-checked scans.
 - `get_scan_creative_video` says the stored copy is kept for 90 days after
   `completed_at`; an older scan answers not-found.
 

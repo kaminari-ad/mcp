@@ -760,6 +760,7 @@ const CustomRuleResponse = z
     disable_impact: z.union([DisableImpact, z.null()]).optional(),
     disabled_tags: z.array(z.string()).optional(),
     tag_disable_impact: z.record(z.string(), z.array(ImpactedComboRule)).optional(),
+    security_tags: z.array(z.string()).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
