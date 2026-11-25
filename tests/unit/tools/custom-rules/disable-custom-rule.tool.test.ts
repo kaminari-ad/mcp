@@ -7,12 +7,12 @@ import { makeToolContext } from "../../../fakes/make-tool-context.js";
 const RID = "00000000-0000-0000-0000-000000000bbb";
 
 describe("disableCustomRuleTool", () => {
-  it("name + uuid", () => {
+  it("r10: name + uuid", () => {
     expect(disableCustomRuleTool.name).toBe("disable_custom_rule");
     expect(() => disableCustomRuleTool.inputSchema.parse({ rule_id: "x" })).toThrow();
   });
 
-  it("calls the gateway and returns the rule", async () => {
+  it("r10: calls the gateway and returns the rule", async () => {
     const api = createFakeApiGateway();
     const r = await disableCustomRuleTool.handler({ rule_id: RID }, makeToolContext({ api }));
     expect(r.isOk()).toBe(true);
@@ -20,7 +20,7 @@ describe("disableCustomRuleTool", () => {
     expect(api.state.calls[0]).toEqual({ method: "disableCustomRule", id: RID });
   });
 
-  it("maps error", async () => {
+  it("r10: maps error", async () => {
     const api = createFakeApiGateway();
     api.state.responses.disableCustomRule = err(makeApiError("not-found", "x"));
     expect(
