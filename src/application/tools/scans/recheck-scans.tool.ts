@@ -37,7 +37,7 @@ export type RecheckScansOutput = RecheckResponse;
 export const recheckScansTool: Tool<RecheckScansInputShape, RecheckScansOutput> = {
   name: "recheck_scans",
   description:
-    "Re-run the checker pipeline against recent COMPLETED scans (e.g. after updating policies or custom rules). Returns the number of scans queued for re-evaluation. No new crawl fee — only the checker cost.",
+    "Re-run the checker pipeline against recent COMPLETED scans (e.g. after updating policies or custom rules). Returns the number of scans queued for re-evaluation. No new crawl fee — only the checker cost. Tags of rules and tags you switched off are removed from re-checked scans.",
   annotations: {
     title: "Recheck Scans",
     readOnlyHint: false,

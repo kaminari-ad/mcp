@@ -12,6 +12,12 @@ describe("recheckScansTool", () => {
     ).toThrow();
   });
 
+  it("r11: the description warns that tags of switched-off rules and tags are removed", () => {
+    expect(recheckScansTool.description).toContain(
+      "Tags of rules and tags you switched off are removed from re-checked scans."
+    );
+  });
+
   it("forwards scope verbatim and returns queued_count", async () => {
     const api = createFakeApiGateway();
     api.state.responses.recheckScans = ok({ queued_count: 42 });
