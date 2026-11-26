@@ -735,6 +735,14 @@ const CreateCustomRuleRequest = z
     tag_visibility: z.union([z.record(z.string(), TagVisibility), z.null()]).optional(),
   })
   .passthrough();
+const ImpactedComboRule = z.object({ id: z.guid(), name: z.string() }).passthrough();
+const DisableImpact = z
+  .object({
+    combo_rules: z.array(ImpactedComboRule),
+    security: z.boolean().default(false),
+  })
+  .partial()
+  .passthrough();
 const CustomRuleResponse = z
   .object({
     id: z.guid(),
@@ -748,6 +756,11 @@ const CustomRuleResponse = z
     created_at: z.string().datetime({ offset: true }),
     scope: z.string().optional().default("personal"),
     tag_visibility: z.record(z.string(), z.string()).optional(),
+    editable: z.boolean().optional().default(true),
+    disable_impact: z.union([DisableImpact, z.null()]).optional(),
+    disabled_tags: z.array(z.string()).optional(),
+    tag_disable_impact: z.record(z.string(), z.array(ImpactedComboRule)).optional(),
+    security_tags: z.array(z.string()).optional(),
   })
   .passthrough();
 const PaginatedResponse_CustomRuleResponse_ = z
@@ -835,6 +848,9 @@ const RuleTestBatchResponse = z
     results: z.array(RuleTestBatchCell),
     summary: RuleTestBatchSummary,
   })
+  .passthrough();
+const SetDisabledTagsRequest = z
+  .object({ slugs: z.array(z.string().max(100)).max(200) })
   .passthrough();
 const IabV3PolicyCategoryRequest = z
   .object({
@@ -1467,6 +1483,8 @@ export const schemas = {
   TagSeverity,
   UpdateTagDefinitionRequest,
   CreateCustomRuleRequest,
+  ImpactedComboRule,
+  DisableImpact,
   CustomRuleResponse,
   PaginatedResponse_CustomRuleResponse_,
   UpdateCustomRuleRequest,
@@ -1478,6 +1496,7 @@ export const schemas = {
   RuleTestBatchCell,
   RuleTestBatchSummary,
   RuleTestBatchResponse,
+  SetDisabledTagsRequest,
   IabV3PolicyCategoryRequest,
   AiCategoryRequest,
   CustomTaxonomyRefRequest,

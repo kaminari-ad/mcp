@@ -3,8 +3,8 @@
 #   runtime      : kaminariad-mcp-base-runtime (lean node + tini) COPYs prod node_modules + dist.
 # ARG defaults are the ECR images CodeBuild pulls. GitLab CI passes the same
 # bases from the GitLab registry with --build-arg: that job has no AWS credentials.
-ARG BUILDER_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.3.0
-ARG RUNTIME_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-runtime:v1.3.0
+ARG BUILDER_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-builder:v1.3.2
+ARG RUNTIME_BASE=676206925995.dkr.ecr.eu-central-1.amazonaws.com/kaminariad-mcp-base-runtime:v1.3.2
 FROM ${BUILDER_BASE} AS deps
 
 COPY --chown=kaminariad:kaminariad package.json package-lock.json .npmrc ./

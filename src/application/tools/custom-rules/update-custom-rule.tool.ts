@@ -48,7 +48,12 @@ const UpdateCustomRuleInputShape = {
     .describe(
       "Where to apply the rule. `regexp_request_url` and `regexp_request_body` accept `'page'`, `'creative'` or `'creative_and_page'`. See API docs for the valid targets of other rule types."
     ),
-  is_active: z.boolean().optional().describe("Enable/disable the rule."),
+  is_active: z
+    .boolean()
+    .optional()
+    .describe(
+      "Enable/disable the rule's own switch. `is_active` in responses is computed and reads `false` while every tag of an AI rule is off; do not send that value back, or the rule stays inactive after its tags are switched on again. Send it only to switch the rule itself."
+    ),
 } as const;
 type UpdateCustomRuleInputShape = typeof UpdateCustomRuleInputShape;
 

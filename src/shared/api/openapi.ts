@@ -364,13 +364,14 @@ export interface paths {
     };
     /**
      * Get Screenshot
-     * @description Serve the page screenshot, optionally resized to *w* pixels wide. Public endpoint.
+     * @description Serve the page screenshot, optionally shrunk to at most *w* pixels wide. Public endpoint.
      *
      *     Omitting ``w`` always returns the capture as stored, which for a page
      *     scan is the full scrollable page (bounded crawler-side), not just the
-     *     viewport. Passing ``w`` returns a thumbnail whose height is capped at
-     *     2.5x its width, so an over-tall page is cropped to its top region —
-     *     fetch without ``w`` when you need the whole page.
+     *     viewport. ``w`` is a ceiling, never an upscale: a ``w`` past the stored
+     *     width keeps that width. The thumbnail's height is capped at 2.5x its
+     *     width, so an over-tall page is cropped to its top region — fetch
+     *     without ``w`` when you need the whole page.
      */
     get: operations["get_screenshot_api_v1_scans__scan_id__screenshot_get"];
     put?: never;
@@ -392,8 +393,9 @@ export interface paths {
      * Get Creative Screenshot
      * @description Serve creative screenshot for ad tag scans. Public endpoint.
      *
-     *     Unlike the page and landing surfaces, ``w`` never crops here — a
-     *     creative's aspect ratio is part of what is being verified.
+     *     ``w`` is a width ceiling, never an upscale. Unlike the page and landing
+     *     surfaces, it never crops here — a creative's aspect ratio is part of
+     *     what is being verified.
      */
     get: operations["get_creative_screenshot_api_v1_scans__scan_id__creative_screenshot_get"];
     put?: never;
@@ -437,7 +439,10 @@ export interface paths {
     };
     /**
      * Get Creative Video
-     * @description Serve the stored VAST MediaFile MP4 for VAST scans. Public endpoint.
+     * @description Serve the stored VAST MediaFile for VAST scans, ``Range`` aware. Public endpoint.
+     *
+     *     The copy is kept for the configured retention after the scan completes
+     *     (90 days by default); after that this answers 404.
      */
     get: operations["get_creative_video_api_v1_scans__scan_id__creative_video_get"];
     put?: never;
@@ -483,6 +488,72 @@ export interface paths {
      *     at 2.5x its width, the un-resized artifact is the whole capture.
      */
     get: operations["get_landing_screenshot_api_v1_scans__scan_id__landings__landing_ord__screenshot_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/resource-bodies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Resource Bodies
+     * @description Serve the page's captured script, XHR / fetch and child-frame bodies.
+     *
+     *     ``application/gzip`` of JSON lines, one object per resource:
+     *     ``url``, ``resource_type``, ``content_type``, ``size``, and either
+     *     ``body`` or ``skipped`` (``too_large``, ``unavailable``, ``budget``).
+     *     Kept for one day after the scan; 404 once expired or when the page
+     *     captured nothing.
+     */
+    get: operations["get_resource_bodies_api_v1_scans__scan_id__resource_bodies_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/creative-resource-bodies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Creative Resource Bodies
+     * @description Serve the creative's captured bodies (ad-tag and discovered-ad scans), same format.
+     */
+    get: operations["get_creative_resource_bodies_api_v1_scans__scan_id__creative_resource_bodies_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scans/{scan_id}/landings/{landing_ord}/resource-bodies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Landing Resource Bodies
+     * @description Serve one landing tab's captured bodies, selected by its ``ord``, same format.
+     */
+    get: operations["get_landing_resource_bodies_api_v1_scans__scan_id__landings__landing_ord__resource_bodies_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1151,6 +1222,88 @@ export interface paths {
      *     one gets 429 ``checking.rule_test_batch_in_progress``.
      */
     post: operations["run_rule_test_batch_api_v1_custom_rules_test_batch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-rules/{rule_id}/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Disable Custom Rule
+     * @description Switch a SYSTEM or shared rule off for your organization only.
+     *
+     *     New scans of your organization no longer get the rule's tags; tags set
+     *     before stay. Repeating the call changes nothing. Your own rule answers 422
+     *     ``checking.rule_owned_by_caller``: switch it with ``is_active``.
+     *     The response is the rule as it now stands: ``is_active`` false and
+     *     ``disable_impact`` null. Read ``disable_impact`` from the list or get
+     *     call before disabling.
+     */
+    post: operations["disable_custom_rule_api_v1_custom_rules__rule_id__disable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-rules/{rule_id}/enable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enable Custom Rule
+     * @description Switch a SYSTEM or shared rule back on for your organization.
+     *
+     *     New scans get its tags again. Scans already checked keep their tags
+     *     until you recheck them. Repeating the call changes nothing.
+     */
+    post: operations["enable_custom_rule_api_v1_custom_rules__rule_id__enable_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/custom-rules/{rule_id}/disabled-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set Custom Rule Disabled Tags
+     * @description Turn single tags of an AI rule off for your organization only.
+     *
+     *     Send every tag of the rule you want off; the others are on, and ``[]``
+     *     turns them all on. Works on your own rules and on System and shared
+     *     rules. A tag that is off is no longer sent to the scan check for your
+     *     organization, its description stays in ``config``, and other organizations
+     *     and other rules naming the same tag are unaffected. With every tag off
+     *     the rule reads ``is_active`` false. Tags already set on scans stay until the scan is rechecked.
+     *     A slug that is not a tag of the rule answers 422
+     *     ``checking.unknown_rule_tag``. The response lists ``disabled_tags``;
+     *     read ``tag_disable_impact`` (the active combo rules in effect for you that read a tag)
+     *     and ``security_tags`` (HIGH severity tags that are on) from the list or get call
+     *     before switching a tag off.
+     */
+    put: operations["set_custom_rule_disabled_tags_api_v1_custom_rules__rule_id__disabled_tags_put"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3041,6 +3194,20 @@ export interface components {
       tag_visibility?: {
         [key: string]: string;
       };
+      /**
+       * Editable
+       * @default true
+       */
+      editable: boolean;
+      disable_impact?: components["schemas"]["DisableImpact"] | null;
+      /** Disabled Tags */
+      disabled_tags?: string[];
+      /** Tag Disable Impact */
+      tag_disable_impact?: {
+        [key: string]: components["schemas"]["ImpactedComboRule"][];
+      };
+      /** Security Tags */
+      security_tags?: string[];
     };
     /**
      * CustomTaxonomyListItem
@@ -3193,6 +3360,19 @@ export interface components {
        * @default false
        */
       detach_all: boolean;
+    };
+    /**
+     * DisableImpact
+     * @description Warnings to show before an organization switches a rule off.
+     */
+    DisableImpact: {
+      /** Combo Rules */
+      combo_rules?: components["schemas"]["ImpactedComboRule"][];
+      /**
+       * Security
+       * @default false
+       */
+      security: boolean;
     };
     /**
      * DiscoveryAdFormat
@@ -3352,6 +3532,19 @@ export interface components {
       tier3?: string | null;
       /** Tier4 */
       tier4?: string | null;
+    };
+    /**
+     * ImpactedComboRule
+     * @description One combo rule whose result changes when the rule it reads is switched off.
+     */
+    ImpactedComboRule: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Name */
+      name: string;
     };
     /**
      * InviteUserRequest
@@ -4970,6 +5163,14 @@ export interface components {
       version: components["schemas"]["AlertNotificationVersion"];
     };
     /**
+     * SetDisabledTagsRequest
+     * @description Request body for PUT /custom-rules/{id}/disabled-tags.
+     */
+    SetDisabledTagsRequest: {
+      /** Slugs */
+      slugs: string[];
+    };
+    /**
      * SubRequestResponse
      * @description One sub-request node with recursive children (initiator tree).
      */
@@ -6460,6 +6661,121 @@ export interface operations {
       };
     };
   };
+  get_resource_bodies_api_v1_scans__scan_id__resource_bodies_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Gzip-compressed JSON Lines, one object per captured resource */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/gzip": unknown;
+        };
+      };
+      /** @description Scan not found, the surface kept nothing, or the contents expired */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_creative_resource_bodies_api_v1_scans__scan_id__creative_resource_bodies_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Gzip-compressed JSON Lines, one object per captured resource */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/gzip": unknown;
+        };
+      };
+      /** @description Scan not found, the surface kept nothing, or the contents expired */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_landing_resource_bodies_api_v1_scans__scan_id__landings__landing_ord__resource_bodies_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        scan_id: string;
+        landing_ord: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Gzip-compressed JSON Lines, one object per captured resource */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/gzip": unknown;
+        };
+      };
+      /** @description Scan not found, the surface kept nothing, or the contents expired */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   list_geos_api_v1_geos_get: {
     parameters: {
       query?: never;
@@ -7654,6 +7970,103 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RuleTestBatchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  disable_custom_rule_api_v1_custom_rules__rule_id__disable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomRuleResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  enable_custom_rule_api_v1_custom_rules__rule_id__enable_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomRuleResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  set_custom_rule_disabled_tags_api_v1_custom_rules__rule_id__disabled_tags_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        rule_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SetDisabledTagsRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CustomRuleResponse"];
         };
       };
       /** @description Validation Error */

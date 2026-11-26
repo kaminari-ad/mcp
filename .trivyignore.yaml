@@ -1,6 +1,6 @@
 # Image-scan allowlist for Security (TRIVY_IGNOREFILE in .gitlab-ci.yml).
 # Every entry is a HIGH in the npm 10.9.9 that node:22.23.4 ships inside the
-# kaminariad-mcp-base-*:v1.3.0 images. The service runs node only and never
+# kaminariad-mcp-base-*:v1.3.2 images. The service runs node only and never
 # calls npm at runtime. No current Node image ships a fixed npm (KAMIAD-255).
 # Paths keep the ids scoped to that npm, so the same id in the service's own
 # dependencies still fails trivy fs and trivy image.
