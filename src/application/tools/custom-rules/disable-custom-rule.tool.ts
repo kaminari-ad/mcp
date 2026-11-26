@@ -24,9 +24,9 @@ export const disableCustomRuleTool: Tool<DisableCustomRuleInputShape, DisableCus
   name: "disable_custom_rule",
   description:
     "Switch a System or shared (other organization's) custom rule off for your organization only. " +
-    "New scans stop getting its tags; tags already on past scans stay. " +
-    "Read `disable_impact` from `list_custom_rules` or `get_custom_rule` first: it names your combo rules " +
-    "that read the rule's tag, and `security: true` means disabling it may let malicious ads go undetected. " +
+    "New scans stop getting its tags; tags already on past scans stay until the scan is rechecked (`recheck_scans`). " +
+    "Read `disable_impact` from `list_custom_rules` or `get_custom_rule` first: it names the combo rules in effect for you " +
+    "(yours, System and shared) that read the rule's tag, and `security: true` means disabling it may let malicious ads go undetected. " +
     "Your own rules are switched with `update_custom_rule` (`is_active`), not here. Repeating the call is harmless.",
   annotations: {
     title: "Disable Custom Rule",
