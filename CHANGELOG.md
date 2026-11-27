@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `list_tags` and `get_tag_definition` return `is_active`: `false` marks a platform
+  tag your organization switched off in the web app (Tags). There is no MCP
+  tool for that switch.
+
 - `list_custom_rules` and `get_custom_rule` serve your own rules only;
   System and shared rules are not listed and answer not-found. To stop a
   platform tag, switch it off in the web app (Tags); there is no MCP tool

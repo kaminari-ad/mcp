@@ -41,6 +41,7 @@ describe("getTagDefinitionTool", () => {
       visibility: "public",
       scans_count: 5,
       rules_count: 2,
+      is_active: true,
       linked_rules: [
         { id: "00000000-0000-0000-0000-000000000abc", name: "ad-detector", is_active: true },
         { id: "00000000-0000-0000-0000-000000000def", name: "old-rule", is_active: false },

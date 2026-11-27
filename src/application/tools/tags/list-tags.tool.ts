@@ -40,7 +40,7 @@ export interface ListTagsOutput {
 export const listTagsTool: Tool<ListTagsInputShape, ListTagsOutput> = {
   name: "list_tags",
   description:
-    "List every tag definition in service for this organization (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag). Optionally filter by category, and pass `include_archived` to also see the retired definitions this organization owns.",
+    "List every tag definition in service for this organization (system tags + organization custom tags) with category, severity, visibility, and usage counters (scans + rules per tag), and `is_active` (false for a platform tag this organization switched off in the web app). Optionally filter by category, and pass `include_archived` to also see the retired definitions this organization owns.",
   annotations: {
     title: "List Tags",
     readOnlyHint: true,

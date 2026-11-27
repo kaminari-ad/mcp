@@ -45,6 +45,7 @@ describe("listTagsTool", () => {
         visibility: "public",
         scans_count: 10,
         rules_count: 1,
+        is_active: true,
       },
     ]);
     const ctx = makeToolContext({ api });

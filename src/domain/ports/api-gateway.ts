@@ -585,6 +585,7 @@ export type TagDefinitionResponse = Pick<
   | "visibility"
   | "scans_count"
   | "rules_count"
+  | "is_active"
 >;
 
 /**

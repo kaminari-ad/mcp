@@ -39,6 +39,7 @@ const TagDefinitionSchema = schemas.TagDefinitionWithStatsResponse.pick({
   visibility: true,
   scans_count: true,
   rules_count: true,
+  is_active: true,
 }).strip();
 
 const TagDefinitionArraySchema = z.array(TagDefinitionSchema);
@@ -65,6 +66,7 @@ const TagDetailSchema = schemas.TagDefinitionDetailResponse.pick({
   visibility: true,
   scans_count: true,
   rules_count: true,
+  is_active: true,
 })
   .extend({ linked_rules: z.array(LinkedRuleSchema).optional() })
   .strip();

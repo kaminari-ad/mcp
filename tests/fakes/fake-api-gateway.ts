@@ -668,6 +668,7 @@ const DEFAULT_TAG_DETAIL: TagDefinitionDetailResponse = {
   visibility: "internal",
   scans_count: 0,
   rules_count: 0,
+  is_active: true,
   linked_rules: [],
 };
 
