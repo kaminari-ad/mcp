@@ -1,6 +1,6 @@
 /**
  * Tool: `set_custom_rule_disabled_tags` — switch single tags of an AI
- * rule off for the caller's organization only.
+ * rule off.
  *
  * Wraps `PUT /api/v1/custom-rules/{id}/disabled-tags`.
  */
@@ -16,9 +16,7 @@ import type { ToolError } from "../_shared/tool-result.js";
 const SetCustomRuleDisabledTagsInputShape = {
   rule_id: z
     .guid()
-    .describe(
-      "UUID of an AI rule (`rule_type` `llm`), from `list_custom_rules`: your own, System or shared."
-    ),
+    .describe("UUID of one of your own AI rules (`rule_type` `llm`), from `list_custom_rules`."),
   slugs: z
     .array(z.string().min(1).max(100))
     .max(200)
@@ -37,12 +35,12 @@ export const setCustomRuleDisabledTagsTool: Tool<
 > = {
   name: "set_custom_rule_disabled_tags",
   description:
-    "Switch single tags of an AI rule off for your organization only; the other tags keep working and " +
+    "Switch single tags of your own AI rule off; the other tags keep working and " +
     "the description of an off tag is kept, so switching it back on needs no setup. " +
-    "Works on your own, System and shared rules. New scans stop getting the off tags; tags already on past scans stay " +
+    "System and shared rules are not listed and answer 404; to stop a platform tag, switch the tag off in the web app (Tags). New scans stop getting the off tags; tags already on past scans stay " +
     "until the scan is rechecked. " +
     "`slugs` replaces the whole off-set (read the current one from `disabled_tags` of `get_custom_rule`). " +
-    "Before switching a tag off, read `tag_disable_impact` and `security_tags` from `get_custom_rule`: the first lists the combo rules in effect for you (yours, System and shared) that read that tag, the second the HIGH severity tags whose removal may let malicious ads go undetected. " +
+    "Before switching a tag off, read `tag_disable_impact` and `security_tags` from `get_custom_rule`: the first lists your own combo rules that read that tag, the second the HIGH severity tags whose removal may let malicious ads go undetected. " +
     "When every tag is off the rule reads `is_active: false`. Repeating the call is harmless.",
   annotations: {
     title: "Set Custom Rule Disabled Tags",

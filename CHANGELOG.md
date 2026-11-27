@@ -7,25 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Requires adverif/api!448 (organizations switch System and shared rules off for themselves).
+> Requires the api release that serves your own rules only (KAMIAD-284).
 > Requires adverif/api!443 (stored VAST videos expire 90 days after the scan completes).
 
 ### Added
 
-- `disable_custom_rule` and `enable_custom_rule` switch a System or shared
-  rule off or on for your organization. `list_custom_rules` and
-  `get_custom_rule` return `scope`, `editable` and `disable_impact`.
-- `set_custom_rule_disabled_tags` switches single tags of an AI rule off
-  for your organization (your own, System or shared rule); the other tags
-  keep working and an off tag keeps its description. `list_custom_rules` and
-  `get_custom_rule` also return `disabled_tags`, `tag_disable_impact`
-  (the combo rules in effect for you that read each tag that is on) and
-  `security_tags` (HIGH severity tags that are on).
+- `set_custom_rule_disabled_tags` switches single tags of your own AI rule
+  off; the other tags keep working and an off tag keeps its description.
+  `list_custom_rules` and `get_custom_rule` also return `disabled_tags`,
+  `tag_disable_impact` (your own combo rules that read each tag that is on)
+  and `security_tags` (HIGH severity tags that are on).
 
 ### Changed
 
-- `recheck_scans` says that tags of rules and tags you switched off are
-  removed from re-checked scans.
+- `list_custom_rules` and `get_custom_rule` serve your own rules only;
+  System and shared rules are not listed and answer not-found. To stop a
+  platform tag, switch it off in the web app (Tags); there is no MCP tool
+  for that switch.
+- `recheck_scans` says that tags switched off in your own AI rules are
+  removed from re-checked scans and that a platform tag switched off in the
+  web app is already hidden and needs no recheck.
 - `get_scan_creative_video` says the stored copy is kept for 90 days after
   `completed_at`; an older scan answers not-found.
 

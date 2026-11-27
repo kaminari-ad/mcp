@@ -24,8 +24,6 @@ const CustomRuleSchema = schemas.CustomRuleResponse.pick({
   is_active: true,
   created_at: true,
   scope: true,
-  editable: true,
-  disable_impact: true,
   disabled_tags: true,
   tag_disable_impact: true,
   security_tags: true,

@@ -123,7 +123,7 @@ which decides which credential type minted it.
 - **Campaign groups** (10) — list/get/create/update/run/cancel/archive/unarchive + `pause_campaign_group_schedule`, `resume_campaign_group_schedule`
 - **Runs** (3) — `get_run`, `list_run_scans`, `cancel_run` (use `list_campaign_runs` to enumerate runs of a campaign — the API has no standalone `/runs` index)
 - **Tags** (5) — `list_tags`, `get_tag_definition`, `update_tag_definition`, `delete_tag_definition`, `list_scan_tags`
-- **Custom rules** (10) — `list_custom_rules`, `get_custom_rule`, `create_custom_rule`, `update_custom_rule`, `delete_custom_rule`, `disable_custom_rule`, `enable_custom_rule`, `set_custom_rule_disabled_tags`, `test_custom_rule`, `test_custom_rules_batch`
+- **Custom rules** (8) — `list_custom_rules`, `get_custom_rule`, `create_custom_rule`, `update_custom_rule`, `delete_custom_rule`, `set_custom_rule_disabled_tags`, `test_custom_rule`, `test_custom_rules_batch`
 - **Custom taxonomies** (7) — `list_custom_taxonomies`, `get_custom_taxonomy`, `create_custom_taxonomy`, `update_custom_taxonomy`, `delete_custom_taxonomy`, `restore_custom_taxonomy`, `parse_custom_taxonomy_text`
 - **Policy sets** (11) — `list_policy_sets`, `get_policy_set`, `create_policy_set`, `update_policy_set`, `delete_policy_set`, `request_policy_set_approval`, `unpublish_policy_set`, `set_default_policy_set`, `list_policy_set_campaigns`, `attach_policy_set_campaigns`, `detach_policy_set_campaigns`
 - **Alerts** (4) — `list_alerts`, `update_alert_status`, `bulk_update_alert_status`, `get_alert_stats`

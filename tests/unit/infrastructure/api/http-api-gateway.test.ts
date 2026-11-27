@@ -853,17 +853,6 @@ describe("HttpApiGateway", () => {
         .reply(200, { items: [RULE], total: 1, page: 1, limit: 50, pages: 1 });
       a.get(ORIGIN).intercept({ path: "/api/v1/custom-rules", method: "POST" }).reply(201, RULE);
       a.get(ORIGIN)
-        .intercept({ path: `/api/v1/custom-rules/${RULE.id}/disable`, method: "POST" })
-        .reply(200, {
-          ...RULE,
-          scope: "system",
-          editable: false,
-          disable_impact: { combo_rules: [{ id: RULE.id, name: "C" }], security: true },
-        });
-      a.get(ORIGIN)
-        .intercept({ path: `/api/v1/custom-rules/${RULE.id}/enable`, method: "POST" })
-        .reply(200, { ...RULE, scope: "system", editable: false });
-      a.get(ORIGIN)
         .intercept({
           path: `/api/v1/custom-rules/${RULE.id}/disabled-tags`,
           method: "PUT",
@@ -932,12 +921,6 @@ describe("HttpApiGateway", () => {
           })
         ).isOk()
       ).toBe(true);
-      const disabled = await gw.disableCustomRule(RULE.id);
-      expect(disabled._unsafeUnwrap()).toMatchObject({
-        editable: false,
-        disable_impact: { security: true },
-      });
-      expect((await gw.enableCustomRule(RULE.id)).isOk()).toBe(true);
       const tagged = await gw.setCustomRuleDisabledTags(RULE.id, ["a"]);
       expect(tagged._unsafeUnwrap()).toMatchObject({
         disabled_tags: ["a"],
