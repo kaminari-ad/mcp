@@ -1228,56 +1228,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/custom-rules/{rule_id}/disable": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Disable Custom Rule
-     * @description Switch a SYSTEM or shared rule off for your organization only.
-     *
-     *     New scans of your organization no longer get the rule's tags; tags set
-     *     before stay. Repeating the call changes nothing. Your own rule answers 422
-     *     ``checking.rule_owned_by_caller``: switch it with ``is_active``.
-     *     The response is the rule as it now stands: ``is_active`` false and
-     *     ``disable_impact`` null. Read ``disable_impact`` from the list or get
-     *     call before disabling.
-     */
-    post: operations["disable_custom_rule_api_v1_custom_rules__rule_id__disable_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/custom-rules/{rule_id}/enable": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Enable Custom Rule
-     * @description Switch a SYSTEM or shared rule back on for your organization.
-     *
-     *     New scans get its tags again. Scans already checked keep their tags
-     *     until you recheck them. Repeating the call changes nothing.
-     */
-    post: operations["enable_custom_rule_api_v1_custom_rules__rule_id__enable_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/v1/custom-rules/{rule_id}/disabled-tags": {
     parameters: {
       query?: never;
@@ -3194,12 +3144,6 @@ export interface components {
       tag_visibility?: {
         [key: string]: string;
       };
-      /**
-       * Editable
-       * @default true
-       */
-      editable: boolean;
-      disable_impact?: components["schemas"]["DisableImpact"] | null;
       /** Disabled Tags */
       disabled_tags?: string[];
       /** Tag Disable Impact */
@@ -3360,19 +3304,6 @@ export interface components {
        * @default false
        */
       detach_all: boolean;
-    };
-    /**
-     * DisableImpact
-     * @description Warnings to show before an organization switches a rule off.
-     */
-    DisableImpact: {
-      /** Combo Rules */
-      combo_rules?: components["schemas"]["ImpactedComboRule"][];
-      /**
-       * Security
-       * @default false
-       */
-      security: boolean;
     };
     /**
      * DiscoveryAdFormat
@@ -5219,6 +5150,11 @@ export interface components {
       rules_count: number;
       /** Archived At */
       archived_at?: string | null;
+      /**
+       * Is Active
+       * @default true
+       */
+      is_active: boolean;
       /** Linked Rules */
       linked_rules?: components["schemas"]["LinkedRuleResponse"][];
     };
@@ -5256,6 +5192,11 @@ export interface components {
       rules_count: number;
       /** Archived At */
       archived_at?: string | null;
+      /**
+       * Is Active
+       * @default true
+       */
+      is_active: boolean;
     };
     /**
      * TagMatchMode
@@ -7970,68 +7911,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RuleTestBatchResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  disable_custom_rule_api_v1_custom_rules__rule_id__disable_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        rule_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CustomRuleResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  enable_custom_rule_api_v1_custom_rules__rule_id__enable_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        rule_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CustomRuleResponse"];
         };
       };
       /** @description Validation Error */

@@ -12,9 +12,9 @@ describe("recheckScansTool", () => {
     ).toThrow();
   });
 
-  it("r11: the description warns that tags of switched-off rules and tags are removed", () => {
+  it("r11: the description says own-rule tags are removed and platform tags need no recheck", () => {
     expect(recheckScansTool.description).toContain(
-      "Tags of rules and tags you switched off are removed from re-checked scans."
+      "Tags you switched off in your own AI rules are removed from re-checked scans; a platform tag switched off in the web app is already hidden and needs no recheck."
     );
   });
 

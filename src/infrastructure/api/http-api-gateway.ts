@@ -1091,22 +1091,6 @@ export function createHttpApiGateway(config: HttpApiGatewayConfig): ApiGateway {
         parseEmpty
       );
     },
-    async disableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call(
-        "POST",
-        "/api/v1/custom-rules/{rule_id}/disable",
-        { params: { path: { rule_id: id } } },
-        parseCustomRule
-      );
-    },
-    async enableCustomRule(id: string): Promise<Result<CustomRuleResponse, ApiError>> {
-      return call(
-        "POST",
-        "/api/v1/custom-rules/{rule_id}/enable",
-        { params: { path: { rule_id: id } } },
-        parseCustomRule
-      );
-    },
     async setCustomRuleDisabledTags(
       id: string,
       slugs: readonly string[]

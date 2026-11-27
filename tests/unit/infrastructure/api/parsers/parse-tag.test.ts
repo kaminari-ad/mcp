@@ -95,3 +95,27 @@ describe("parseTagDetail (detail endpoint with linked_rules)", () => {
     expect(r.isErr()).toBe(true);
   });
 });
+
+describe("is_active (KAMIAD-284: a platform tag the organization switched off)", () => {
+  const read = {
+    list: (raw: unknown) => parseTag(raw)._unsafeUnwrap().is_active,
+    array: (raw: unknown) => parseTagDefinitionArray([raw])._unsafeUnwrap()[0]?.is_active,
+    detail: (raw: unknown) => parseTagDetail(raw)._unsafeUnwrap().is_active,
+  };
+
+  it.each([
+    ["k284 list: false is kept", "list", false, false],
+    ["k284 array: false is kept", "array", false, false],
+    ["k284 detail: false is kept", "detail", false, false],
+    ["k284 list: true is kept", "list", true, true],
+  ] as const)("%s", (_name, shape, sent, expected) => {
+    expect(read[shape]({ ...TAG_ROW, is_active: sent })).toBe(expected);
+  });
+
+  it.each(["list", "array", "detail"] as const)(
+    "k284 %s: an older api without the field reads as active",
+    (shape) => {
+      expect(read[shape](TAG_ROW)).toBe(true);
+    }
+  );
+});

@@ -15,6 +15,16 @@ describe("registerAllTools", () => {
     expect(new Set(seen).size).toBe(seen.length);
   });
 
+  it("k284: rules are own-only, so no platform-rule switch tool is registered", () => {
+    const seen: string[] = [];
+    registerAllTools((tool) => {
+      seen.push(tool.name);
+    });
+    expect(seen).toContain("set_custom_rule_disabled_tags");
+    expect(seen).not.toContain("disable_custom_rule");
+    expect(seen).not.toContain("enable_custom_rule");
+  });
+
   it("each registered tool has a description and inputSchema", () => {
     registerAllTools((tool) => {
       expect(tool.description.length).toBeGreaterThan(10);

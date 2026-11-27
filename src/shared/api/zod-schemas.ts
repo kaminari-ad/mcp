@@ -686,6 +686,7 @@ const TagDefinitionWithStatsResponse = z
     scans_count: z.number().int(),
     rules_count: z.number().int(),
     archived_at: z.union([z.string(), z.null()]).optional(),
+    is_active: z.boolean().optional().default(true),
   })
   .passthrough();
 const LinkedRuleResponse = z
@@ -711,6 +712,7 @@ const TagDefinitionDetailResponse = z
     scans_count: z.number().int(),
     rules_count: z.number().int(),
     archived_at: z.union([z.string(), z.null()]).optional(),
+    is_active: z.boolean().optional().default(true),
     linked_rules: z.array(LinkedRuleResponse).optional(),
   })
   .passthrough();
@@ -736,13 +738,6 @@ const CreateCustomRuleRequest = z
   })
   .passthrough();
 const ImpactedComboRule = z.object({ id: z.guid(), name: z.string() }).passthrough();
-const DisableImpact = z
-  .object({
-    combo_rules: z.array(ImpactedComboRule),
-    security: z.boolean().default(false),
-  })
-  .partial()
-  .passthrough();
 const CustomRuleResponse = z
   .object({
     id: z.guid(),
@@ -756,8 +751,6 @@ const CustomRuleResponse = z
     created_at: z.string().datetime({ offset: true }),
     scope: z.string().optional().default("personal"),
     tag_visibility: z.record(z.string(), z.string()).optional(),
-    editable: z.boolean().optional().default(true),
-    disable_impact: z.union([DisableImpact, z.null()]).optional(),
     disabled_tags: z.array(z.string()).optional(),
     tag_disable_impact: z.record(z.string(), z.array(ImpactedComboRule)).optional(),
     security_tags: z.array(z.string()).optional(),
@@ -1484,7 +1477,6 @@ export const schemas = {
   UpdateTagDefinitionRequest,
   CreateCustomRuleRequest,
   ImpactedComboRule,
-  DisableImpact,
   CustomRuleResponse,
   PaginatedResponse_CustomRuleResponse_,
   UpdateCustomRuleRequest,
